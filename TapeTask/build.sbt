@@ -1,1 +1,0 @@
-libraryDependencies += "org.scalaz" %% "scalaz-effect" % "7.2.11"
