@@ -160,7 +160,7 @@ final class OpenCLCodeGeneratorSpec extends FreeSpec with Matchers {
                       val eventPointer1 = stack.pointers(event)
                       val eventPointer2 = stack.pointers(0L)
                       checkCLError(
-                        clEnqueueReadBuffer(commandQueue, buffer, CL_FALSE, 0, output, eventPointer1, eventPointer2))
+                        clEnqueueReadBuffer(commandQueue, buffer, false, 0L, output, eventPointer1, eventPointer2))
                       eventPointer2.get(0)
                     } finally {
                       stack.pop()
