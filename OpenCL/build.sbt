@@ -10,12 +10,12 @@ val lwjglNatives: String = {
   }
 }
 
-libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.1"
+libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.2"
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.1"
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.2"
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.1" % Runtime classifier lwjglNatives
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.2" % Runtime classifier lwjglNatives
 
-libraryDependencies += "org.scalaz" %% "scalaz-concurrent" % "7.2.11"
+libraryDependencies += "com.thoughtworks.future" %% "future" % "1.0.1"
 
 fork := true

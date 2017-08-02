@@ -5,6 +5,7 @@ import java.nio.{ByteBuffer, IntBuffer}
 
 import org.lwjgl.opencl._
 import CL10._
+import CL12._
 import CL11._
 import CL20._
 import com.thoughtworks.deeplearning.Closeables.{AssertionAutoCloseable, AssertionFinalizer}
@@ -15,6 +16,7 @@ import org.lwjgl.system.Pointer._
 
 import scala.collection.mutable
 import com.thoughtworks.deeplearning.Memory.{Address, Box}
+import org.lwjgl.system.jni.JNINativeInterface
 import org.lwjgl.system.{JNI, MemoryStack, MemoryUtil, Pointer}
 
 import scala.util.control.Exception.Catcher
@@ -22,7 +24,8 @@ import scala.util.control.TailCalls
 import scala.util.control.TailCalls.TailRec
 import scala.util.{Failure, Success, Try}
 import scalaz.{-\/, \/, \/-}
-import scalaz.concurrent.{Future, Task}
+import com.thoughtworks.continuation._
+import com.thoughtworks.future._
 
 /**
   * @author 杨博 (Yang Bo) &lt;pop.atry@gmail.com&gt;
@@ -81,51 +84,51 @@ object OpenCL {
     final class UnknownErrorCode(errorCode: Int) extends IllegalStateException
 
     def fromErrorCode(errorCode: Int): Exception = errorCode match {
-      case CL_DEVICE_NOT_FOUND => new Exceptions.DeviceNotFound
-      case CL_DEVICE_NOT_AVAILABLE => new Exceptions.DeviceNotAvailable
-      case CL_COMPILER_NOT_AVAILABLE => new Exceptions.CompilerNotAvailable
-      case CL_MEM_OBJECT_ALLOCATION_FAILURE => new Exceptions.MemObjectAllocationFailure
-      case CL_OUT_OF_RESOURCES => new Exceptions.OutOfResources
-      case CL_OUT_OF_HOST_MEMORY => new Exceptions.OutOfHostMemory
-      case CL_PROFILING_INFO_NOT_AVAILABLE => new Exceptions.ProfilingInfoNotAvailable
-      case CL_MEM_COPY_OVERLAP => new Exceptions.MemCopyOverlap
-      case CL_IMAGE_FORMAT_MISMATCH => new Exceptions.ImageFormatMismatch
-      case CL_IMAGE_FORMAT_NOT_SUPPORTED => new Exceptions.ImageFormatNotSupported
-      case CL_BUILD_PROGRAM_FAILURE => new Exceptions.BuildProgramFailure
-      case CL_MAP_FAILURE => new Exceptions.MapFailure
-      case CL_INVALID_VALUE => new Exceptions.InvalidValue
-      case CL_INVALID_DEVICE_TYPE => new Exceptions.InvalidDeviceType
-      case CL_INVALID_PLATFORM => new Exceptions.InvalidPlatform
-      case CL_INVALID_DEVICE => new Exceptions.InvalidDevice
-      case CL_INVALID_CONTEXT => new Exceptions.InvalidContext
-      case CL_INVALID_QUEUE_PROPERTIES => new Exceptions.InvalidQueueProperties
-      case CL_INVALID_COMMAND_QUEUE => new Exceptions.InvalidCommandQueue
-      case CL_INVALID_HOST_PTR => new Exceptions.InvalidHostPtr
-      case CL_INVALID_MEM_OBJECT => new Exceptions.InvalidMemObject
+      case CL_DEVICE_NOT_FOUND                => new Exceptions.DeviceNotFound
+      case CL_DEVICE_NOT_AVAILABLE            => new Exceptions.DeviceNotAvailable
+      case CL_COMPILER_NOT_AVAILABLE          => new Exceptions.CompilerNotAvailable
+      case CL_MEM_OBJECT_ALLOCATION_FAILURE   => new Exceptions.MemObjectAllocationFailure
+      case CL_OUT_OF_RESOURCES                => new Exceptions.OutOfResources
+      case CL_OUT_OF_HOST_MEMORY              => new Exceptions.OutOfHostMemory
+      case CL_PROFILING_INFO_NOT_AVAILABLE    => new Exceptions.ProfilingInfoNotAvailable
+      case CL_MEM_COPY_OVERLAP                => new Exceptions.MemCopyOverlap
+      case CL_IMAGE_FORMAT_MISMATCH           => new Exceptions.ImageFormatMismatch
+      case CL_IMAGE_FORMAT_NOT_SUPPORTED      => new Exceptions.ImageFormatNotSupported
+      case CL_BUILD_PROGRAM_FAILURE           => new Exceptions.BuildProgramFailure
+      case CL_MAP_FAILURE                     => new Exceptions.MapFailure
+      case CL_INVALID_VALUE                   => new Exceptions.InvalidValue
+      case CL_INVALID_DEVICE_TYPE             => new Exceptions.InvalidDeviceType
+      case CL_INVALID_PLATFORM                => new Exceptions.InvalidPlatform
+      case CL_INVALID_DEVICE                  => new Exceptions.InvalidDevice
+      case CL_INVALID_CONTEXT                 => new Exceptions.InvalidContext
+      case CL_INVALID_QUEUE_PROPERTIES        => new Exceptions.InvalidQueueProperties
+      case CL_INVALID_COMMAND_QUEUE           => new Exceptions.InvalidCommandQueue
+      case CL_INVALID_HOST_PTR                => new Exceptions.InvalidHostPtr
+      case CL_INVALID_MEM_OBJECT              => new Exceptions.InvalidMemObject
       case CL_INVALID_IMAGE_FORMAT_DESCRIPTOR => new Exceptions.InvalidImageFormatDescriptor
-      case CL_INVALID_IMAGE_SIZE => new Exceptions.InvalidImageSize
-      case CL_INVALID_SAMPLER => new Exceptions.InvalidSampler
-      case CL_INVALID_BINARY => new Exceptions.InvalidBinary
-      case CL_INVALID_BUILD_OPTIONS => new Exceptions.InvalidBuildOptions
-      case CL_INVALID_PROGRAM => new Exceptions.InvalidProgram
-      case CL_INVALID_PROGRAM_EXECUTABLE => new Exceptions.InvalidProgramExecutable
-      case CL_INVALID_KERNEL_NAME => new Exceptions.InvalidKernelName
-      case CL_INVALID_KERNEL_DEFINITION => new Exceptions.InvalidKernelDefinition
-      case CL_INVALID_KERNEL => new Exceptions.InvalidKernel
-      case CL_INVALID_ARG_INDEX => new Exceptions.InvalidArgIndex
-      case CL_INVALID_ARG_VALUE => new Exceptions.InvalidArgValue
-      case CL_INVALID_ARG_SIZE => new Exceptions.InvalidArgSize
-      case CL_INVALID_KERNEL_ARGS => new Exceptions.InvalidKernelArgs
-      case CL_INVALID_WORK_DIMENSION => new Exceptions.InvalidWorkDimension
-      case CL_INVALID_WORK_GROUP_SIZE => new Exceptions.InvalidWorkGroupSize
-      case CL_INVALID_WORK_ITEM_SIZE => new Exceptions.InvalidWorkItemSize
-      case CL_INVALID_GLOBAL_OFFSET => new Exceptions.InvalidGlobalOffset
-      case CL_INVALID_EVENT_WAIT_LIST => new Exceptions.InvalidEventWaitList
-      case CL_INVALID_EVENT => new Exceptions.InvalidEvent
-      case CL_INVALID_OPERATION => new Exceptions.InvalidOperation
-      case CL_INVALID_BUFFER_SIZE => new Exceptions.InvalidBufferSize
-      case CL_INVALID_GLOBAL_WORK_SIZE => new Exceptions.InvalidGlobalWorkSize
-      case _ => new Exceptions.UnknownErrorCode(errorCode)
+      case CL_INVALID_IMAGE_SIZE              => new Exceptions.InvalidImageSize
+      case CL_INVALID_SAMPLER                 => new Exceptions.InvalidSampler
+      case CL_INVALID_BINARY                  => new Exceptions.InvalidBinary
+      case CL_INVALID_BUILD_OPTIONS           => new Exceptions.InvalidBuildOptions
+      case CL_INVALID_PROGRAM                 => new Exceptions.InvalidProgram
+      case CL_INVALID_PROGRAM_EXECUTABLE      => new Exceptions.InvalidProgramExecutable
+      case CL_INVALID_KERNEL_NAME             => new Exceptions.InvalidKernelName
+      case CL_INVALID_KERNEL_DEFINITION       => new Exceptions.InvalidKernelDefinition
+      case CL_INVALID_KERNEL                  => new Exceptions.InvalidKernel
+      case CL_INVALID_ARG_INDEX               => new Exceptions.InvalidArgIndex
+      case CL_INVALID_ARG_VALUE               => new Exceptions.InvalidArgValue
+      case CL_INVALID_ARG_SIZE                => new Exceptions.InvalidArgSize
+      case CL_INVALID_KERNEL_ARGS             => new Exceptions.InvalidKernelArgs
+      case CL_INVALID_WORK_DIMENSION          => new Exceptions.InvalidWorkDimension
+      case CL_INVALID_WORK_GROUP_SIZE         => new Exceptions.InvalidWorkGroupSize
+      case CL_INVALID_WORK_ITEM_SIZE          => new Exceptions.InvalidWorkItemSize
+      case CL_INVALID_GLOBAL_OFFSET           => new Exceptions.InvalidGlobalOffset
+      case CL_INVALID_EVENT_WAIT_LIST         => new Exceptions.InvalidEventWaitList
+      case CL_INVALID_EVENT                   => new Exceptions.InvalidEvent
+      case CL_INVALID_OPERATION               => new Exceptions.InvalidOperation
+      case CL_INVALID_BUFFER_SIZE             => new Exceptions.InvalidBufferSize
+      case CL_INVALID_GLOBAL_WORK_SIZE        => new Exceptions.InvalidGlobalWorkSize
+      case _                                  => new Exceptions.UnknownErrorCode(errorCode)
     }
 
   }
@@ -133,7 +136,7 @@ object OpenCL {
   def checkErrorCode(errorCode: Int): Unit = {
     errorCode match {
       case CL_SUCCESS =>
-      case _ => throw Exceptions.fromErrorCode(errorCode)
+      case _          => throw Exceptions.fromErrorCode(errorCode)
     }
   }
 
@@ -270,6 +273,9 @@ data: $data""")
       }
     }
 
+    /**
+      * @note `logger` is weak referenced, which is dangerous.
+      */
     def createContext(logger: (String, ByteBuffer) => Unit, forDevices: Device*): Context = {
       val stack = stackPush()
       try {
@@ -277,7 +283,11 @@ data: $data""")
         val contextProperties = stack.pointers(CL_CONTEXT_PLATFORM, Platform.this.id, 0)
         val deviceIds = stack.pointers(devices.map(_.id): _*)
         val context =
-          clCreateContext(contextProperties, deviceIds, Context.callback, memNewWeakGlobalRef(logger), errorCodeBuffer)
+          clCreateContext(contextProperties,
+                          deviceIds,
+                          Context.callback,
+                          JNINativeInterface.NewWeakGlobalRef(logger),
+                          errorCodeBuffer)
         checkErrorCode(errorCodeBuffer.get(0))
         new Context(Address(context), logger)
       } finally {
@@ -345,6 +355,43 @@ data: $data""")
       }
     }
 
+    def createImage(channelOrder: Int = CL_R,
+                    channelDataType: Int = CL_FLOAT,
+                    imageType: Int = CL_MEM_OBJECT_IMAGE2D_ARRAY,
+                    width: Long,
+                    height: Long,
+                    depth: Long = 1,
+                    arraySize: Int,
+                    rowPitch: Long = NULL,
+                    slicePitch: Long = NULL,
+                    associatedBuffer: Long = NULL,
+                    hostPointer: ByteBuffer = null): Image = {
+      val stack = stackPush()
+      try {
+        val errorCodeBuffer = stack.ints(0)
+        val format = CLImageFormat
+          .mallocStack(stack)
+          .set(channelOrder, channelDataType)
+        val desc = CLImageDesc
+          .mallocStack(stack)
+          .set(imageType,
+               width,
+               height,
+               depth,
+               arraySize,
+               rowPitch,
+               slicePitch,
+               0, // Not used in OpenCL 2.0
+               0,
+               associatedBuffer)
+        val image = clCreateImage(handle.toLong, CL_MEM_READ_WRITE, format, desc, hostPointer, errorCodeBuffer)
+        checkErrorCode(errorCodeBuffer.get(0))
+        new Image(Address(image))
+      } finally {
+        stack.pop()
+      }
+    }
+
   }
   object CommandQueue {
 
@@ -405,9 +452,7 @@ data: $data""")
 
     final case class GlobalWorkSizeOnlyDimension(globalWorkSize: Address)
     final case class GlobalDimension(globalWorkOffset: Address, globalWorkSize: Address)
-    final case class GlobalAndLocalDimension(globalWorkOffset: Address,
-                                             globalWorkSize: Address,
-                                             localWorkSize: Address)
+    final case class GlobalAndLocalDimension(globalWorkOffset: Address, globalWorkSize: Address, localWorkSize: Address)
   }
 
   final class CommandQueue private[OpenCL] (val handle: Address)
@@ -423,9 +468,7 @@ data: $data""")
       checkErrorCode(clReleaseCommandQueue(handle.toLong))
     }
 
-    def enqueueNDRangeKernel(kernel: Kernel,
-                             dimensions: NDimensionBufferAllocator,
-                             preconditionEvents: Event*): Event = {
+    def enqueueNDRangeKernel(kernel: Kernel, dimensions: NDimensionBufferAllocator, preconditionEvents: Event*): Event = {
       val stack = stackPush()
       val outputEvent = try {
         val inputEventBuffer = if (preconditionEvents.isEmpty) {
@@ -510,14 +553,14 @@ data: $data""")
       a(0)
     }
 
-    def waitFor(callbackType: Int): Task[Unit] = Task.async { handler =>
+    def waitFor(callbackType: Int): Future[Unit] = Future.async { handler =>
       object Callback extends CLEventCallbackI {
         override final def invoke(event: Long, status: Int, userData: Long): Unit = {
           container.close()
           status match {
-            case `callbackType` => handler(\/-(()))
-            case errorCode if errorCode < 0 => handler(-\/(Exceptions.fromErrorCode(errorCode)))
-            case _ => throw new IllegalStateException()
+            case `callbackType`             => handler(Success(()))
+            case errorCode if errorCode < 0 => handler(Failure(Exceptions.fromErrorCode(errorCode)))
+            case _                          => throw new IllegalStateException()
           }
         }
         val container: CLEventCallback = CLEventCallback.create(this)
@@ -532,8 +575,15 @@ data: $data""")
       )
     }
 
-    def waitForComplete(): Task[Unit] = waitFor(CL_COMPLETE)
+    def waitForComplete(): Future[Unit] = waitFor(CL_COMPLETE)
 
+  }
+
+  /** A `cl_mem` of a 2D image array. */
+  final class Image private[OpenCL] (val handle: Address) extends AssertionAutoCloseable with AssertionFinalizer {
+    override protected def forceClose(): Unit = {
+      checkErrorCode(clReleaseMemObject(handle.toLong))
+    }
   }
 
   object Buffer {
@@ -597,23 +647,24 @@ data: $data""")
       checkErrorCode(clReleaseProgram(handle.toLong))
     }
 
-    def build(devices: Seq[Device], options: CharSequence = ""): Future[Unit] = Future.async { (handler: Unit => Unit) =>
-      val callbackContainer = new Program.ManagedCallback(handler).container
-      val stack = stackPush()
-      try {
-        checkErrorCode(
-          clBuildProgram(handle.toLong, stack.pointers(devices.map(_.id): _*), options, callbackContainer, NULL))
-      } finally {
-        stack.close()
-      }
+    def build(devices: Seq[Device], options: CharSequence = ""): UnitContinuation[Unit] = UnitContinuation.async {
+      (handler: Unit => Unit) =>
+        val callbackContainer = new Program.ManagedCallback(handler).container
+        val stack = stackPush()
+        try {
+          checkErrorCode(
+            clBuildProgram(handle.toLong, stack.pointers(devices.map(_.id): _*), options, callbackContainer, NULL))
+        } finally {
+          stack.close()
+        }
     }
 
-    def build(options: CharSequence): Future[Unit] = Future.async { (handler: Unit => Unit) =>
+    def build(options: CharSequence): UnitContinuation[Unit] = UnitContinuation.async { (handler: Unit => Unit) =>
       val callback = new Program.ManagedCallback(handler)
       checkErrorCode(clBuildProgram(handle.toLong, null, options, callback.container, NULL))
     }
 
-    def build(): Future[Unit] = build("")
+    def build(): UnitContinuation[Unit] = build("")
 
     def createKernel(kernelName: CharSequence): Kernel = {
       val errorCodeBuffer = Array(0)
