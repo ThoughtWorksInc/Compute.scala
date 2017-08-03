@@ -1,8 +1,8 @@
-package com.thoughtworks.deeplearning
+package com.thoughtworks.opencl
 
 import java.nio.{ByteBuffer, FloatBuffer, IntBuffer}
 
-import com.thoughtworks.deeplearning.OpenCLCodeGenerator._
+import com.thoughtworks.opencl.OpenCLCodeGenerator._
 import org.lwjgl.opencl._
 import CL10._
 import CL11._
@@ -23,9 +23,6 @@ final class OpenCLCodeGeneratorSpec extends FreeSpec with Matchers {
       throw new IllegalStateException(raw"""OpenCL error [$errorCode]""")
     }
   }
-
-  val PlatformIndex = 0
-  val DeviceIndex = 0
 
   def platformRank(platformId: Long, platformCapabilities: CLCapabilities): Unit = {}
   def deviceRank(deviceId: Long, deviceCapabilities: CLCapabilities): Unit = {}

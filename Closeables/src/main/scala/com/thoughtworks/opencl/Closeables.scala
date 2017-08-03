@@ -1,4 +1,4 @@
-package com.thoughtworks.deeplearning
+package com.thoughtworks.opencl
 
 import java.io.Closeable
 
