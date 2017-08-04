@@ -673,6 +673,26 @@ data: $data""")
       new Kernel(Address(kernelHandle))
     }
 
+    def kernelNames: Seq[String] = {
+      val stack = stackPush()
+      try {
+        val bytesOfNames = stack.pointers(NULL)
+        clGetProgramInfo(handle.toLong, CL_PROGRAM_KERNEL_NAMES, Array.ofDim[Int](0), bytesOfNames) match {
+          case CL_SUCCESS =>
+            Nil
+          case CL_INVALID_VALUE =>
+            val names = stack.malloc(bytesOfNames.get(0).toInt)
+            checkErrorCode(clGetProgramInfo(handle.toLong, CL_PROGRAM_KERNEL_NAMES, names, bytesOfNames))
+            memASCII(names).split(';')
+          case errorCode =>
+            throw Exceptions.fromErrorCode(errorCode)
+        }
+      } finally {
+        stack.close()
+      }
+
+    }
+
   }
 
   final class Kernel private[OpenCL] (val handle: Address) extends AssertionAutoCloseable with AssertionFinalizer {
