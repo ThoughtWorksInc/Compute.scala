@@ -603,6 +603,24 @@ data: $data""")
       extends AssertionAutoCloseable
       with AssertionFinalizer {
 
+    def view(offset: Int, size: Int)(implicit memory: Memory[Element]): Buffer[Element] = {
+      val stack = stackPush()
+      try {
+        val errorCode = stack.ints(0)
+        val region = CLBufferRegion.mallocStack(stack)
+        region.set(offset.toLong * memory.numberOfBytesPerElement, size.toLong * memory.numberOfBytesPerElement)
+        val newHandle = nclCreateSubBuffer(handle.toLong,
+                                           CL_MEM_READ_WRITE,
+                                           CL_BUFFER_CREATE_TYPE_REGION,
+                                           region.address(),
+                                           memAddress(errorCode))
+        checkErrorCode(errorCode.get(0))
+        new Buffer(Address(newHandle))
+      } finally {
+        stack.close()
+      }
+    }
+
     def numberOfBytes: Int = {
       val sizeBuffer: Array[Long] = Array(0L)
       checkErrorCode(clGetMemObjectInfo(handle.toLong, CL_MEM_SIZE, sizeBuffer, null))
