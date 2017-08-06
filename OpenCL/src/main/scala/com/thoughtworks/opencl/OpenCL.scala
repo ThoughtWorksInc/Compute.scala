@@ -498,11 +498,47 @@ data: $data""")
       new Event(Address(outputEvent))
     }
 
-    def enqueueReadBuffer[Element, Destination](
-        source: Buffer[Element],
-        destination: Destination,
+    def enqueueWriteBuffer[Element, Destination](
+        deviceBuffer: Buffer[Element],
+        hostBuffer: Destination,
         preconditionEvents: Event*)(implicit memory: Memory.Aux[Element, Destination]): Event = {
-      val readBufferEvent = {
+      val outputEvent = {
+        val stack = stackPush()
+        try {
+          val (inputEventBufferSize, inputEventBufferAddress) = if (preconditionEvents.isEmpty) {
+            (0, NULL)
+          } else {
+            val inputEventBuffer = stack.pointers(preconditionEvents.view.map(_.handle.toLong): _*)
+            (preconditionEvents.length, inputEventBuffer.address())
+          }
+          val outputEventBuffer = stack.pointers(0L)
+          checkErrorCode(
+            nclEnqueueWriteBuffer(
+              handle.toLong,
+              deviceBuffer.handle.toLong,
+              CL_FALSE,
+              0,
+              memory.remainingBytes(hostBuffer),
+              memory.address(hostBuffer).toLong,
+              inputEventBufferSize,
+              inputEventBufferAddress,
+              outputEventBuffer.address()
+            )
+          )
+          outputEventBuffer.get(0)
+        } finally {
+          stack.close()
+        }
+      }
+      checkErrorCode(clFlush(handle.toLong))
+      new Event(Address(outputEvent))
+    }
+
+    def enqueueReadBuffer[Element, Destination](
+        deviceBuffer: Buffer[Element],
+        hostBuffer: Destination,
+        preconditionEvents: Event*)(implicit memory: Memory.Aux[Element, Destination]): Event = {
+      val outputEvent = {
         val stack = stackPush()
         try {
           val (inputEventBufferSize, inputEventBufferAddress) = if (preconditionEvents.isEmpty) {
@@ -515,11 +551,11 @@ data: $data""")
           checkErrorCode(
             nclEnqueueReadBuffer(
               handle.toLong,
-              source.handle.toLong,
+              deviceBuffer.handle.toLong,
               CL_FALSE,
               0,
-              memory.remainingBytes(destination),
-              memory.address(destination).toLong,
+              memory.remainingBytes(hostBuffer),
+              memory.address(hostBuffer).toLong,
               inputEventBufferSize,
               inputEventBufferAddress,
               outputEventBuffer.address()
@@ -531,7 +567,7 @@ data: $data""")
         }
       }
       checkErrorCode(clFlush(handle.toLong))
-      new Event(Address(readBufferEvent))
+      new Event(Address(outputEvent))
     }
 
   }
