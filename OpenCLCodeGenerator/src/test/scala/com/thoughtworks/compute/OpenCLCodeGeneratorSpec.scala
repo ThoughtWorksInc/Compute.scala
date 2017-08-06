@@ -1,8 +1,8 @@
-package com.thoughtworks.opencl
+package com.thoughtworks.compute
 
 import java.nio.{ByteBuffer, FloatBuffer, IntBuffer}
 
-import com.thoughtworks.opencl.OpenCLCodeGenerator._
+import com.thoughtworks.compute.OpenCLCodeGenerator._
 import org.lwjgl.opencl._
 import CL10._
 import CL11._

@@ -1,4 +1,4 @@
-package com.thoughtworks.opencl
+package com.thoughtworks.compute
 
 import java.nio._
 
@@ -189,7 +189,7 @@ object Memory extends LowPriorityMemory {
 
 }
 
-private[opencl] trait LowPriorityMemory { this: Memory.type =>
+private[compute] trait LowPriorityMemory { this: Memory.type =>
 
   implicit def boxedMemory[Raw, Boxed, Buffer0](
       implicit box: Box.Aux[Boxed, Raw],

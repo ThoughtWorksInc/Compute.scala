@@ -1,4 +1,4 @@
-package com.thoughtworks.opencl
+package com.thoughtworks.compute
 
 import java.io.Closeable
 import java.nio.{ByteBuffer, IntBuffer}
@@ -8,14 +8,14 @@ import CL10._
 import CL12._
 import CL11._
 import CL20._
-import com.thoughtworks.opencl.Closeables.{AssertionAutoCloseable, AssertionFinalizer}
+import com.thoughtworks.compute.Closeables.{AssertionAutoCloseable, AssertionFinalizer}
 import org.lwjgl.{BufferUtils, PointerBuffer}
 import org.lwjgl.system.MemoryUtil.{memASCII, _}
 import org.lwjgl.system.MemoryStack._
 import org.lwjgl.system.Pointer._
 
 import scala.collection.mutable
-import com.thoughtworks.opencl.Memory.{Address, Box}
+import com.thoughtworks.compute.Memory.{Address, Box}
 import org.lwjgl.system.jni.JNINativeInterface
 import org.lwjgl.system.{JNI, MemoryStack, MemoryUtil, Pointer}
 

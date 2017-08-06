@@ -1,4 +1,4 @@
-package com.thoughtworks.opencl
+package com.thoughtworks.compute
 
 import java.io.Closeable
 
