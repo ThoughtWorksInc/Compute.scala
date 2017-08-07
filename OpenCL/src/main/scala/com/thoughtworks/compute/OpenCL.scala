@@ -10,14 +10,14 @@ import CL11._
 import CL20._
 import com.thoughtworks.compute.Closeables.{AssertionAutoCloseable, AssertionFinalizer}
 import org.lwjgl.{BufferUtils, PointerBuffer}
-import org.lwjgl.system.MemoryUtil.{memASCII, _}
+import org.lwjgl.system.MemoryUtil._
 import org.lwjgl.system.MemoryStack._
 import org.lwjgl.system.Pointer._
 
 import scala.collection.mutable
 import com.thoughtworks.compute.Memory.{Address, Box}
 import org.lwjgl.system.jni.JNINativeInterface
-import org.lwjgl.system.{JNI, MemoryStack, MemoryUtil, Pointer}
+import org.lwjgl.system._
 
 import scala.util.control.Exception.Catcher
 import scala.util.control.TailCalls
@@ -308,9 +308,27 @@ data: $data""")
       val stack = stackPush()
       try {
         val errorCodeBuffer = stack.ints(0)
-        val programHandle = clCreateProgramWithSource(handle.toLong, sourceCode.toArray, errorCodeBuffer)
-        checkErrorCode(errorCodeBuffer.get(0))
-        new Program(Address(programHandle))
+        val codeBuffers = (for {
+          snippet <- sourceCode
+          if snippet.length > 0
+        } yield memUTF8(snippet, false)).toArray
+        val pointers = memAllocPointer(codeBuffers.length)
+        val lengths = memAllocPointer(codeBuffers.length)
+        for (buffer <- codeBuffers) {
+          pointers.put(buffer)
+          lengths.put(buffer.remaining)
+        }
+        pointers.position(0)
+        lengths.position(0)
+        try {
+          val programHandle = clCreateProgramWithSource(handle.toLong, pointers, lengths, errorCodeBuffer)
+          checkErrorCode(errorCodeBuffer.get(0))
+          new Program(Address(programHandle))
+        } finally {
+          memFree(pointers)
+          memFree(lengths)
+          codeBuffers.foreach(memFree)
+        }
       } finally {
         stack.close()
       }
