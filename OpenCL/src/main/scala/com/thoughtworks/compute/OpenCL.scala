@@ -279,7 +279,7 @@ data: $data""")
     def createContext(logger: (String, ByteBuffer) => Unit, forDevices: Device*): Context = {
       val stack = stackPush()
       try {
-        val errorCodeBuffer = stack.ints(0)
+        val errorCodeBuffer = stack.ints(CL_SUCCESS)
         val contextProperties = stack.pointers(CL_CONTEXT_PLATFORM, Platform.this.id, 0)
         val deviceIds = stack.pointers(devices.map(_.id): _*)
         val context =
@@ -307,7 +307,7 @@ data: $data""")
     def createProgramWithSource(sourceCode: TraversableOnce[CharSequence]): Program = {
       val stack = stackPush()
       try {
-        val errorCodeBuffer = stack.ints(0)
+        val errorCodeBuffer = stack.ints(CL_SUCCESS)
         val codeBuffers = (for {
           snippet <- sourceCode
           if snippet.length > 0
@@ -336,7 +336,7 @@ data: $data""")
 
     def createCommandQueue(device: Device, properties: Map[Int, Long]): CommandQueue = {
       if (device.capabilities.OpenCL20) {
-        val cl20Properties = ((properties.view.flatMap { case (key, value) => Seq(key, value) }) ++ Seq(0L)).toArray
+        val cl20Properties = (properties.view.flatMap { case (key, value) => Seq(key, value) } ++ Seq(0L)).toArray
         val a = Array(0)
         val commandQueue = clCreateCommandQueueWithProperties(handle.toLong, device.id, cl20Properties, a)
         checkErrorCode(a(0))
@@ -360,12 +360,30 @@ data: $data""")
       checkErrorCode(clReleaseContext(handle.toLong))
     }
 
-    def createBuffer[Element](size: Long)(implicit sizeOf: Memory[Element]): Buffer[Element] = {
+    // TODO: Redesign the API
+    def createUninitializedBuffer[Element](size: Long)(implicit sizeOf: Memory[Element]): Buffer[Element] = {
       val stack = stackPush()
       try {
-        val errorCodeBuffer = stack.ints(0)
+        val errorCodeBuffer = stack.ints(CL_SUCCESS)
         val buffer =
           clCreateBuffer(handle.toLong, CL_MEM_READ_WRITE, sizeOf.numberOfBytesPerElement * size, errorCodeBuffer)
+        checkErrorCode(errorCodeBuffer.get(0))
+        new Buffer(Address(buffer))
+      } finally {
+        stack.pop()
+      }
+    }
+
+    def createBufferFrom[Element, HostBuffer](hostBuffer: HostBuffer)(
+        implicit memory: Memory.Aux[Element, HostBuffer]): Buffer[Element] = {
+      val stack = stackPush()
+      try {
+        val errorCodeBuffer = stack.ints(CL_SUCCESS)
+        val buffer = nclCreateBuffer(handle.toLong,
+                                     CL_MEM_COPY_HOST_PTR | CL_MEM_READ_WRITE,
+                                     memory.remainingBytes(hostBuffer),
+                                     memory.address(hostBuffer).toLong,
+                                     memAddress(errorCodeBuffer))
         checkErrorCode(errorCodeBuffer.get(0))
         new Buffer(Address(buffer))
       } finally {
@@ -386,7 +404,7 @@ data: $data""")
                     hostPointer: ByteBuffer = null): Image = {
       val stack = stackPush()
       try {
-        val errorCodeBuffer = stack.ints(0)
+        val errorCodeBuffer = stack.ints(CL_SUCCESS)
         val format = CLImageFormat
           .mallocStack(stack)
           .set(channelOrder, channelDataType)
