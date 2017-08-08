@@ -12,7 +12,7 @@ jdk:
 
 before_install:
   - bash .travis/amd_sdk.sh;
-    cd /tmp && tar -xjf /tmp/AMD-SDK.tar.bz2;
+    tar -xjf /tmp/AMD-SDK.tar.bz2 -C /tmp;
     AMDAPPSDK=${HOME}/AMDAPPSDK;
     export OPENCL_VENDOR_PATH=${AMDAPPSDK}/etc/OpenCL/vendors;
     mkdir -p ${OPENCL_VENDOR_PATH};
