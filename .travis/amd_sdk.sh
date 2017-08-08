@@ -35,4 +35,4 @@ NONCE2=`echo $FORM | awk -F ${NONCE2_STRING} '{print $2}'`
 NONCE2=`echo $NONCE2 | awk -F'"' '{print $2}'`
 echo $NONCE2
 
-wget --content-disposition --trust-server-names $URLDOWN --post-data "amd_developer_central_nonce=${NONCE2}&f=${FILE}" -O AMD-SDK.tar.bz2;
+wget --content-disposition --trust-server-names $URLDOWN --post-data "amd_developer_central_nonce=${NONCE2}&f=${FILE}" -O /tmp/AMD-SDK.tar.bz2;
