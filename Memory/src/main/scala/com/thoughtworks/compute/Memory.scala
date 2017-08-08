@@ -147,6 +147,21 @@ object Memory extends LowPriorityMemory {
 
   }
 
+  implicit object ShortMemory extends NioMemory[Short] {
+    override type Buffer = ShortBuffer
+
+    override def fromByteBuffer(byteBuffer: ByteBuffer): ShortBuffer = byteBuffer.asShortBuffer()
+
+    override def numberOfBytesPerElement: Int = java.lang.Short.BYTES
+
+    override def address(buffer: ShortBuffer): Address = Address(MemoryUtil.memAddress(buffer))
+
+    override def get(buffer: ShortBuffer, index: Int): Short = buffer.get(index)
+
+    override def put(buffer: ShortBuffer, index: Int, value: Short): Unit = buffer.put(index, value)
+
+  }
+
   // TODO: short, bool, char
 
   trait Box[Boxed] {
