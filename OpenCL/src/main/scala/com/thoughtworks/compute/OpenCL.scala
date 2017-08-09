@@ -8,6 +8,7 @@ import CL10._
 import CL12._
 import CL11._
 import CL20._
+import KHRICD._
 import com.thoughtworks.compute.Closeables.{AssertionAutoCloseable, AssertionFinalizer}
 import org.lwjgl.{BufferUtils, PointerBuffer}
 import org.lwjgl.system.MemoryUtil._
@@ -33,6 +34,7 @@ import com.thoughtworks.future._
 object OpenCL {
 
   object Exceptions {
+    final class PlatformNotFoundKhr extends IllegalArgumentException
 
     final class DeviceNotFound extends IllegalArgumentException
 
@@ -84,6 +86,7 @@ object OpenCL {
     final class UnknownErrorCode(errorCode: Int) extends IllegalStateException(s"Unknown error code: $errorCode")
 
     def fromErrorCode(errorCode: Int): Exception = errorCode match {
+      case CL_PLATFORM_NOT_FOUND_KHR          => new Exceptions.PlatformNotFoundKhr
       case CL_DEVICE_NOT_FOUND                => new Exceptions.DeviceNotFound
       case CL_DEVICE_NOT_AVAILABLE            => new Exceptions.DeviceNotAvailable
       case CL_COMPILER_NOT_AVAILABLE          => new Exceptions.CompilerNotAvailable
