@@ -34,7 +34,7 @@ import com.thoughtworks.future._
 object OpenCL {
 
   object Exceptions {
-    final class PlatformNotFoundKhr extends IllegalArgumentException
+    final class PlatformNotFoundKhr extends IllegalStateException
 
     final class DeviceNotFound extends IllegalArgumentException
 
