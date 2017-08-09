@@ -81,7 +81,7 @@ object OpenCL {
     final class InvalidBufferSize extends IllegalArgumentException
     final class InvalidGlobalWorkSize extends IllegalArgumentException
 
-    final class UnknownErrorCode(errorCode: Int) extends IllegalStateException
+    final class UnknownErrorCode(errorCode: Int) extends IllegalStateException(s"Unknown error code: $errorCode")
 
     def fromErrorCode(errorCode: Int): Exception = errorCode match {
       case CL_DEVICE_NOT_FOUND                => new Exceptions.DeviceNotFound
