@@ -321,7 +321,7 @@ object OpenCL {
       }
     }
   }
-  private[OpenCL] object Event {
+  object Event {
     private[OpenCL] def delay[Owner <: OpenCL with Singleton](handle: => Long): Do[Event[Owner]] = {
       val bufferContinuation = UnitContinuation.delay {
         Resource(value = Success(Event[Owner](handle)), release = UnitContinuation.delay {
@@ -331,7 +331,7 @@ object OpenCL {
       Do(TryT(ResourceT(bufferContinuation)))
     }
 
-    val eventCallback: CLEventCallback = CLEventCallback.create(new CLEventCallbackI {
+    private[OpenCL] val eventCallback: CLEventCallback = CLEventCallback.create(new CLEventCallbackI {
       final def invoke(event: Long, status: Int, userData: Long): Unit = {
         val scalaCallback = try { memGlobalRefToObject[Int => Unit](userData) } finally {
           JNINativeInterface.DeleteGlobalRef(userData)
@@ -341,7 +341,7 @@ object OpenCL {
     })
   }
 
-  private[OpenCL] final case class Event[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
+  final case class Event[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
     type Status = Int
     def waitForStatus(callbackType: Status): UnitContinuation[Status] = UnitContinuation.async { (continue: Status => Unit) =>
       val userData = JNINativeInterface.NewGlobalRef(continue)
@@ -555,7 +555,7 @@ object OpenCL {
       result(0)
     }
 
-    def kernels = {
+    def kernels: PointerBuffer = {
       val kernelBuffer = BufferUtils.createPointerBuffer(numberOfKernels)
       checkErrorCode(clCreateKernelsInProgram(handle, kernelBuffer, null: IntBuffer))
       kernelBuffer
@@ -615,6 +615,7 @@ object OpenCL {
 
 trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton {
   type Program = OpenCL.Program[this.type]
+  type Event = OpenCL.Event[this.type]
   protected def createProgramWithSource(sourceCode: TraversableOnce[CharSequence]): Program = {
     val stack = stackPush()
     try {
