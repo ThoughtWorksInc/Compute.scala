@@ -470,12 +470,25 @@ object OpenCL {
               stack.close()
             }
           }
-          checkErrorCode(clFlush(handle))
+          checkErrorCode(clFlush(commandQueue))
           outputEvent
         }
       }
     }
 
+    /** Returns an asynchronous operation of a buffer on host.
+      *
+      * The buffer may be [[java.nio.FloatBuffer FloatBuffer]],
+      * [[java.nio.DoubleBuffer DoubleBuffer]]
+      * or other buffer types according to [[Element]].
+      *
+      * @note The buffer is allocated by lwjgl, not JRE.
+      *       As a result, you can only use the buffer inside a `map` or `flatMap` block,
+      *       then it will be released by [[com.thoughtworks.raii.asynchronous.do.Do Do]] automatically.
+      *       Assigning the buffer to another variable used outside `map` or `flatMap` block
+      *       will cause memory access error.
+      *
+      */
     final def toHostBuffer(implicit witnessOwner: Witness.Aux[Owner],
                            memory: Memory[Element]): Do[memory.HostBuffer] = {
       Do(TryT(ResourceT(UnitContinuation.delay {
