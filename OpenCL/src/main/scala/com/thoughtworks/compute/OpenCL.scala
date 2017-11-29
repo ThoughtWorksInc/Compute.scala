@@ -568,13 +568,19 @@ object OpenCL {
       result(0)
     }
 
-    def kernels: PointerBuffer = {
+    def createKernels(): Seq[Kernel[Owner]] = {
+      (0 until createKernelBuffer().capacity).map { i =>
+        Kernel[Owner](createKernelBuffer().get(i))
+      }
+    }
+
+    private def createKernelBuffer(): PointerBuffer = {
       val kernelBuffer = BufferUtils.createPointerBuffer(numberOfKernels)
       checkErrorCode(clCreateKernelsInProgram(handle, kernelBuffer, null: IntBuffer))
       kernelBuffer
     }
 
-    def firstKernel: Kernel[Owner] = {
+    def createFirstKernel(): Kernel[Owner] = {
       val stack = stackPush()
       try {
         val kernelBuffer = stack.mallocPointer(1)

@@ -73,7 +73,7 @@ object OpenCLBenchmark {
              batchSize: Int,
              width: Int,
              height: Int): Future[Unit] = {
-      Do.monadicCloseable(compiledProgram.firstKernel)
+      Do.monadicCloseable(compiledProgram.createFirstKernel)
         .flatMap { kernel =>
           kernel(0) = input
           kernel(1) = output
