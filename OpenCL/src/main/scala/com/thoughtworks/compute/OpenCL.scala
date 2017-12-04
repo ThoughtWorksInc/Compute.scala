@@ -47,6 +47,18 @@ import scala.language.higherKinds
   */
 object OpenCL {
 
+  /** Returns a [[String]] for the C string `address`.
+    *
+    * @note We don't know the exact charset of the C string. Use [[memASCII]] because lwjgl treats them as ASCII.
+    */
+  private def decodeString(address: Long): String = memASCII(address)
+
+  /** Returns a [[String]] for the C string `byteBuffer`.
+    *
+    * @note We don't know the exact charset of the C string. Use [[memASCII]] because lwjgl treats them as ASCII.
+    */
+  private def decodeString(byteBuffer: ByteBuffer): String = memASCII(byteBuffer)
+
   @volatile
   var defaultLogger: (String, ByteBuffer) => Unit = { (errorInfo: String, data: ByteBuffer) =>
     // TODO: Add a test for in the case that Context is closed
@@ -56,14 +68,14 @@ object OpenCL {
   }
   private val contextCallback: CLContextCallback = CLContextCallback.create(new CLContextCallbackI {
     override def invoke(errInfo: Long, privateInfo: Long, size: Long, userData: Long): Unit = {
-      val errorInfo = memASCII(errInfo)
+      val errorInfo = decodeString(errInfo)
       val data = memByteBuffer(privateInfo, size.toInt)
       memGlobalRefToObject[OpenCL](userData) match {
         case null =>
-          defaultLogger(memASCII(errInfo), memByteBuffer(privateInfo, size.toInt))
+          defaultLogger(decodeString(errInfo), memByteBuffer(privateInfo, size.toInt))
         case opencl =>
           if (size.isValidInt) {
-            opencl.handleOpenCLNotification(memASCII(errInfo), memByteBuffer(privateInfo, size.toInt))
+            opencl.handleOpenCLNotification(decodeString(errInfo), memByteBuffer(privateInfo, size.toInt))
           } else {
             throw new IllegalArgumentException(s"numberOfBytes($size) is too large")
           }
@@ -99,7 +111,15 @@ object OpenCL {
 
     final class ImageFormatNotSupported extends IllegalStateException
 
-    final class BuildProgramFailure extends IllegalStateException
+    final class BuildProgramFailure(buildLogs: Map[Long /* device id */, String] = Map.empty)
+        extends IllegalStateException({
+          buildLogs.view
+            .map {
+              case (deviceId, buildLog) =>
+                s"device $deviceId log:\n$buildLog"
+            }
+            .mkString("\n")
+        })
 
     final class MapFailure extends IllegalStateException
 
@@ -568,6 +588,20 @@ object OpenCL {
       result(0)
     }
 
+    def deviceIds: Seq[Long] = {
+      val stack = stackPush()
+      try {
+        val sizeBuffer = stack.mallocPointer(1)
+        checkErrorCode(clGetProgramInfo(this.handle, CL_PROGRAM_DEVICES, null: PointerBuffer, sizeBuffer))
+        val numberOfDeviceIds = sizeBuffer.get(0).toInt / POINTER_SIZE
+        val programDevicesBuffer = stack.mallocPointer(numberOfDeviceIds)
+        checkErrorCode(clGetProgramInfo(this.handle, CL_PROGRAM_DEVICES, programDevicesBuffer, sizeBuffer))
+        (0 until numberOfDeviceIds).map(programDevicesBuffer.get)
+      } finally {
+        stack.close()
+      }
+    }
+
     def createKernels(): Seq[Kernel[Owner]] = {
       (0 until createKernelBuffer().capacity).map { i =>
         Kernel[Owner](createKernelBuffer().get(i))
@@ -591,17 +625,45 @@ object OpenCL {
       }
     }
 
+    private def buildLogs(deviceIds: Seq[Long]): Map[Long /* device ID */, String] = {
+      val stack = stackPush()
+      try {
+        val sizeBuffer = stack.mallocPointer(1)
+        deviceIds.view.map { deviceId =>
+          checkErrorCode(
+            clGetProgramBuildInfo(this.handle, deviceId, CL_PROGRAM_BUILD_LOG, null: PointerBuffer, sizeBuffer))
+          val logBuffer = stack.malloc(sizeBuffer.get(0).toInt)
+          checkErrorCode(clGetProgramBuildInfo(this.handle, deviceId, CL_PROGRAM_BUILD_LOG, logBuffer, sizeBuffer))
+          (deviceId, decodeString(logBuffer))
+        }.toMap
+      } finally {
+        stack.close()
+      }
+    }
+
+    private def checkBuildErrorCode(deviceIdsOption: Option[Seq[Long]], errorCode: Int): Unit = {
+      errorCode match {
+        case CL_BUILD_PROGRAM_FAILURE =>
+          val logs = deviceIdsOption match {
+            case None      => buildLogs(this.deviceIds)
+            case Some(ids) => buildLogs(ids)
+          }
+          throw new Exceptions.BuildProgramFailure(logs)
+        case _ => checkErrorCode(errorCode)
+      }
+    }
+
     def build(deviceIds: Seq[Long], options: CharSequence = ""): Unit = {
       val stack = stackPush()
       try {
-        checkErrorCode(clBuildProgram(handle, stack.pointers(deviceIds: _*), options, null, NULL))
+        checkBuildErrorCode(Some(deviceIds), clBuildProgram(handle, stack.pointers(deviceIds: _*), options, null, NULL))
       } finally {
         stack.close()
       }
     }
 
     def build(options: CharSequence): Unit = {
-      checkErrorCode(clBuildProgram(handle, null, options, null, NULL))
+      checkBuildErrorCode(None, clBuildProgram(handle, null, options, null, NULL))
     }
 
     def build(): Unit = build("")
