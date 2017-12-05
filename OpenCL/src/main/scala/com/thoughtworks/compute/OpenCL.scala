@@ -296,6 +296,18 @@ object OpenCL {
 
   }
 
+  trait UseFirstDevice {
+
+    protected val platformId: Long
+
+    @transient
+    protected lazy val deviceIds: Seq[Long] = {
+      val allDeviceIds = deviceIdsByType(platformId, CL_DEVICE_TYPE_ALL)
+      Seq(allDeviceIds.head)
+    }
+
+  }
+
   object CommandQueuePool {
     sealed trait State
   }
