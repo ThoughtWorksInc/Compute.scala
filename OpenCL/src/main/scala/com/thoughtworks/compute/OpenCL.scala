@@ -354,16 +354,6 @@ object OpenCL {
     }
   }
   object Event {
-    private[OpenCL] def delay[Owner <: OpenCL with Singleton](createEvent: () => Long): Do[Event[Owner]] = {
-      val bufferContinuation = UnitContinuation.delay {
-        val handle = createEvent()
-        Resource(value = Success(Event[Owner](handle)), release = UnitContinuation.delay {
-          checkErrorCode(clReleaseEvent(handle))
-        })
-      }
-      Do(TryT(ResourceT(bufferContinuation)))
-    }
-
     private[OpenCL] val eventCallback: CLEventCallback = CLEventCallback.create(new CLEventCallbackI {
       final def invoke(event: Long, status: Int, userData: Long): Unit = {
         val scalaCallback = try { memGlobalRefToObject[Int => Unit](userData) } finally {
@@ -374,7 +364,9 @@ object OpenCL {
     })
   }
 
-  final case class Event[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
+  final case class Event[Owner <: Singleton with OpenCL](handle: Long)
+      extends AnyVal
+      with MonadicCloseable[UnitContinuation] {
     type Status = Int
     def waitForStatus(callbackType: Status): UnitContinuation[Status] = UnitContinuation.async { (continue: Status => Unit) =>
       val userData = JNINativeInterface.NewGlobalRef(continue)
@@ -404,6 +396,11 @@ object OpenCL {
 
     def waitForComplete(): Future[Unit] = waitFor(CL_COMPLETE)
 
+    override def monadicClose: UnitContinuation[Unit] = {
+      UnitContinuation.delay {
+        checkErrorCode(clReleaseEvent(handle))
+      }
+    }
   }
 
   object DeviceBuffer {
@@ -474,7 +471,7 @@ object OpenCL {
         memory: Memory.Aux[Element, Destination]): Do[Event[Owner]] = {
 
       witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
-        Event.delay[Owner] { () =>
+        Do.monadicCloseable {
           val outputEvent = {
             val stack = stackPush()
             try {
@@ -498,7 +495,7 @@ object OpenCL {
                   outputEventBuffer.address()
                 )
               )
-              outputEventBuffer.get(0)
+              Event[Owner](outputEventBuffer.get(0))
             } finally {
               stack.close()
             }
@@ -556,10 +553,8 @@ object OpenCL {
     }
 
     def enqueue(globalWorkSize: Long*)(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
-      println("enqueue")
-
       witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
-        Event.delay { () =>
+        Do.monadicCloseable {
           val stack = stackPush()
           val outputEvent = try {
             val inputEventBuffer = null
@@ -576,7 +571,7 @@ object OpenCL {
                 outputEventBuffer
               )
             )
-            outputEventBuffer.get(0)
+            Event[Owner](outputEventBuffer.get(0))
           } finally {
             stack.close()
           }
