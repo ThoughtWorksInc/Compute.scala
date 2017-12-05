@@ -354,8 +354,9 @@ object OpenCL {
     }
   }
   object Event {
-    private[OpenCL] def delay[Owner <: OpenCL with Singleton](handle: => Long): Do[Event[Owner]] = {
+    private[OpenCL] def delay[Owner <: OpenCL with Singleton](createEvent: () => Long): Do[Event[Owner]] = {
       val bufferContinuation = UnitContinuation.delay {
+        val handle = createEvent()
         Resource(value = Success(Event[Owner](handle)), release = UnitContinuation.delay {
           checkErrorCode(clReleaseEvent(handle))
         })
@@ -473,7 +474,7 @@ object OpenCL {
         memory: Memory.Aux[Element, Destination]): Do[Event[Owner]] = {
 
       witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
-        Event.delay[Owner] {
+        Event.delay[Owner] { () =>
           val outputEvent = {
             val stack = stackPush()
             try {
@@ -555,8 +556,10 @@ object OpenCL {
     }
 
     def enqueue(globalWorkSize: Long*)(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
+      println("enqueue")
+
       witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
-        Event.delay {
+        Event.delay { () =>
           val stack = stackPush()
           val outputEvent = try {
             val inputEventBuffer = null
