@@ -6,6 +6,8 @@ import org.lwjgl.PointerBuffer
 import org.lwjgl.system.{CustomBuffer, MemoryUtil, Pointer}
 import shapeless.HNil
 
+import scala.reflect.ClassTag
+
 /**
   * @author 杨博 (Yang Bo) &lt;pop.atry@gmail.com&gt;
   */
@@ -29,6 +31,8 @@ trait Memory[Element] {
   def allocate(numberOfElement: Int): HostBuffer
 
   def free(buffer: HostBuffer): Unit
+
+  def toArray(buffer: HostBuffer): Array[Element]
 }
 
 object Memory extends LowPriorityMemory {
@@ -69,26 +73,34 @@ object Memory extends LowPriorityMemory {
     override def allocate(numberOfElement: Int): PointerBuffer = MemoryUtil.memAllocPointer(numberOfElement)
 
     override def free(buffer: PointerBuffer): Unit = MemoryUtil.memFree(buffer)
+
+    override def toArray(buffer: PointerBuffer): Array[Pointer] = {
+      val bufferToArray = Array.ofDim[Long](buffer.limit())
+      buffer.get(bufferToArray, 0, bufferToArray.length)
+      bufferToArray.map { long =>
+        new Pointer.Default(long) {}
+      }
+    }
   }
 
-  implicit object HNilMemory extends NioMemory[HNil] {
-    override type HostBuffer = ByteBuffer
-
-    override def fromByteBuffer(byteBuffer: ByteBuffer): ByteBuffer = byteBuffer
-
-    override def numberOfBytesPerElement: Int = 0
-
-    override def address(buffer: ByteBuffer): Long = MemoryUtil.memAddress(buffer)
-
-    override def free(buffer: ByteBuffer): Unit = MemoryUtil.memFree(buffer)
-
-    override def get(buffer: ByteBuffer, index: Int): HNil = HNil
-
-    override def put(buffer: ByteBuffer, index: Int, value: HNil): Unit = {}
-
-    override def allocate(numberOfElement: Int): ByteBuffer = MemoryUtil.memAlloc(1)
-
-  }
+//  implicit object HNilMemory extends NioMemory[HNil] {
+//    override type HostBuffer = ByteBuffer
+//
+//    override def fromByteBuffer(byteBuffer: ByteBuffer): ByteBuffer = byteBuffer
+//
+//    override def numberOfBytesPerElement: Int = 0
+//
+//    override def address(buffer: ByteBuffer): Long = MemoryUtil.memAddress(buffer)
+//
+//    override def free(buffer: ByteBuffer): Unit = MemoryUtil.memFree(buffer)
+//
+//    override def get(buffer: ByteBuffer, index: Int): HNil = HNil
+//
+//    override def put(buffer: ByteBuffer, index: Int, value: HNil): Unit = {}
+//
+//    override def allocate(numberOfElement: Int): ByteBuffer = MemoryUtil.memAlloc(1)
+//
+//  }
 
   implicit object IntMemory extends NioMemory[Int] {
     override type HostBuffer = IntBuffer
@@ -107,6 +119,11 @@ object Memory extends LowPriorityMemory {
 
     override def put(buffer: IntBuffer, index: Int, value: Int): Unit = buffer.put(index, value)
 
+    override def toArray(buffer: IntBuffer): Array[Int] = {
+      val bufferToArray = Array.ofDim[Int](buffer.limit())
+      buffer.get(bufferToArray, 0, bufferToArray.length)
+      bufferToArray
+    }
   }
 
   implicit object LongMemory extends NioMemory[Long] {
@@ -126,6 +143,11 @@ object Memory extends LowPriorityMemory {
 
     override def put(buffer: LongBuffer, index: Int, value: Long): Unit = buffer.put(index, value)
 
+    override def toArray(buffer: LongBuffer): Array[Long] = {
+      val bufferToArray = Array.ofDim[Long](buffer.limit())
+      buffer.get(bufferToArray, 0, bufferToArray.length)
+      bufferToArray
+    }
   }
 
   implicit object DoubleMemory extends NioMemory[Double] {
@@ -145,6 +167,11 @@ object Memory extends LowPriorityMemory {
 
     override def put(buffer: DoubleBuffer, index: Int, value: Double): Unit = buffer.put(index, value)
 
+    override def toArray(buffer: DoubleBuffer): Array[Double] = {
+      val bufferToArray = Array.ofDim[Double](buffer.limit())
+      buffer.get(bufferToArray, 0, bufferToArray.length)
+      bufferToArray
+    }
   }
 
   implicit object FloatMemory extends NioMemory[Float] {
@@ -164,6 +191,11 @@ object Memory extends LowPriorityMemory {
 
     override def put(buffer: FloatBuffer, index: Int, value: Float): Unit = buffer.put(index, value)
 
+    override def toArray(buffer: FloatBuffer): Array[Float] = {
+      val bufferToArray = new Array[Float](buffer.limit())
+      buffer.get(bufferToArray, 0, bufferToArray.length)
+      bufferToArray
+    }
   }
 
   implicit object ByteMemory extends NioMemory[Byte] {
@@ -183,6 +215,11 @@ object Memory extends LowPriorityMemory {
 
     override def put(buffer: ByteBuffer, index: Int, value: Byte): Unit = buffer.put(index, value)
 
+    override def toArray(buffer: ByteBuffer): Array[Byte] = {
+      val bufferToArray = Array.ofDim[Byte](buffer.limit())
+      buffer.get(bufferToArray, 0, bufferToArray.length)
+      bufferToArray
+    }
   }
 
   implicit object ShortMemory extends NioMemory[Short] {
@@ -202,6 +239,11 @@ object Memory extends LowPriorityMemory {
 
     override def put(buffer: ShortBuffer, index: Int, value: Short): Unit = buffer.put(index, value)
 
+    override def toArray(buffer: ShortBuffer): Array[Short] = {
+      val bufferToArray = Array.ofDim[Short](buffer.limit())
+      buffer.get(bufferToArray, 0, bufferToArray.length)
+      bufferToArray
+    }
   }
 
   // TODO: short, bool, char
@@ -221,7 +263,8 @@ object Memory extends LowPriorityMemory {
   }
 
   final class BoxedMemory[Raw, Boxed, HostBuffer0](implicit box: Box.Aux[Boxed, Raw],
-                                                   rawMemory: Memory.Aux[Raw, HostBuffer0])
+                                                   rawMemory: Memory.Aux[Raw, HostBuffer0],
+                                                   classTag: ClassTag[Boxed])
       extends Memory[Boxed] {
     override type HostBuffer = HostBuffer0
 
@@ -252,6 +295,18 @@ object Memory extends LowPriorityMemory {
     override def allocate(numberOfElement: Int): HostBuffer0 = rawMemory.allocate(numberOfElement)
 
     override def free(buffer: HostBuffer0): Unit = rawMemory.free(buffer)
+
+    override def toArray(buffer: HostBuffer0): Array[Boxed] = {
+//      ???
+      val rawArray: Array[Raw] = rawMemory.toArray(buffer)
+      val boxedArray = new Array[Boxed](rawArray.length)
+      var i = 0
+      while (i < rawArray.length) {
+        boxedArray(i) = box.box(rawArray(i))
+        i += 1
+      }
+      boxedArray
+    }
   }
 
 }
@@ -259,9 +314,9 @@ object Memory extends LowPriorityMemory {
 private[compute] trait LowPriorityMemory {
   this: Memory.type =>
 
-  implicit def boxedMemory[Raw, Boxed, HostBuffer0](
-      implicit box: Box.Aux[Boxed, Raw],
-      rawMemory: Memory.Aux[Raw, HostBuffer0]): BoxedMemory[Raw, Boxed, HostBuffer0] = {
+  implicit def boxedMemory[Raw, Boxed, HostBuffer0](implicit box: Box.Aux[Boxed, Raw],
+                                                    rawMemory: Memory.Aux[Raw, HostBuffer0],
+                                                    classTag: ClassTag[Boxed]): BoxedMemory[Raw, Boxed, HostBuffer0] = {
     new BoxedMemory[Raw, Boxed, HostBuffer0]
   }
 
