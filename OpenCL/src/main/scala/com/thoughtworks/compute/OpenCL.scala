@@ -308,6 +308,26 @@ object OpenCL {
 
   }
 
+  trait UseAllGPUDevice {
+
+    protected val platformId: Long
+
+    @transient
+    protected lazy val deviceIds: Seq[Long] = {
+      deviceIdsByType(platformId, CL_DEVICE_TYPE_GPU)
+    }
+  }
+
+  trait UseAllCPUDevice {
+
+    protected val platformId: Long
+
+    @transient
+    protected lazy val deviceIds: Seq[Long] = {
+      deviceIdsByType(platformId, CL_DEVICE_TYPE_CPU)
+    }
+  }
+
   object CommandQueuePool {
     sealed trait State
   }
