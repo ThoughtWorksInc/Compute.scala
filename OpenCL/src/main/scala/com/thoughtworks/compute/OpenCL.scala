@@ -308,7 +308,7 @@ object OpenCL {
 
   }
 
-  trait UseAllGPUDevice {
+  trait UseAllGpuDevice {
 
     protected val platformId: Long
 
@@ -318,7 +318,7 @@ object OpenCL {
     }
   }
 
-  trait UseFirstGPUDevice {
+  trait UseFirstGpuDevice {
 
     protected val platformId: Long
 
@@ -328,8 +328,18 @@ object OpenCL {
       Seq(allDeviceIds.head)
     }
   }
+  trait UseFirstCpuDevice {
 
-  trait UseAllCPUDevice {
+    protected val platformId: Long
+
+    @transient
+    protected lazy val deviceIds: Seq[Long] = {
+      val allDeviceIds = deviceIdsByType(platformId, CL_DEVICE_TYPE_CPU)
+      Seq(allDeviceIds.head)
+    }
+  }
+
+  trait UseAllCpuDevice {
 
     protected val platformId: Long
 
