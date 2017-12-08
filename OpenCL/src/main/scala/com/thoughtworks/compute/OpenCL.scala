@@ -593,6 +593,26 @@ object OpenCL {
 
     }
 
+    def functionName: String = {
+      val stack = stackPush()
+
+      try {
+
+        val functionNameSizePointer = stack.mallocPointer(1)
+
+        checkErrorCode(
+          clGetKernelInfo(this.handle, CL_KERNEL_FUNCTION_NAME, null: PointerBuffer, functionNameSizePointer))
+        val functionNameSize = functionNameSizePointer.get(0).toInt
+        val functionNameBuffer = stack.malloc(functionNameSize)
+
+        checkErrorCode(
+          clGetKernelInfo(this.handle, CL_KERNEL_FUNCTION_NAME, functionNameBuffer, functionNameSizePointer))
+        decodeString(functionNameBuffer)
+      } finally {
+        stack.close()
+      }
+    }
+    
     def enqueue(globalWorkSize: Long*)(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
       witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
         Do.monadicCloseable {
