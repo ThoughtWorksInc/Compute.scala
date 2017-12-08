@@ -75,8 +75,10 @@ object Memory extends LowPriorityMemory {
     override def free(buffer: PointerBuffer): Unit = MemoryUtil.memFree(buffer)
 
     override def toArray(buffer: PointerBuffer): Array[Pointer] = {
-      val bufferToArray = Array.ofDim[Long](buffer.limit())
+      val oldPosition = buffer.position()
+      val bufferToArray = Array.ofDim[Long](buffer.remaining())
       buffer.get(bufferToArray, 0, bufferToArray.length)
+      buffer.position(oldPosition)
       bufferToArray.map { long =>
         new Pointer.Default(long) {}
       }
@@ -120,8 +122,10 @@ object Memory extends LowPriorityMemory {
     override def put(buffer: IntBuffer, index: Int, value: Int): Unit = buffer.put(index, value)
 
     override def toArray(buffer: IntBuffer): Array[Int] = {
-      val bufferToArray = Array.ofDim[Int](buffer.limit())
+      val oldPosition = buffer.position()
+      val bufferToArray = Array.ofDim[Int](buffer.remaining())
       buffer.get(bufferToArray, 0, bufferToArray.length)
+      buffer.position(oldPosition)
       bufferToArray
     }
   }
@@ -144,8 +148,10 @@ object Memory extends LowPriorityMemory {
     override def put(buffer: LongBuffer, index: Int, value: Long): Unit = buffer.put(index, value)
 
     override def toArray(buffer: LongBuffer): Array[Long] = {
-      val bufferToArray = Array.ofDim[Long](buffer.limit())
+      val oldPosition = buffer.position()
+      val bufferToArray = Array.ofDim[Long](buffer.remaining())
       buffer.get(bufferToArray, 0, bufferToArray.length)
+      buffer.position(oldPosition)
       bufferToArray
     }
   }
@@ -168,8 +174,10 @@ object Memory extends LowPriorityMemory {
     override def put(buffer: DoubleBuffer, index: Int, value: Double): Unit = buffer.put(index, value)
 
     override def toArray(buffer: DoubleBuffer): Array[Double] = {
-      val bufferToArray = Array.ofDim[Double](buffer.limit())
+      val oldPosition = buffer.position()
+      val bufferToArray = Array.ofDim[Double](buffer.remaining())
       buffer.get(bufferToArray, 0, bufferToArray.length)
+      buffer.position(oldPosition)
       bufferToArray
     }
   }
@@ -192,8 +200,10 @@ object Memory extends LowPriorityMemory {
     override def put(buffer: FloatBuffer, index: Int, value: Float): Unit = buffer.put(index, value)
 
     override def toArray(buffer: FloatBuffer): Array[Float] = {
-      val bufferToArray = new Array[Float](buffer.limit())
+      val oldPosition = buffer.position()
+      val bufferToArray = new Array[Float](buffer.remaining())
       buffer.get(bufferToArray, 0, bufferToArray.length)
+      buffer.position(oldPosition)
       bufferToArray
     }
   }
@@ -216,8 +226,10 @@ object Memory extends LowPriorityMemory {
     override def put(buffer: ByteBuffer, index: Int, value: Byte): Unit = buffer.put(index, value)
 
     override def toArray(buffer: ByteBuffer): Array[Byte] = {
-      val bufferToArray = Array.ofDim[Byte](buffer.limit())
+      val oldPosition = buffer.position()
+      val bufferToArray = Array.ofDim[Byte](buffer.remaining())
       buffer.get(bufferToArray, 0, bufferToArray.length)
+      buffer.position(oldPosition)
       bufferToArray
     }
   }
@@ -240,8 +252,10 @@ object Memory extends LowPriorityMemory {
     override def put(buffer: ShortBuffer, index: Int, value: Short): Unit = buffer.put(index, value)
 
     override def toArray(buffer: ShortBuffer): Array[Short] = {
-      val bufferToArray = Array.ofDim[Short](buffer.limit())
+      val oldPosition = buffer.position()
+      val bufferToArray = Array.ofDim[Short](buffer.remaining())
       buffer.get(bufferToArray, 0, bufferToArray.length)
+      buffer.position(oldPosition)
       bufferToArray
     }
   }
