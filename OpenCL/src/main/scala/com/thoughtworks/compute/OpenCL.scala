@@ -308,7 +308,7 @@ object OpenCL {
 
   }
 
-  trait UseAllGPUDevice {
+  trait UseAllGpuDevice {
 
     protected val platformId: Long
 
@@ -318,7 +318,7 @@ object OpenCL {
     }
   }
 
-  trait UseFirstGPUDevice {
+  trait UseFirstGpuDevice {
 
     protected val platformId: Long
 
@@ -328,8 +328,18 @@ object OpenCL {
       Seq(allDeviceIds.head)
     }
   }
+  trait UseFirstCpuDevice {
 
-  trait UseAllCPUDevice {
+    protected val platformId: Long
+
+    @transient
+    protected lazy val deviceIds: Seq[Long] = {
+      val allDeviceIds = deviceIdsByType(platformId, CL_DEVICE_TYPE_CPU)
+      Seq(allDeviceIds.head)
+    }
+  }
+
+  trait UseAllCpuDevice {
 
     protected val platformId: Long
 
@@ -435,15 +445,6 @@ object OpenCL {
   }
 
   object DeviceBuffer {
-    private[OpenCL] def delay[Owner <: Singleton with OpenCL, Element](
-        handle: => Long): Do[DeviceBuffer[Owner, Element]] = {
-      val bufferContinuation = UnitContinuation.delay {
-        Resource(value = Success(DeviceBuffer[Owner, Element](handle)), release = UnitContinuation.delay {
-          checkErrorCode(clReleaseMemObject(handle))
-        })
-      }
-      Do(TryT(ResourceT(bufferContinuation)))
-    }
 
     implicit def bufferBox[Owner <: Singleton with OpenCL, Element]: Box.Aux[DeviceBuffer[Owner, Element], Pointer] =
       new Box[DeviceBuffer[Owner, Element]] {
@@ -462,11 +463,18 @@ object OpenCL {
     * @param handle The underlying `cl_mem`.
     * @note comment out extends AnyVal in case of https://github.com/scala/bug/issues/10647
     */
-  final case class DeviceBuffer[Owner <: OpenCL with Singleton, Element](handle: Long) /* extends AnyVal */ {
+  final case class DeviceBuffer[Owner <: OpenCL with Singleton, Element](handle: Long) /* extends AnyVal */
+      extends MonadicCloseable[UnitContinuation] {
     deviceBuffer =>
+
+    override def monadicClose: UnitContinuation[Unit] = UnitContinuation.delay {
+      checkErrorCode(clReleaseMemObject(handle))
+    }
+
     def slice(offset: Int, size: Int)(implicit
                                       memory: Memory[Element]): Do[DeviceBuffer[Owner, Element]] = {
-      DeviceBuffer.delay {
+
+      Do.monadicCloseable {
         val stack = stackPush()
         try {
           val errorCode = stack.ints(0)
@@ -478,7 +486,7 @@ object OpenCL {
                                              region.address(),
                                              memAddress(errorCode))
           checkErrorCode(errorCode.get(0))
-          newHandle
+          DeviceBuffer[Owner, Element](newHandle)
         } finally {
           stack.close()
         }
@@ -585,6 +593,26 @@ object OpenCL {
 
     }
 
+    def functionName: String = {
+      val stack = stackPush()
+
+      try {
+
+        val functionNameSizePointer = stack.mallocPointer(1)
+
+        checkErrorCode(
+          clGetKernelInfo(this.handle, CL_KERNEL_FUNCTION_NAME, null: PointerBuffer, functionNameSizePointer))
+        val functionNameSize = functionNameSizePointer.get(0).toInt
+        val functionNameBuffer = stack.malloc(functionNameSize)
+
+        checkErrorCode(
+          clGetKernelInfo(this.handle, CL_KERNEL_FUNCTION_NAME, functionNameBuffer, functionNameSizePointer))
+        decodeString(functionNameBuffer)
+      } finally {
+        stack.close()
+      }
+    }
+    
     def enqueue(globalWorkSize: Long*)(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
       witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
         Do.monadicCloseable {
@@ -841,14 +869,14 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
   /** Returns an uninitialized buffer of `Element` on device.
     */
   def allocateBuffer[Element](size: Long)(implicit memory: Memory[Element]): Do[DeviceBuffer[Element]] =
-    DeviceBuffer.delay[this.type, Element] {
+    Do.monadicCloseable {
       val stack = stackPush()
       try {
         val errorCodeBuffer = stack.ints(CL_SUCCESS)
         val buffer =
           clCreateBuffer(context, CL_MEM_READ_WRITE, memory.numberOfBytesPerElement * size, errorCodeBuffer)
         checkErrorCode(errorCodeBuffer.get(0))
-        buffer
+        DeviceBuffer[this.type, Element](buffer)
       } finally {
         stack.pop()
       }
@@ -858,7 +886,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
     */
   def allocateBufferFrom[Element, HostBuffer](hostBuffer: HostBuffer)(
       implicit memory: Memory.Aux[Element, HostBuffer]): Do[DeviceBuffer[Element]] =
-    DeviceBuffer.delay[this.type, Element] {
+    Do.monadicCloseable {
       val stack = stackPush()
       try {
         val errorCodeBuffer = stack.ints(CL_SUCCESS)
@@ -868,7 +896,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
                                      memory.address(hostBuffer),
                                      memAddress(errorCodeBuffer))
         checkErrorCode(errorCodeBuffer.get(0))
-        buffer
+        DeviceBuffer[this.type, Element](buffer)
       } finally {
         stack.pop()
       }

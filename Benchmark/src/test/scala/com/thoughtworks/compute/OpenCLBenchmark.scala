@@ -32,11 +32,13 @@ object OpenCLBenchmark {
 
   trait TestKernels extends OpenCL with OpenCL.CommandQueuePool {
 
+    private implicit def witnessSelf: Witness.Aux[this.type] = Witness.mkWitness(this)
+
     @transient
     private[OpenCLBenchmark] lazy val compiledProgram: Program = {
 
       val program = createProgramWithSource(fastraw"""
-      float sample(global const float* restrict input, const size_t image_index, const ptrdiff_t x, const ptrdiff_t y, const ptrdiff_t width, const ptrdiff_t height) {
+      float sample(global const float* /*restrict*/ input, const size_t image_index, const ptrdiff_t x, const ptrdiff_t y, const ptrdiff_t width, const ptrdiff_t height) {
         if (x >= 0 && x < width && y >= 0 && y < height) {
           return input[image_index * width * height, y * width + x];
         } else {
@@ -44,7 +46,7 @@ object OpenCLBenchmark {
         }
       }
 
-      kernel void benchmark(global const float* restrict input, global float* restrict output, global const float* restrict weight) {
+      kernel void benchmark(global const float* /*restrict*/ input, global float* restrict output, global const float* /*restrict*/ weight) {
         const size_t image_index = get_global_id(0);
         const size_t batch_size = get_global_size(0);
         const size_t x = get_global_id(1);
