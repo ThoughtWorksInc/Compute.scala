@@ -428,11 +428,17 @@ object OpenCL {
     }
 
     def waitFor(callbackType: Status): Future[Unit] = {
-      Future(TryT(waitForStatus(callbackType).map {
-        case `callbackType`             => Success(())
-        case errorCode if errorCode < 0 => Failure(Exceptions.fromErrorCode(errorCode))
-        case status                     => throw new IllegalStateException(raw"""Invalid event status $status""")
-      }))
+      // Workaround for AMD OpenCL bug shown at https://travis-ci.org/Atry/DeepLearning.scala/jobs/318466522
+      import scala.concurrent.ExecutionContext.Implicits._
+      val continuation = waitForStatus(callbackType).flatMap[Try[Unit]] {
+        case `callbackType` =>
+          UnitContinuation.execute(Success(()))
+        case errorCode if errorCode < 0 =>
+          UnitContinuation.execute(Failure(Exceptions.fromErrorCode(errorCode)))
+        case status =>
+          throw new IllegalStateException(raw"""Invalid event status $status""")
+      }
+      Future(TryT(continuation))
     }
 
     def waitForComplete(): Future[Unit] = waitFor(CL_COMPLETE)
@@ -467,10 +473,11 @@ object OpenCL {
       extends MonadicCloseable[UnitContinuation] {
     deviceBuffer =>
 
-    override def monadicClose: UnitContinuation[Unit] = UnitContinuation.delay {
-      checkErrorCode(clReleaseMemObject(handle))
+    def monadicClose: UnitContinuation[Unit] = {
+      UnitContinuation.delay {
+        checkErrorCode(clReleaseMemObject(handle))
+      }
     }
-
     def slice(offset: Int, size: Int)(implicit
                                       memory: Memory[Element]): Do[DeviceBuffer[Owner, Element]] = {
 
@@ -612,7 +619,7 @@ object OpenCL {
         stack.close()
       }
     }
-    
+
     def enqueue(globalWorkSize: Long*)(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
       witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
         Do.monadicCloseable {
