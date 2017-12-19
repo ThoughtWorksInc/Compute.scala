@@ -432,6 +432,12 @@ object OpenCL {
       import scala.concurrent.ExecutionContext.Implicits._
       val continuation = waitForStatus(callbackType).flatMap[Try[Unit]] {
         case `callbackType` =>
+          // This `execute` call should be unnecessary because
+          // only OpenCL calls to create contexts or command-queues, or blocking OpenCL operations are undefined behavior,
+          // according to https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetEventCallback.html
+          // 
+          // However, AMD SDK always crashes for any reentry calls.
+          // I have to switch thread by `execute`, unfortunately.
           UnitContinuation.execute(Success(()))
         case errorCode if errorCode < 0 =>
           UnitContinuation.execute(Failure(Exceptions.fromErrorCode(errorCode)))
