@@ -14,8 +14,8 @@ trait FloatExpressions <: Expressions {
   protected type DslFloatCompanion <: DslType
 
   @inject
-  protected def DslFloatCompanion: Factory.Nullary[DslFloatCompanion]
+  protected def DslFloatCompanion: Factory.Unary[DebuggingInformation, DslFloatCompanion]
 
-  val DslFloat: DslFloatCompanion = DslFloatCompanion.newInstance()
+  val DslFloat: DslFloatCompanion = DslFloatCompanion.newInstance(debuggingInformation)
 
 }

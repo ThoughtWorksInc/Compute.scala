@@ -9,9 +9,9 @@ import scala.language.higherKinds
 /**
   * @author 杨博 (Yang Bo)
   */
-trait PointerExpressions extends BooleanExpressions {
+trait PointerTerms extends BooleanExpressions {
 
-  protected trait PointerExpressionApi[Element <: DslExpression, NumberOfDimensions <: Nat] {
+  protected trait PointerTermApi[Element <: DslExpression, NumberOfDimensions <: Nat] {
 
     @inject
     protected def witnessNumberOfDimensions: Witness.Aux[NumberOfDimensions]
@@ -22,21 +22,21 @@ trait PointerExpressions extends BooleanExpressions {
 
     def dereference: Element
 
-    def +(offset: Sized[Seq[Int], NumberOfDimensions]): PointerExpression[Element, NumberOfDimensions]
+    def +(offset: Sized[Seq[Int], NumberOfDimensions]): PointerTerm[Element, NumberOfDimensions]
 
   }
 
   /** @template */
-  type PointerExpression[Element <: DslExpression, NumberOfDimensions <: Nat] <: PointerExpressionApi[
+  type PointerTerm[Element <: DslExpression, NumberOfDimensions <: Nat] <: PointerTermApi[
     Element,
     NumberOfDimensions]
 
   /** @template */
-  protected type PointerExpressionCompanion <: AnyRef
+  protected type PointerTermCompanion <: AnyRef
 
   @inject
-  protected def PointerExpressionCompanion: Factory.Nullary[PointerExpressionCompanion]
+  protected def PointerTermCompanion: Factory.Nullary[PointerTermCompanion]
 
-  val PointerExpression: PointerExpressionCompanion = PointerExpressionCompanion.newInstance()
+  val PointerTerm: PointerTermCompanion = PointerTermCompanion.newInstance()
 
 }

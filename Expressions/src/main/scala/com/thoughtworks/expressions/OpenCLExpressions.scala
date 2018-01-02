@@ -6,80 +6,75 @@ import com.dongxiguo.fastring.Fastring.Implicits._
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 import java.util.IdentityHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
   * @author 杨博 (Yang Bo)
   */
-trait OpenCLExpressions extends Expressions {
+trait OpenCLExpressions extends Expressions with FreshNames {
 
   protected trait IdentifierApi extends DslExpressionApi { this: Identifier =>
     // TODO:
+
     def toCode(context: Context): DslExpression.Code = {
-      DslExpression.Code(accessor = context.resolve(this))
+      DslExpression.Code(accessor = DslExpression.Accessor.Packed(fast"$name", context.get(dslType).unpacked.length))
     }
   }
 
   type Identifier <: (DslExpression with Any) with IdentifierApi
 
-  trait DslEffect {
+//  trait DslEffect {
+//
+//    def toCode(context: Context): DslEffect.Code
+//
+//  }
 
-    def toCode(context: Context): DslEffect.Code
+//  object DslEffect {
+//
+//    type Statement = Fastring
+//
+//    final case class Code(globalDeclarations: Fastring = Fastring.empty,
+//                          globalDefinitions: Fastring = Fastring.empty,
+//                          localDefinitions: Fastring = Fastring.empty,
+//                          statements: Fastring = Fastring.empty)
+//
+//    final case class Update(buffer: DslExpression, index: DslExpression, value: DslExpression, valueType: DslType)
+//        extends DslEffect {
+//      override def toCode(context: Context): Code = {
+//        val valueName = context.freshName("update")
+//        Code(
+//          localDefinitions = fast"""
+//  ${context.get(valueType).packed} $valueName = ${context.get(value).packed};""",
+//          statements = fast"""
+//  ${context.get(buffer).packed}[${context.get(index).packed}] = $valueName;"""
+//        )
+//      }
+//    }
+//
+//  }
 
-  }
+  final case class ShaderDefinition(name: String,
+                                    parameters: Seq[Identifier],
+                                    rhs: DslExpression)
 
-  object DslEffect {
+  def generateSourceCode(shaders: ShaderDefinition*): Fastring = {
 
-    type Statement = Fastring
-
-    final case class Code(globalDeclarations: Fastring = Fastring.empty,
-                          globalDefinitions: Fastring = Fastring.empty,
-                          localDefinitions: Fastring = Fastring.empty,
-                          statements: Fastring = Fastring.empty)
-
-    final case class Update(buffer: DslExpression, index: DslExpression, value: DslExpression, valueType: DslType)
-        extends DslEffect {
-      override def toCode(context: Context): Code = {
-        val valueName = context.freshName("update")
-        Code(
-          localDefinitions = fast"""
-  ${context.get(valueType).packed} $valueName = ${context.get(value).packed};""",
-          statements = fast"""
-  ${context.get(buffer).packed}[${context.get(index).packed}] = $valueName;"""
-        )
-      }
-    }
-
-  }
-
-  final case class Parameter(id: Identifier, dslType: DslType)
-
-  final case class KernelDefinition(name: String, parameters: Seq[Parameter], effects: Seq[DslEffect])
-
-  def generateSourceCode(kernels: KernelDefinition*): Fastring = {
-
-    var seed = 0
-    def nextId() = {
-      val id = seed
-      seed += 1
-      id
-    }
-
-    val types = mutable.Set.empty[Seq[String]]
+//    val types = mutable.Set.empty[Seq[String]]
     val globalDeclarations = mutable.Buffer.empty[Fastring]
     val globalDefinitions = mutable.Buffer.empty[Fastring]
     val typeCodeCache = mutable.HashMap.empty[DslType, DslType.Accessor]
 
     val exportedFunctions = for {
-      KernelDefinition(functionName, parameters, effects) <- kernels
+      ShaderDefinition(functionName, parameters, rhs) <- shaders
     } yield {
 
-      val parameterMap = mutable.Map.empty[Any, (String, DslType)]
+//      val parameterMap = mutable.Map.empty[Identifier, String]
 
       val localDefinitions = mutable.Buffer.empty[Fastring]
 
       val expressionCodeCache = new IdentityHashMap[DslExpression, DslExpression.Accessor]().asScala
-      val effectCodeCache = new IdentityHashMap[DslEffect, Fastring]().asScala
-
+//      val effectCodeCache = new IdentityHashMap[DslEffect, Fastring]().asScala
+//
       val functionContext = new Context {
 
         override def get(dslType: DslType): DslType.Accessor = {
@@ -103,45 +98,24 @@ trait OpenCLExpressions extends Expressions {
           )
         }
 
-        override def freshName(prefix: String): String = {
-          raw"""${prefix}_${nextId()}"""
-        }
-
-        override def get(effect: DslEffect): Fastring = {
-          effectCodeCache.getOrElseUpdate(
-            effect, {
-              val code = effect.toCode(this)
-              localDefinitions += code.localDefinitions
-              globalDeclarations += code.globalDeclarations
-              globalDefinitions += code.globalDefinitions
-              code.statements
-            }
-          )
-        }
-
-        override def resolve(id: Identifier) = {
-          val (name, dslType) = parameterMap(id)
-          DslExpression.Accessor.Packed(fast"$name", get(dslType).unpacked.length)
-        }
       }
 
       val parameterDeclarations = for (parameter <- parameters) yield {
-        val name = s"parameter_${nextId()}"
-        parameterMap(parameter.id) = name -> parameter.dslType
         val typeName = functionContext.get(parameter.dslType).packed
-        fast"$typeName $name"
+        fast"$typeName ${parameter.name}"
       }
 
-      val effectStatements = for (effect <- effects) yield {
-        functionContext.get(effect)
-      }
+      val output = functionContext.get(rhs).packed
+      val outputType = functionContext.get(rhs.dslType).packed
 
       fastraw"""
-__kernel void $functionName(${parameterDeclarations.mkFastring(", ")}) {
-  ${localDefinitions.mkFastring}
-  ${effectStatements.mkFastring}
-}
-"""
+        kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, global $outputType *__output) {
+          ${localDefinitions.mkFastring}
+
+          // TODO: polyfill for get_global_linear_id
+          __output[get_global_linear_id()] = $output;
+        }
+      """
     }
     fastraw"""
 ${globalDeclarations.mkFastring}
@@ -151,13 +125,10 @@ ${exportedFunctions.mkFastring}
   }
 
   trait Context {
-    def freshName(prefix: String): String
-
-    def resolve(id: Identifier): DslExpression.Accessor
-
+//    def resolve(id: Identifier): DslExpression.Accessor
     def get(dslFunction: DslExpression): DslExpression.Accessor
     def get(dslType: DslType): DslType.Accessor
-    def get(effect: DslEffect): DslEffect.Statement
+//    def get(effect: DslEffect): DslEffect.Statement
   }
 
   protected type DslExpressionCompanion <: DslExpressionCompanionApi
@@ -200,11 +171,12 @@ ${exportedFunctions.mkFastring}
     }
   }
 
-  protected trait DslExpressionApi extends super.DslExpressionApi {
+  protected trait DslExpressionApi extends ExpressionApi {
+    def dslType: DslType
     def toCode(context: Context): DslExpression.Code
   }
 
-  type DslExpression <: DslExpressionApi
+  type DslExpression <: (Expression with Any) with DslExpressionApi
 
   protected trait DslTypeCompanionApi {
 
@@ -233,17 +205,19 @@ ${exportedFunctions.mkFastring}
   }
   protected type DslTypeCompanion <: DslTypeCompanionApi
 
-  protected trait DslTypeApi extends super.DslTypeApi {
+  protected trait DslTypeApi extends super.DslTypeApi { this: DslType =>
 
     def toCode(context: Context): DslType.Code
 
-    protected trait DslExpressionApi
+    protected trait DslExpressionApi extends OpenCLExpressions.this.DslExpressionApi {
+      def dslType: DslTypeApi.this.type = DslTypeApi.this
+    }
 
     /** @template */
-    type DslExpression <: OpenCLExpressions.this.DslExpression with DslExpressionApi
+    type DslExpression <: (OpenCLExpressions.this.DslExpression with Any) with DslExpressionApi
 
   }
 
-  type DslType <: DslTypeApi
+  type DslType <: (Expression with Any) with DslTypeApi
 
 }

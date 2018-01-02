@@ -14,7 +14,7 @@ trait BooleanExpressions <: Expressions {
   protected type DslBooleanCompanion <: DslType
 
   @inject
-  protected def DslBooleanCompanion: Factory.Nullary[DslBooleanCompanion]
+  protected def DslBooleanCompanion: Factory.Unary[DebuggingInformation,DslBooleanCompanion]
 
-  val DslBoolean: DslBooleanCompanion = DslBooleanCompanion.newInstance()
+  val DslBoolean: DslBooleanCompanion = DslBooleanCompanion.newInstance(debuggingInformation)
 }

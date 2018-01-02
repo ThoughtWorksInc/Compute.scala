@@ -1,38 +1,20 @@
 package com.thoughtworks.expressions
 
-import com.thoughtworks.feature.Factory.inject
-
 object Debugging {
 
   trait Line {
-    @inject
-    def line: sourcecode.Line
+    implicit def line: sourcecode.Line
   }
 
   trait File {
-    @inject
-    def file: sourcecode.File
+    implicit def file: sourcecode.File
   }
 
   trait Name {
-    @inject
-    def name: sourcecode.Name
+    implicit def name: sourcecode.Name
   }
 
   trait FullName {
-    @inject
-    def fullName: sourcecode.FullName
+    implicit def fullName: sourcecode.FullName
   }
-
 }
-
-///**
-//  * @author 杨博 (Yang Bo)
-//  */
-//trait Debugging extends Expressions {
-//  type DebuggingInformation
-//  trait DslExpressionApi  {
-//    def debuggingInformation: DebuggingInformation
-//  }
-//  type DslExpression <: DslExpressionApi
-//}

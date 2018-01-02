@@ -5,7 +5,7 @@ package com.thoughtworks.expressions
   */
 trait OpenCLFloatExpressions extends FloatExpressions with OpenCLExpressions {
 
-  protected trait DslFloatCompanionApi extends DslTypeApi {
+  protected trait DslFloatCompanionApi extends DslTypeApi { this: DslType =>
     override def toCode(context: Context): DslType.Code =
       DslType.Code(accessor = DslType.Accessor.Atom("float"))
 
