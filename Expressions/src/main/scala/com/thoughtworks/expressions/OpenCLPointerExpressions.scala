@@ -8,21 +8,16 @@ import scala.language.higherKinds
   */
 trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpressions {
 
-//  protected trait PointerTypeApi extends super.PointerTypeApi { this: PointerType =>
-//    def toCode(context: Context): DslType.Code = ???
-//  }
-//
-//  type PointerType <: (DslType with Any) with   PointerTypeApi
-
   protected trait PointerTypeApi[+ElementType <: ValueType, NumberOfDimensions <: Nat]
       extends DslTypeApi
       with super.PointerTypeApi[ElementType, NumberOfDimensions] { this: PointerType[ElementType, NumberOfDimensions] =>
 
     override def toCode(context: Context): DslType.Code = ???
 
-    protected trait TermApi extends super.TermApi //with PointerTermApi[ElementType, NumberOfDimensions] { this: Term =>}
+    protected trait TermApi extends super.TermApi with super.TypedTermApi { this: Term =>
+    }
 
-    type Term <: (PointerTerm[ElementType, NumberOfDimensions]with Any) with TermApi
+    type Term <: (PointerTerm[elementType.type, NumberOfDimensions] with Any) with TermApi
 
   }
 

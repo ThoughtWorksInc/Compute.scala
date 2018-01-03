@@ -36,7 +36,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     val x: float.pointer3d.Identifier = float.pointer3d.Identifier()
 
-    val shader = ShaderDefinition("id", Seq(x), float.Dereference(x))
+    val shader = ShaderDefinition("id", Seq(x), x.dereference)
     val sourceCode = generateSourceCode(shader).mkString
 
     println(sourceCode) // FIXME: replace println to a scalatest assertion

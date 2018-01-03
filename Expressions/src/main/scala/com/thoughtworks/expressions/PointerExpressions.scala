@@ -20,11 +20,8 @@ trait PointerExpressions extends BooleanExpressions {
 
     def isOutOfBound: boolean.Term = ???
 
-//    def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation])
-//      : PointerTerm[ElementType, NumberOfDimensions] = {
-//      val operator1 = dslType.elementType.Dereference[NumberOfDimensions]
-//      operator1(this)(debuggingInformation)
-//    }
+    def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation])
+      : dslType.elementType.Dereference[NumberOfDimensions]
 
     def +(offset: Sized[Seq[Int], NumberOfDimensions]): Term = ???
 
@@ -43,7 +40,19 @@ trait PointerExpressions extends BooleanExpressions {
 
     final def numberOfDimensions: NumberOfDimensions = witnessNumberOfDimensions.value
 
-    type Term <: PointerTerm[ElementType, NumberOfDimensions] with TermApi
+    trait TypedTermApi extends TermApi { this: Term =>
+
+      def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation])
+        : elementType.Dereference[NumberOfDimensions] = {
+        val operator1: Operator1[PointerTerm[elementType.type, NumberOfDimensions],
+                                 elementType.Dereference[NumberOfDimensions]] = {
+          elementType.Dereference[NumberOfDimensions]
+        }
+
+        operator1(this)
+      }
+    }
+    type Term <: (PointerTerm[elementType.type, NumberOfDimensions] with Any) with TypedTermApi
 
   }
 
@@ -75,12 +84,12 @@ trait PointerExpressions extends BooleanExpressions {
 
     val pointer3d: PointerType[this.type, _3] = pointer3dFactory.newInstance(debuggingInformation, this)
 
-//    final def pointer[NumberOfDimensions <: Nat](
-//        implicit factory: Factory.Lt[PointerType[this.type, NumberOfDimensions],
-//                                     (DebuggingInformation, this.type) => PointerType[this.type, NumberOfDimensions]])
-//      : PointerType[this.type, NumberOfDimensions] = {
-//      factory.newInstance(debuggingInformation, this)
-//    }
+    final def pointer[NumberOfDimensions <: Nat](
+        implicit factory: Factory.Lt[PointerType[this.type, NumberOfDimensions],
+                                     (DebuggingInformation, this.type) => PointerType[this.type, NumberOfDimensions]])
+      : PointerType[this.type, NumberOfDimensions] = {
+      factory.newInstance(debuggingInformation, this)
+    }
 
   }
 
