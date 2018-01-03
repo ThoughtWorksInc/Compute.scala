@@ -12,7 +12,7 @@ trait FloatExpressions extends ValueExpressions {
   type FloatType <: ValueType
 
   @inject
-  protected def FloatType: Factory.Unary[DebuggingInformation, FloatType]
+  protected def FloatType: Factory.Factory1[DebuggingInformation, FloatType]
 
   val float: FloatType = FloatType.newInstance(debuggingInformation)
 

@@ -18,20 +18,28 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     import hyperparameters._
 
     val x: float.Identifier = float.Identifier()
-    val fillShader = ShaderDefinition("fill", Seq(x), x)
-    val sourceCode = generateSourceCode(fillShader).mkString
+    val shader = ShaderDefinition("fill", Seq(x), x)
+    val sourceCode = generateSourceCode(shader).mkString
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 
   }
 
-  "map" in {
+  "id" ignore {
 
     val hyperparameters: BuiltIns { type DebuggingInformation = Debugging.Name } = {
       Factory[BuiltIns].newInstance()
     }
 
     import hyperparameters._
+
+//    Factory[PointerType[FloatType, _3]]
+
     val x: float.pointer3d.Identifier = float.pointer3d.Identifier()
+
+    val shader = ShaderDefinition("id", Seq(x), float.Dereference(x))
+    val sourceCode = generateSourceCode(shader).mkString
+
+    println(sourceCode) // FIXME: replace println to a scalatest assertion
 
   }
 

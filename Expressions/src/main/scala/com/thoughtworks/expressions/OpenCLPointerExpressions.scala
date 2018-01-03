@@ -14,20 +14,19 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
 //
 //  type PointerType <: (DslType with Any) with   PointerTypeApi
 
-  protected trait PointerTypeApi[+ElementType <: DslType, NumberOfDimensions <: Nat]
+  protected trait PointerTypeApi[+ElementType <: ValueType, NumberOfDimensions <: Nat]
       extends DslTypeApi
       with super.PointerTypeApi[ElementType, NumberOfDimensions] { this: PointerType[ElementType, NumberOfDimensions] =>
+
     override def toCode(context: Context): DslType.Code = ???
 
-    protected trait DslExpressionApi
-        extends super[DslTypeApi].DslExpressionApi
-        with super[PointerTypeApi].DslExpressionApi {}
+    protected trait TermApi extends super.TermApi //with PointerTermApi[ElementType, NumberOfDimensions] { this: Term =>}
 
-    type DslExpression <: (OpenCLPointerExpressions.this.DslExpression with Any) with DslExpressionApi
+    type Term <: (PointerTerm[ElementType, NumberOfDimensions]with Any) with TermApi
 
   }
 
-  type PointerType[+ElementType <: DslType, NumberOfDimensions <: Nat] <: (DslType with Any) with PointerTypeApi[
+  type PointerType[+ElementType <: ValueType, NumberOfDimensions <: Nat] <: (DslType with Any) with PointerTypeApi[
     ElementType,
     NumberOfDimensions]
 
@@ -39,5 +38,16 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
   }
 
   type DslType <: (Expression with Any) with DslTypeApi
+  trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
+
+    protected trait DereferenceApi[NumberOfDimensions <: Nat] extends TermApi {
+      this: Dereference[NumberOfDimensions] =>
+      val operand0: PointerTerm[ValueType, NumberOfDimensions]
+      def toCode(context: Context): Term.Code = ???
+    }
+
+    type Dereference[NumberOfDimensions <: Nat] <: (Term with Any) with DereferenceApi[NumberOfDimensions]
+  }
+  type ValueType <: (DslType with Any) with ValueTypeApi
 
 }
