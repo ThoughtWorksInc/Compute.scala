@@ -13,16 +13,6 @@ import java.util.concurrent.atomic.AtomicInteger
   */
 trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
-  protected trait IdentifierApi extends TermApi { this: Identifier =>
-    // TODO:
-
-    def toCode(context: Context): Term.Code = {
-      Term.Code(accessor = Term.Accessor.Packed(fast"$name", context.get(dslType).unpacked.length))
-    }
-  }
-
-  type Identifier <: (Term with Any) with IdentifierApi
-
 //  trait DslEffect {
 //
 //    def toCode(context: Context): DslEffect.Code
@@ -53,11 +43,10 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 //
 //  }
 
-  final case class ShaderDefinition(name: String, parameters: Seq[Identifier], rhs: Term)
+  final case class ShaderDefinition(name: String, parameters: Seq[IdentifierApi], rhs: Term)
 
   def generateSourceCode(shaders: ShaderDefinition*): Fastring = {
 
-//    val types = mutable.Set.empty[Seq[String]]
     val globalDeclarations = mutable.Buffer.empty[Fastring]
     val globalDefinitions = mutable.Buffer.empty[Fastring]
     val typeCodeCache = mutable.HashMap.empty[DslType, DslType.Accessor]
@@ -66,13 +55,9 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
       ShaderDefinition(functionName, parameters, rhs) <- shaders
     } yield {
 
-//      val parameterMap = mutable.Map.empty[Identifier, String]
-
       val localDefinitions = mutable.Buffer.empty[Fastring]
 
       val expressionCodeCache = new IdentityHashMap[Term, Term.Accessor]().asScala
-//      val effectCodeCache = new IdentityHashMap[DslEffect, Fastring]().asScala
-//
       val functionContext = new Context {
 
         override def get(dslType: DslType): DslType.Accessor = {
@@ -123,10 +108,8 @@ ${exportedFunctions.mkFastring}
   }
 
   trait Context {
-//    def resolve(id: Identifier): Term.Accessor
     def get(dslFunction: Term): Term.Accessor
     def get(dslType: DslType): DslType.Accessor
-//    def get(effect: DslEffect): DslEffect.Statement
   }
 
   protected type TermCompanion <: TermCompanionApi
@@ -209,10 +192,19 @@ ${exportedFunctions.mkFastring}
     protected trait TermApi extends OpenCLExpressions.this.TermApi with super.TermApi {}
 
     /** @template */
-    type Term <: (OpenCLExpressions.this.Term with Any) with TermApi
+    type TypedTerm <: (Term with Any) with TermApi
+
+    type Identifier <: (TypedTerm with Any) with IdentifierApi
 
   }
 
   type DslType <: (Expression with Any) with DslTypeApi
 
+  protected trait IdentifierApi extends TermApi { this: Term =>
+    // TODO:
+
+    def toCode(context: Context): Term.Code = {
+      Term.Code(accessor = Term.Accessor.Packed(fast"$name", context.get(dslType).unpacked.length))
+    }
+  }
 }

@@ -26,7 +26,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "id" ignore {
 
-    val hyperparameters: BuiltIns { type DebuggingInformation = Debugging.Name } = {
+    val hyperparameters = {
       Factory[BuiltIns].newInstance()
     }
 

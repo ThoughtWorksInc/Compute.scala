@@ -14,10 +14,10 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
 
     override def toCode(context: Context): DslType.Code = ???
 
-    protected trait TermApi extends super.TermApi with super.TypedTermApi { this: Term =>
+    protected trait TermApi extends super.TermApi with super.TypedTermApi { this: TypedTerm =>
     }
 
-    type Term <: (PointerTerm[elementType.type, NumberOfDimensions] with Any) with TermApi
+    type TypedTerm <: (PointerTerm[elementType.type, NumberOfDimensions] with Any) with TermApi
 
   }
 
@@ -41,7 +41,7 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
       def toCode(context: Context): Term.Code = ???
     }
 
-    type Dereference[NumberOfDimensions <: Nat] <: (Term with Any) with DereferenceApi[NumberOfDimensions]
+    type Dereference[NumberOfDimensions <: Nat] <: (TypedTerm with Any) with DereferenceApi[NumberOfDimensions]
   }
   type ValueType <: (DslType with Any) with ValueTypeApi
 

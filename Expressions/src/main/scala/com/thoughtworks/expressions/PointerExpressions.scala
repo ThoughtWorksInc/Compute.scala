@@ -18,7 +18,7 @@ trait PointerExpressions extends BooleanExpressions {
 
     val dslType: PointerType[ElementType, NumberOfDimensions]
 
-    def isOutOfBound: boolean.Term = ???
+    def isOutOfBound: boolean.TypedTerm = ???
 
     def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation])
       : dslType.elementType.Dereference[NumberOfDimensions]
@@ -40,7 +40,7 @@ trait PointerExpressions extends BooleanExpressions {
 
     final def numberOfDimensions: NumberOfDimensions = witnessNumberOfDimensions.value
 
-    trait TypedTermApi extends TermApi { this: Term =>
+    trait TypedTermApi extends TermApi { this: TypedTerm =>
 
       def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation])
         : elementType.Dereference[NumberOfDimensions] = {
@@ -52,7 +52,7 @@ trait PointerExpressions extends BooleanExpressions {
         operator1(this)
       }
     }
-    type Term <: (PointerTerm[elementType.type, NumberOfDimensions] with Any) with TypedTermApi
+    type TypedTerm <: (PointerTerm[elementType.type, NumberOfDimensions] with Any) with TypedTermApi
 
   }
 
@@ -63,7 +63,7 @@ trait PointerExpressions extends BooleanExpressions {
 
   protected trait ValueTypeApi { element: ValueType =>
 
-    type Dereference[NumberOfDimensions <: Nat] <: Term
+    type Dereference[NumberOfDimensions <: Nat] <: TypedTerm
 
     @inject
     def Dereference[NumberOfDimensions <: Nat]

@@ -52,7 +52,6 @@ trait Expressions {
     val dslType: DslType
   }
 
-  // TODO: Rename Term to Term
   /** @template */
   type Term <: (Expression with Any) with TermApi
 
@@ -64,19 +63,16 @@ trait Expressions {
 
   val Term: TermCompanion = TermCompanion.newInstance()
 
-  /** @template */
-  type Identifier <: Term
-
   protected trait DslTypeApi extends ExpressionApi { this: DslType =>
 
     trait TermApi extends Expressions.this.TermApi {
       val dslType: DslTypeApi.this.type = DslTypeApi.this
     }
 
-    type Term <: (Expressions.this.Term with Any) with TermApi
+    type TypedTerm <: (Term with Any) with TermApi
 
     /** @template */
-    type Identifier <: Term with Expressions.this.Identifier
+    type Identifier <: TypedTerm
 
     // FIXME: Some identifiers need additional settings,
     // so the arity may be not nullary,
