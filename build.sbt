@@ -1,3 +1,3 @@
 lazy val Expressions = project
 
-crossScalaVersions := Seq("2.11.12", "2.12.4")
+scalaVersion in ThisBuild := "2.12.4"
