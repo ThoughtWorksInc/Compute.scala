@@ -6,16 +6,14 @@ import com.thoughtworks.feature.Factory.inject
 /**
   * @author 杨博 (Yang Bo)
   */
-trait FloatExpressions <: Expressions {
-
-  type DslFloat = DslFloat.DslExpression
+trait FloatExpressions extends ValueExpressions {
 
   /** @template */
-  protected type DslFloatCompanion <: DslType
+  type FloatType <: ValueType
 
   @inject
-  protected def DslFloatCompanion: Factory.Unary[DebuggingInformation, DslFloatCompanion]
+  protected def FloatType: Factory.Unary[DebuggingInformation, FloatType]
 
-  val DslFloat: DslFloatCompanion = DslFloatCompanion.newInstance(debuggingInformation)
+  val float: FloatType = FloatType.newInstance(debuggingInformation)
 
 }

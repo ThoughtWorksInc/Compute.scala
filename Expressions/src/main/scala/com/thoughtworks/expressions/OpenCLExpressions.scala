@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
   * @author 杨博 (Yang Bo)
   */
-trait OpenCLExpressions extends Expressions with FreshNames {
+trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
   protected trait IdentifierApi extends DslExpressionApi { this: Identifier =>
     // TODO:

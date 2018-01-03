@@ -1,10 +1,10 @@
-libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.3.0-M0"
+libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.3.0-M1"
 
-libraryDependencies += "com.thoughtworks.feature" %% "implicitapply" % "2.3.0-M0"
+libraryDependencies += "com.thoughtworks.feature" %% "implicitapply" % "2.3.0-M1"
 
-libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.3.0-M0"
+libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.3.0-M1"
 
-libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.2"
+libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.3"
 
 libraryDependencies += "com.dongxiguo" %% "fastring" % "0.3.1"
 

@@ -6,15 +6,13 @@ import com.thoughtworks.feature.Factory.inject
 /**
   * @author 杨博 (Yang Bo)
   */
-trait BooleanExpressions <: Expressions {
-
-  type DslBoolean = DslBoolean.DslExpression
+trait BooleanExpressions extends ValueExpressions {
 
   /** @template */
-  protected type DslBooleanCompanion <: DslType
+  type BooleanType <: ValueType
 
   @inject
-  protected def DslBooleanCompanion: Factory.Unary[DebuggingInformation,DslBooleanCompanion]
+  protected def BooleanType: Factory.Unary[DebuggingInformation, BooleanType]
 
-  val DslBoolean: DslBooleanCompanion = DslBooleanCompanion.newInstance(debuggingInformation)
+  val boolean: BooleanType = BooleanType.newInstance(debuggingInformation)
 }

@@ -5,12 +5,12 @@ package com.thoughtworks.expressions
   */
 trait OpenCLBooleanExpressions extends OpenCLExpressions with BooleanExpressions {
 
-  protected trait DslBooleanCompanionApi extends DslTypeApi { this: DslType =>
+  protected trait BooleanTypeApi extends DslTypeApi { this: ValueType =>
     override def toCode(context: Context): DslType.Code =
       DslType.Code(accessor = DslType.Accessor.Atom("bool"))
 
   }
 
-  protected type DslBooleanCompanion <: (DslType with Any) with DslBooleanCompanionApi
+  type BooleanType <: (ValueType with Any) with BooleanTypeApi
 
 }

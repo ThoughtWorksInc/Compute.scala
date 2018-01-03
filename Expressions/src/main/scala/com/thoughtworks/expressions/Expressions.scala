@@ -12,7 +12,7 @@ trait Expressions {
   protected def debuggingInformationImplicitAppliedFactory: ImplicitAppliedFactory[DebuggingInformation]
   val debuggingInformation: DebuggingInformation = debuggingInformationImplicitAppliedFactory()
 
-  protected object Operator0 {
+  object Operator0 {
     implicit def operator0[Out, Constructor](
         implicit factory: Factory.Aux[Out, Constructor],
         asConstructor: Constructor <:< (DebuggingInformation => Out)): Operator0[Out] =
@@ -23,7 +23,7 @@ trait Expressions {
       }
   }
 
-  protected trait Operator0[Out] {
+  trait Operator0[Out] {
     def apply()(implicit debugging: ImplicitAppliedFactory[DebuggingInformation]): Out
   }
 
