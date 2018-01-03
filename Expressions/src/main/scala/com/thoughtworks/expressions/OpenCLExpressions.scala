@@ -189,16 +189,14 @@ ${exportedFunctions.mkFastring}
 
     def toCode(context: Context): DslType.Code
 
-    protected trait TermApi extends OpenCLExpressions.this.TermApi with super.TermApi {}
+    protected trait TypedTermApi extends TermApi with super.TypedTermApi {}
 
     /** @template */
-    type TypedTerm <: (Term with Any) with TermApi
+    type TypedTerm <: (Term with Any) with TypedTermApi
 
     type Identifier <: (TypedTerm with Any) with IdentifierApi
 
   }
-
-  type DslType <: (Expression with Any) with DslTypeApi
 
   protected trait IdentifierApi extends TermApi { this: Term =>
     // TODO:
@@ -207,4 +205,7 @@ ${exportedFunctions.mkFastring}
       Term.Code(accessor = Term.Accessor.Packed(fast"$name", context.get(dslType).unpacked.length))
     }
   }
+
+  type DslType <: (Expression with Any) with DslTypeApi
+
 }

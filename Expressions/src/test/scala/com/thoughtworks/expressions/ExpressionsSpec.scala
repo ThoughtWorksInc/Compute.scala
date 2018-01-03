@@ -32,8 +32,6 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     import hyperparameters._
 
-//    Factory[PointerType[FloatType, _3]]
-
     val x: float.pointer3d.Identifier = float.pointer3d.Identifier()
 
     val shader = ShaderDefinition("id", Seq(x), x.dereference)

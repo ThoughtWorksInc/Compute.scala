@@ -2,7 +2,7 @@ package com.thoughtworks.expressions
 
 import com.thoughtworks.expressions.Anonymous.Implicitly
 import com.thoughtworks.feature.Factory
-import com.thoughtworks.feature.Factory.{Factory2, inject}
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
 import shapeless.{Lazy, Nat, Sized, Witness}
 import shapeless.nat._
 
@@ -13,81 +13,59 @@ import scala.language.higherKinds
   */
 trait PointerExpressions extends BooleanExpressions {
 
-  protected trait PointerTermApi[+ElementType <: ValueType, NumberOfDimensions <: Nat] extends TermApi {
-    this: PointerTerm[ElementType, NumberOfDimensions] =>
+  protected trait ValueTypeApi { elementType: ValueType =>
 
-    val dslType: PointerType[ElementType, NumberOfDimensions]
+    protected trait PointerTypeApi[NumberOfDimensions <: Nat] extends DslTypeApi {
+      pointerType: PointerType[NumberOfDimensions] =>
+      @inject
+      protected def witnessNumberOfDimensions: Witness.Aux[NumberOfDimensions]
 
-    def isOutOfBound: boolean.TypedTerm = ???
+      final def numberOfDimensions: NumberOfDimensions = witnessNumberOfDimensions.value
 
-    def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation])
-      : dslType.elementType.Dereference[NumberOfDimensions]
+      trait TypedTermApi extends TermApi with PointerTypeApi.super.TypedTermApi {
+        this: TypedTerm =>
+        def isOutOfBound: boolean.TypedTerm = ???
 
-    def +(offset: Sized[Seq[Int], NumberOfDimensions]): Term = ???
-
-  }
-  type PointerTerm[+ElementType <: ValueType, NumberOfDimensions <: Nat] <: (Term with Any) with PointerTermApi[
-    ElementType,
-    NumberOfDimensions]
-
-  protected trait PointerTypeApi[+ElementType <: ValueType, NumberOfDimensions <: Nat] extends DslTypeApi {
-    this: PointerType[ElementType, NumberOfDimensions] =>
-
-    val elementType: ElementType
-
-    @inject
-    protected def witnessNumberOfDimensions: Witness.Aux[NumberOfDimensions]
-
-    final def numberOfDimensions: NumberOfDimensions = witnessNumberOfDimensions.value
-
-    trait TypedTermApi extends TermApi { this: TypedTerm =>
-
-      def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation])
-        : elementType.Dereference[NumberOfDimensions] = {
-        val operator1: Operator1[PointerTerm[elementType.type, NumberOfDimensions],
-                                 elementType.Dereference[NumberOfDimensions]] = {
-          elementType.Dereference[NumberOfDimensions]
+        def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation]): elementType.TypedTerm = {
+          Dereference(this)
         }
+        def +(offset: Sized[Seq[Int], NumberOfDimensions]): TypedTerm = ???
 
-        operator1(this)
       }
+
+      type TypedTerm <: (Term with Any) with TypedTermApi
+
+      protected trait DereferenceApi {
+        val operand0: TypedTerm
+
+      }
+      type Dereference <: elementType.TypedTerm with DereferenceApi
+
+      @inject
+      def Dereference: Operator1[TypedTerm, Dereference]
     }
-    type TypedTerm <: (PointerTerm[elementType.type, NumberOfDimensions] with Any) with TypedTermApi
 
-  }
+    /** @template */
+    type PointerType[NumberOfDimensions <: Nat] <: (DslType with Any) with PointerTypeApi[NumberOfDimensions]
+    @inject
+    def pointer1dFactory: Factory1[DebuggingInformation, PointerType[_1]]
 
-  /** @template */
-  type PointerType[+ElementType <: ValueType, NumberOfDimensions <: Nat] <: (DslType with Any) with PointerTypeApi[
-    ElementType,
-    NumberOfDimensions]
-
-  protected trait ValueTypeApi { element: ValueType =>
-
-    type Dereference[NumberOfDimensions <: Nat] <: TypedTerm
+    val pointer1d: PointerType[_1] = pointer1dFactory.newInstance(debuggingInformation)
 
     @inject
-    def Dereference[NumberOfDimensions <: Nat]
-      : Operator1[PointerTerm[this.type, NumberOfDimensions], Dereference[NumberOfDimensions]]
+    def pointer2dFactory: Factory1[DebuggingInformation, PointerType[_2]]
+
+    val pointer2d: PointerType[_2] = pointer2dFactory.newInstance(debuggingInformation)
 
     @inject
-    def pointer1dFactory: Factory2[DebuggingInformation, this.type, PointerType[this.type, _1]]
+    def pointer3dFactory: Factory1[DebuggingInformation, PointerType[_3]]
 
-    val pointer1d: PointerType[this.type, _1] = pointer1dFactory.newInstance(debuggingInformation, this)
-
-    @inject
-    def pointer2dFactory: Factory2[DebuggingInformation, this.type, PointerType[this.type, _2]]
-
-    val pointer2d: PointerType[this.type, _2] = pointer2dFactory.newInstance(debuggingInformation, this)
-
-    @inject
-    def pointer3dFactory: Factory2[DebuggingInformation, this.type, PointerType[this.type, _3]]
-
-    val pointer3d: PointerType[this.type, _3] = pointer3dFactory.newInstance(debuggingInformation, this)
+    val pointer3d: PointerType[_3] = pointer3dFactory.newInstance(debuggingInformation)
 
     final def pointer[NumberOfDimensions <: Nat](
-        implicit factory: Factory.Lt[PointerType[this.type, NumberOfDimensions],
-                                     (DebuggingInformation, this.type) => PointerType[this.type, NumberOfDimensions]])
-      : PointerType[this.type, NumberOfDimensions] = {
+        implicit factory: Factory.Lt[PointerType[NumberOfDimensions],
+                                     (DebuggingInformation, this.type) => PointerType[NumberOfDimensions]])
+      : PointerType[NumberOfDimensions] = {
       factory.newInstance(debuggingInformation, this)
     }
 

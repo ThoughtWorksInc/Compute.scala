@@ -65,11 +65,11 @@ trait Expressions {
 
   protected trait DslTypeApi extends ExpressionApi { this: DslType =>
 
-    trait TermApi extends Expressions.this.TermApi {
+    trait TypedTermApi extends TermApi {
       val dslType: DslTypeApi.this.type = DslTypeApi.this
     }
 
-    type TypedTerm <: (Term with Any) with TermApi
+    type TypedTerm <: (Term with Any) with TypedTermApi
 
     /** @template */
     type Identifier <: TypedTerm

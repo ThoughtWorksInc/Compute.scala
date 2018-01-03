@@ -8,23 +8,6 @@ import scala.language.higherKinds
   */
 trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpressions {
 
-  protected trait PointerTypeApi[+ElementType <: ValueType, NumberOfDimensions <: Nat]
-      extends DslTypeApi
-      with super.PointerTypeApi[ElementType, NumberOfDimensions] { this: PointerType[ElementType, NumberOfDimensions] =>
-
-    override def toCode(context: Context): DslType.Code = ???
-
-    protected trait TermApi extends super.TermApi with super.TypedTermApi { this: TypedTerm =>
-    }
-
-    type TypedTerm <: (PointerTerm[elementType.type, NumberOfDimensions] with Any) with TermApi
-
-  }
-
-  type PointerType[+ElementType <: ValueType, NumberOfDimensions <: Nat] <: (DslType with Any) with PointerTypeApi[
-    ElementType,
-    NumberOfDimensions]
-
   protected trait DslTypeApi
       extends super[PointerExpressions].DslTypeApi
       with super[OpenCLBooleanExpressions].DslTypeApi {
@@ -33,15 +16,33 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
   }
 
   type DslType <: (Expression with Any) with DslTypeApi
-  trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
+  trait ValueTypeApi extends DslTypeApi with super.ValueTypeApi { elementType: ValueType =>
 
-    protected trait DereferenceApi[NumberOfDimensions <: Nat] extends TermApi {
-      this: Dereference[NumberOfDimensions] =>
-      val operand0: PointerTerm[ValueType, NumberOfDimensions]
-      def toCode(context: Context): Term.Code = ???
+    protected trait PointerTypeApi[NumberOfDimensions <: Nat]
+        extends super.PointerTypeApi[NumberOfDimensions]
+        with DslTypeApi { pointerType: PointerType[NumberOfDimensions] =>
+
+      override def toCode(context: Context): DslType.Code = ???
+
+      protected trait TypedTermApi
+          extends super[DslTypeApi].TypedTermApi
+          with super[PointerTypeApi].TypedTermApi {
+        this: TypedTerm =>
+      }
+
+      type TypedTerm <: (Term with Any) with TypedTermApi
+
+      protected trait DereferenceApi extends super.DereferenceApi with elementType.TypedTermApi {
+        this: elementType.TypedTerm =>
+        def toCode(context: Context): Term.Code = ???
+      }
+
+      type Dereference <: (elementType.TypedTerm with Any) with DereferenceApi
+
     }
 
-    type Dereference[NumberOfDimensions <: Nat] <: (TypedTerm with Any) with DereferenceApi[NumberOfDimensions]
+    type PointerType[NumberOfDimensions <: Nat] <: (DslType with Any) with PointerTypeApi[NumberOfDimensions]
+
   }
   type ValueType <: (DslType with Any) with ValueTypeApi
 
