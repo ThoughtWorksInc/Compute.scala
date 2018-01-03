@@ -11,12 +11,4 @@ trait ValueExpressions extends Expressions {
   /** @template */
   type ValueType <: DslType
 
-//  /** @template */
-//  protected type ValueTypeCompanion <: AnyRef // TODO: Rename to TypeCompanion
-//
-//  @inject
-//  protected def ValueTypeCompanion: Factory.Nullary[ValueTypeCompanion]
-//
-//  val ValueType: ValueTypeCompanion = ValueTypeCompanion.newInstance()
-
 }

@@ -1,5 +1,6 @@
 package com.thoughtworks.expressions
 
+import com.thoughtworks.expressions.Anonymous.Implicitly
 import com.thoughtworks.feature.{Factory, ImplicitApply}
 import com.thoughtworks.feature.Factory.inject
 
@@ -9,22 +10,20 @@ import com.thoughtworks.feature.Factory.inject
 trait Expressions {
 
   @inject
-  protected def debuggingInformationImplicitAppliedFactory: ImplicitAppliedFactory[DebuggingInformation]
-  val debuggingInformation: DebuggingInformation = debuggingInformationImplicitAppliedFactory()
+  val debuggingInformation: Implicitly[DebuggingInformation]
 
   object Operator0 {
     implicit def operator0[Out, Constructor](
-        implicit factory: Factory.Aux[Out, Constructor],
-        asConstructor: Constructor <:< (DebuggingInformation => Out)): Operator0[Out] =
+        implicit factory: Factory.Unary[DebuggingInformation, Out]): Operator0[Out] =
       new Operator0[Out] {
-        def apply()(implicit debugging: ImplicitAppliedFactory[DebuggingInformation]): Out = {
-          asConstructor(factory.newInstance)(debugging())
+        def apply()(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out = {
+          factory.newInstance(debuggingInformation)
         }
       }
   }
 
   trait Operator0[Out] {
-    def apply()(implicit debugging: ImplicitAppliedFactory[DebuggingInformation]): Out
+    def apply()(implicit debugging: Implicitly[DebuggingInformation]): Out
   }
 
   /** @template */
@@ -32,6 +31,8 @@ trait Expressions {
   protected trait ExpressionApi {
     val debuggingInformation: DebuggingInformation
   }
+
+  /** @template */
   type Expression <: ExpressionApi
 
   // TODO: Rename DslExpression to Term

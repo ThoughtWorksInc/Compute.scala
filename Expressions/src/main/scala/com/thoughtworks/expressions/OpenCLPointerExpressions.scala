@@ -27,7 +27,7 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
 
   }
 
-  type PointerType[+ElementType <: DslType, NumberOfDimensions <: Nat] <: DslType with PointerTypeApi[
+  type PointerType[+ElementType <: DslType, NumberOfDimensions <: Nat] <: (DslType with Any) with PointerTypeApi[
     ElementType,
     NumberOfDimensions]
 

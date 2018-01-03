@@ -6,7 +6,7 @@ package com.thoughtworks.expressions
 trait Names extends Expressions {
 
   type DebuggingInformation <: Debugging.Name
-  trait ExpressionApi extends super.ExpressionApi {
+  protected trait ExpressionApi extends super.ExpressionApi {
     def name: String = debuggingInformation.name.value
   }
   type Expression <: ExpressionApi
