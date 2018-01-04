@@ -43,7 +43,12 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 //
 //  }
 
-  final case class ShaderDefinition(name: String, parameters: Seq[IdentifierApi], rhs: Term)
+  trait Parameter {
+    def `type`: Type
+    def name: String
+  }
+
+  final case class ShaderDefinition(name: String, parameters: Seq[Parameter], rhs: Term)
 
   def generateSourceCode(shaders: ShaderDefinition*): Fastring = {
 
@@ -60,9 +65,9 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
       val expressionCodeCache = new IdentityHashMap[Term, Term.Accessor]().asScala
       val functionContext = new Context {
 
-        override def get(dslType: Type): Type.Accessor = {
-          typeCodeCache.getOrElseUpdate(dslType, {
-            val code = dslType.toCode(this)
+        override def get(`type`: Type): Type.Accessor = {
+          typeCodeCache.getOrElseUpdate(`type`, {
+            val code = `type`.toCode(this)
             globalDeclarations += code.globalDeclarations
             globalDefinitions += code.globalDefinitions
             code.accessor
@@ -84,12 +89,12 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
       }
 
       val parameterDeclarations = for (parameter <- parameters) yield {
-        val typeName = functionContext.get(parameter.dslType).packed
+        val typeName = functionContext.get(parameter.`type`).packed
         fast"$typeName ${parameter.name}"
       }
 
       val output = functionContext.get(rhs).packed
-      val outputType = functionContext.get(rhs.dslType).packed
+      val outputType = functionContext.get(rhs.`type`).packed
 
       fastraw"""
         kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, global $outputType *__output) {
@@ -108,8 +113,8 @@ ${exportedFunctions.mkFastring}
   }
 
   trait Context {
-    def get(dslFunction: Term): Term.Accessor
-    def get(dslType: Type): Type.Accessor
+    def get(term: Term): Term.Accessor
+    def get(`type`: Type): Type.Accessor
   }
 
   protected type TermCompanion <: TermCompanionApi
@@ -198,16 +203,16 @@ ${exportedFunctions.mkFastring}
     /** @template */
     type TypedTerm <: (Term with Any) with TypedTermApi
 
+    protected trait IdentifierApi extends Parameter with TermApi { this: Identifier =>
+      // TODO:
+
+      def toCode(context: Context): Term.Code = {
+        Term.Code(accessor = Term.Accessor.Packed(fast"$name", context.get(`type`).unpacked.length))
+      }
+    }
+
     type Identifier <: (TypedTerm with Any) with IdentifierApi
 
-  }
-
-  protected trait IdentifierApi extends TermApi { this: Term =>
-    // TODO:
-
-    def toCode(context: Context): Term.Code = {
-      Term.Code(accessor = Term.Accessor.Packed(fast"$name", context.get(dslType).unpacked.length))
-    }
   }
 
   type Type <: (Expression with Any) with TypeApi

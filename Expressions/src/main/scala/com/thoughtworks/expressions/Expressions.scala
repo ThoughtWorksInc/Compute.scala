@@ -48,7 +48,7 @@ trait Expressions {
   type Expression <: ExpressionApi
 
   protected trait TermApi {
-    val dslType: Type
+    val `type`: Type
   }
 
   /** @template */
@@ -65,7 +65,7 @@ trait Expressions {
   protected trait TypeApi extends ExpressionApi { this: Type =>
 
     trait TypedTermApi extends TermApi {
-      val dslType: TypeApi.this.type = TypeApi.this
+      val `type`: TypeApi.this.type = TypeApi.this
     }
 
     type TypedTerm <: (Term with Any) with TypedTermApi
