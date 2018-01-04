@@ -23,7 +23,15 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
         extends super.PointerTypeApi[NumberOfDimensions]
         with TypeApi { pointerType: PointerType[NumberOfDimensions] =>
 
-      override def toCode(context: Context): Type.Code = ???
+      override def toCode(context: Context): Type.Code = {
+        val element = context.get(elementType)
+        Type.Code(
+          globalDeclarations = Fastring.empty,
+          globalDefinitions = fast"typedef global ${element.packed} * $name;",
+          Type.Accessor.Atom(name)
+        )
+
+      }
 
       protected trait TypedTermApi extends super[TypeApi].TypedTermApi with super[PointerTypeApi].TypedTermApi {
         this: TypedTerm =>
