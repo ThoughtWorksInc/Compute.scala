@@ -23,6 +23,8 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
         extends super.PointerTypeApi[NumberOfDimensions]
         with TypeApi { pointerType: PointerType[NumberOfDimensions] =>
 
+      type AffineTransform = Sized[Seq[Sized[Double, Succ[NumberOfDimensions]]], NumberOfDimensions]
+
       override def toCode(context: Context): Type.Code = {
         val element = context.get(elementType)
         Type.Code(
