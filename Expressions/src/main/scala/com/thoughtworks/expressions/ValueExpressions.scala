@@ -8,7 +8,11 @@ import com.thoughtworks.feature.Factory.inject
   */
 trait ValueExpressions extends Expressions {
 
+  trait ValueTypeApi extends TypeApi { this: ValueType =>
+    type JvmType
+  }
+
   /** @template */
-  type ValueType <: Type
+  type ValueType <: (Type with Any) with ValueTypeApi
 
 }

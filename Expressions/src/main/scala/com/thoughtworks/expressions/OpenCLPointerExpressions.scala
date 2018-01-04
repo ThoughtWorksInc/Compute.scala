@@ -1,6 +1,9 @@
 package com.thoughtworks.expressions
 
-import shapeless.Nat
+import com.dongxiguo.fastring.Fastring
+import com.dongxiguo.fastring.Fastring.Implicits._
+import shapeless.{Nat, Sized, Succ}
+
 import scala.language.higherKinds
 
 /**
@@ -8,9 +11,7 @@ import scala.language.higherKinds
   */
 trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpressions {
 
-  protected trait TypeApi
-      extends super[PointerExpressions].TypeApi
-      with super[OpenCLBooleanExpressions].TypeApi {
+  protected trait TypeApi extends super[PointerExpressions].TypeApi with super[OpenCLBooleanExpressions].TypeApi {
     this: Type =>
 
   }
@@ -24,9 +25,7 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
 
       override def toCode(context: Context): Type.Code = ???
 
-      protected trait TypedTermApi
-          extends super[TypeApi].TypedTermApi
-          with super[PointerTypeApi].TypedTermApi {
+      protected trait TypedTermApi extends super[TypeApi].TypedTermApi with super[PointerTypeApi].TypedTermApi {
         this: TypedTerm =>
       }
 

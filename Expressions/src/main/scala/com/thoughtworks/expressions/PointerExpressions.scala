@@ -13,7 +13,7 @@ import scala.language.higherKinds
   */
 trait PointerExpressions extends BooleanExpressions {
 
-  protected trait ValueTypeApi { elementType: ValueType =>
+  protected trait ValueTypeApi extends super.ValueTypeApi { elementType: ValueType =>
 
     protected trait PointerTypeApi[NumberOfDimensions <: Nat] extends TypeApi {
       pointerType: PointerType[NumberOfDimensions] =>
@@ -24,7 +24,7 @@ trait PointerExpressions extends BooleanExpressions {
 
       trait TypedTermApi extends TermApi with PointerTypeApi.super.TypedTermApi {
         this: TypedTerm =>
-        def isOutOfBound: boolean.TypedTerm = ???
+        def isOutOfBound: BooleanTerm = ???
 
         def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation]): elementType.TypedTerm = {
           Dereference(this)

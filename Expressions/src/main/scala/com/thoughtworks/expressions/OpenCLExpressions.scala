@@ -162,6 +162,10 @@ ${exportedFunctions.mkFastring}
 
     trait Accessor {
       def packed: Fastring
+
+      // TODO: remove unpacked.
+      // unpacked is designed to support weak type check.
+      // We don't need it as we have strong type system.
       def unpacked: Seq[String]
     }
 

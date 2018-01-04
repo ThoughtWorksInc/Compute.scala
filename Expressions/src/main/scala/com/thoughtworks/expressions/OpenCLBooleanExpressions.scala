@@ -5,7 +5,7 @@ package com.thoughtworks.expressions
   */
 trait OpenCLBooleanExpressions extends OpenCLExpressions with BooleanExpressions {
 
-  protected trait BooleanTypeApi extends TypeApi { this: ValueType =>
+  protected trait BooleanTypeApi extends super.BooleanTypeApi { this: BooleanType =>
     override def toCode(context: Context): Type.Code =
       Type.Code(accessor = Type.Accessor.Atom("bool"))
 
