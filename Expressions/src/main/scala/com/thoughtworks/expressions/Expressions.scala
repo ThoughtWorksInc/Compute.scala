@@ -1,8 +1,7 @@
 package com.thoughtworks.expressions
 
 import com.thoughtworks.expressions.Anonymous.Implicitly
-import com.thoughtworks.feature.Factory
-import com.thoughtworks.feature.Factory.{Factory1, inject}
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
 
 /**
   * @author 杨博 (Yang Bo)
@@ -13,7 +12,7 @@ trait Expressions {
   val debuggingInformation: Implicitly[DebuggingInformation]
 
   object Operator0 {
-    implicit def operator0[Out](implicit factory: Factory1[DebuggingInformation, Out]): Operator0[Out] =
+    implicit def operator0[Out](implicit factory: Factory1[Implicitly[DebuggingInformation], Out]): Operator0[Out] =
       new Operator0[Out] {
         def apply()(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out = {
           factory.newInstance(debuggingInformation)
@@ -27,7 +26,7 @@ trait Expressions {
 
   object Operator1 {
     implicit def operator1[Operand0, Out](
-        implicit factory: Factory.Factory2[DebuggingInformation, Operand0, Out]): Operator1[Operand0, Out] =
+        implicit factory: Factory2[Implicitly[DebuggingInformation], Operand0, Out]): Operator1[Operand0, Out] =
       new Operator1[Operand0, Out] {
         def apply(operand0: Operand0)(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out = {
           factory.newInstance(debuggingInformation, operand0)
@@ -36,7 +35,7 @@ trait Expressions {
   }
 
   trait Operator1[Operand0, Out] {
-    def apply(operand0: Operand0)(implicit debugging: Implicitly[DebuggingInformation]): Out
+    def apply(operand0: Operand0)(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out
   }
 
   /** @template */
