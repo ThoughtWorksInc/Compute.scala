@@ -1,7 +1,7 @@
 package com.thoughtworks.expressions
 
 import com.thoughtworks.expressions.Anonymous.Implicitly
-import com.thoughtworks.feature.{Factory, ImplicitApply}
+import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.{Factory1, inject}
 
 /**
@@ -49,7 +49,7 @@ trait Expressions {
   type Expression <: ExpressionApi
 
   protected trait TermApi {
-    val dslType: DslType
+    val dslType: Type
   }
 
   /** @template */
@@ -59,14 +59,14 @@ trait Expressions {
   protected type TermCompanion <: AnyRef
 
   @inject
-  protected def TermCompanion: Factory.Factory0[TermCompanion]
+  protected def TermCompanion(): Implicitly[TermCompanion]
 
-  val Term: TermCompanion = TermCompanion.newInstance()
+  val Term: TermCompanion = TermCompanion()
 
-  protected trait DslTypeApi extends ExpressionApi { this: DslType =>
+  protected trait TypeApi extends ExpressionApi { this: Type =>
 
     trait TypedTermApi extends TermApi {
-      val dslType: DslTypeApi.this.type = DslTypeApi.this
+      val dslType: TypeApi.this.type = TypeApi.this
     }
 
     type TypedTerm <: (Term with Any) with TypedTermApi
@@ -83,14 +83,14 @@ trait Expressions {
   }
 
   /** @template */
-  type DslType <: (Expression with Any) with DslTypeApi // TODO: Rename to Type
+  type Type <: (Expression with Any) with TypeApi // TODO: Rename to Type
 
   /** @template */
-  protected type DslTypeCompanion <: AnyRef // TODO: Rename to TypeCompanion
+  protected type TypeCompanion <: AnyRef // TODO: Rename to TypeCompanion
 
   @inject
-  protected def DslTypeCompanion: Factory.Factory0[DslTypeCompanion]
+  protected def TypeCompanion(): Implicitly[TypeCompanion]
 
-  val DslType: DslTypeCompanion = DslTypeCompanion.newInstance()
+  val Type: TypeCompanion = TypeCompanion()
 
 }

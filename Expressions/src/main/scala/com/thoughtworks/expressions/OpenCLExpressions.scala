@@ -28,7 +28,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 //                          localDefinitions: Fastring = Fastring.empty,
 //                          statements: Fastring = Fastring.empty)
 //
-//    final case class Update(buffer: Term, index: Term, value: Term, valueType: DslType)
+//    final case class Update(buffer: Term, index: Term, value: Term, valueType: Type)
 //        extends DslEffect {
 //      override def toCode(context: Context): Code = {
 //        val valueName = context.freshName("update")
@@ -49,7 +49,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
     val globalDeclarations = mutable.Buffer.empty[Fastring]
     val globalDefinitions = mutable.Buffer.empty[Fastring]
-    val typeCodeCache = mutable.HashMap.empty[DslType, DslType.Accessor]
+    val typeCodeCache = mutable.HashMap.empty[Type, Type.Accessor]
 
     val exportedFunctions = for {
       ShaderDefinition(functionName, parameters, rhs) <- shaders
@@ -60,7 +60,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
       val expressionCodeCache = new IdentityHashMap[Term, Term.Accessor]().asScala
       val functionContext = new Context {
 
-        override def get(dslType: DslType): DslType.Accessor = {
+        override def get(dslType: Type): Type.Accessor = {
           typeCodeCache.getOrElseUpdate(dslType, {
             val code = dslType.toCode(this)
             globalDeclarations += code.globalDeclarations
@@ -109,7 +109,7 @@ ${exportedFunctions.mkFastring}
 
   trait Context {
     def get(dslFunction: Term): Term.Accessor
-    def get(dslType: DslType): DslType.Accessor
+    def get(dslType: Type): Type.Accessor
   }
 
   protected type TermCompanion <: TermCompanionApi
@@ -158,7 +158,7 @@ ${exportedFunctions.mkFastring}
 
   type Term <: (Expression with Any) with TermApi
 
-  protected trait DslTypeCompanionApi {
+  protected trait TypeCompanionApi {
 
     trait Accessor {
       def packed: Fastring
@@ -183,11 +183,11 @@ ${exportedFunctions.mkFastring}
                           accessor: Accessor)
 
   }
-  protected type DslTypeCompanion <: DslTypeCompanionApi
+  protected type TypeCompanion <: TypeCompanionApi
 
-  protected trait DslTypeApi extends super.DslTypeApi { this: DslType =>
+  protected trait TypeApi extends super.TypeApi { this: Type =>
 
-    def toCode(context: Context): DslType.Code
+    def toCode(context: Context): Type.Code
 
     protected trait TypedTermApi extends TermApi with super.TypedTermApi {}
 
@@ -206,6 +206,6 @@ ${exportedFunctions.mkFastring}
     }
   }
 
-  type DslType <: (Expression with Any) with DslTypeApi
+  type Type <: (Expression with Any) with TypeApi
 
 }

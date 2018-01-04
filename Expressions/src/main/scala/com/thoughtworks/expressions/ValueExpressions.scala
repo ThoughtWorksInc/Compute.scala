@@ -9,6 +9,6 @@ import com.thoughtworks.feature.Factory.inject
 trait ValueExpressions extends Expressions {
 
   /** @template */
-  type ValueType <: DslType
+  type ValueType <: Type
 
 }

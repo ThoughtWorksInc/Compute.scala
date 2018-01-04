@@ -8,24 +8,24 @@ import scala.language.higherKinds
   */
 trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpressions {
 
-  protected trait DslTypeApi
-      extends super[PointerExpressions].DslTypeApi
-      with super[OpenCLBooleanExpressions].DslTypeApi {
-    this: DslType =>
+  protected trait TypeApi
+      extends super[PointerExpressions].TypeApi
+      with super[OpenCLBooleanExpressions].TypeApi {
+    this: Type =>
 
   }
 
-  type DslType <: (Expression with Any) with DslTypeApi
-  trait ValueTypeApi extends DslTypeApi with super.ValueTypeApi { elementType: ValueType =>
+  type Type <: (Expression with Any) with TypeApi
+  trait ValueTypeApi extends TypeApi with super.ValueTypeApi { elementType: ValueType =>
 
     protected trait PointerTypeApi[NumberOfDimensions <: Nat]
         extends super.PointerTypeApi[NumberOfDimensions]
-        with DslTypeApi { pointerType: PointerType[NumberOfDimensions] =>
+        with TypeApi { pointerType: PointerType[NumberOfDimensions] =>
 
-      override def toCode(context: Context): DslType.Code = ???
+      override def toCode(context: Context): Type.Code = ???
 
       protected trait TypedTermApi
-          extends super[DslTypeApi].TypedTermApi
+          extends super[TypeApi].TypedTermApi
           with super[PointerTypeApi].TypedTermApi {
         this: TypedTerm =>
       }
@@ -41,9 +41,9 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
 
     }
 
-    type PointerType[NumberOfDimensions <: Nat] <: (DslType with Any) with PointerTypeApi[NumberOfDimensions]
+    type PointerType[NumberOfDimensions <: Nat] <: (Type with Any) with PointerTypeApi[NumberOfDimensions]
 
   }
-  type ValueType <: (DslType with Any) with ValueTypeApi
+  type ValueType <: (Type with Any) with ValueTypeApi
 
 }

@@ -41,10 +41,4 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   }
 
-  // TODO: Don't use GetGlobalId, use TheNet instead
-  // TODO: Use ShaderDefinition instead of ShaderDefinition
-  // ShaderDefinition("my_kernel", Seq(Parameter(x, DslFloat)), Seq(DslEffect(DslEffect.Update(x))))
-
-  //  hyperparameters.Dsl
-
 }

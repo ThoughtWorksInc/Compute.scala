@@ -15,7 +15,7 @@ trait PointerExpressions extends BooleanExpressions {
 
   protected trait ValueTypeApi { elementType: ValueType =>
 
-    protected trait PointerTypeApi[NumberOfDimensions <: Nat] extends DslTypeApi {
+    protected trait PointerTypeApi[NumberOfDimensions <: Nat] extends TypeApi {
       pointerType: PointerType[NumberOfDimensions] =>
       @inject
       protected def witnessNumberOfDimensions: Witness.Aux[NumberOfDimensions]
@@ -46,7 +46,7 @@ trait PointerExpressions extends BooleanExpressions {
     }
 
     /** @template */
-    type PointerType[NumberOfDimensions <: Nat] <: (DslType with Any) with PointerTypeApi[NumberOfDimensions]
+    type PointerType[NumberOfDimensions <: Nat] <: (Type with Any) with PointerTypeApi[NumberOfDimensions]
     @inject
     def pointer1dFactory: Factory1[DebuggingInformation, PointerType[_1]]
 
@@ -71,6 +71,6 @@ trait PointerExpressions extends BooleanExpressions {
 
   }
 
-  type ValueType <: (DslType with Any) with ValueTypeApi
+  type ValueType <: (Type with Any) with ValueTypeApi
 
 }
