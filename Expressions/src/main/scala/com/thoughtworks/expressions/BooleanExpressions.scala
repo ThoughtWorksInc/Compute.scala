@@ -8,7 +8,7 @@ import com.thoughtworks.feature.Factory.{Factory1, inject}
   */
 trait BooleanExpressions extends ValueExpressions {
 
-  trait BooleanTypeApi extends ValueTypeApi { this: BooleanType =>
+  protected trait BooleanTypeApi extends ValueTypeApi { this: BooleanType =>
     type JvmType = Boolean
   }
 

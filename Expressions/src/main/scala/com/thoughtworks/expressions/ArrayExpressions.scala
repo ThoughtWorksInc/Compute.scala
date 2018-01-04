@@ -5,6 +5,8 @@ import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
 import shapeless.{Lazy, Nat, Sized, Witness}
 import shapeless.nat._
+import shapeless.ops.nat.ToInt
+import shapeless.syntax.inject
 
 import scala.language.higherKinds
 
@@ -17,19 +19,22 @@ trait ArrayExpressions extends BooleanExpressions {
 
     protected trait ArrayTypeApi[NumberOfDimensions <: Nat] extends TypeApi {
       arrayType: ArrayType[NumberOfDimensions] =>
+
+      val operand0: Sized[IndexedSeq[Int], NumberOfDimensions]
+
       @inject
-      protected def witnessNumberOfDimensions: Witness.Aux[NumberOfDimensions]
+      protected def numberOfDimensionsToInt: ToInt[NumberOfDimensions]
 
-      final def numberOfDimensions: NumberOfDimensions = witnessNumberOfDimensions.value
+      final def numberOfDimensions: Int = numberOfDimensionsToInt()
 
-      trait TypedTermApi extends TermApi with ArrayTypeApi.super.TypedTermApi {
+      protected trait TypedTermApi extends TermApi with ArrayTypeApi.super.TypedTermApi {
         this: TypedTerm =>
         def isOutOfBound: BooleanTerm = ???
 
         def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation]): elementType.TypedTerm = {
           Dereference(this)
         }
-        def +(offset: Sized[Seq[Int], NumberOfDimensions]): TypedTerm = ???
+        def +(offset: Sized[IndexedSeq[Int], NumberOfDimensions]): TypedTerm = ???
 
       }
 
@@ -47,26 +52,41 @@ trait ArrayExpressions extends BooleanExpressions {
 
     /** @template */
     type ArrayType[NumberOfDimensions <: Nat] <: (Type with Any) with ArrayTypeApi[NumberOfDimensions]
-    @inject
-    def array1dFactory: Factory1[DebuggingInformation, ArrayType[_1]]
-
-    val array1d: ArrayType[_1] = array1dFactory.newInstance(debuggingInformation)
 
     @inject
-    def array2dFactory: Factory1[DebuggingInformation, ArrayType[_2]]
+    protected def array1dFactory: Factory2[Implicitly[DebuggingInformation], Sized[IndexedSeq[Int], _1], ArrayType[_1]]
 
-    val array2d: ArrayType[_2] = array2dFactory.newInstance(debuggingInformation)
+    val array1d = Operator1.operator1(array1dFactory)
 
     @inject
-    def array3dFactory: Factory1[DebuggingInformation, ArrayType[_3]]
+    protected def array2dFactory: Factory2[Implicitly[DebuggingInformation], Sized[IndexedSeq[Int], _2], ArrayType[_2]]
 
-    val array3d: ArrayType[_3] = array3dFactory.newInstance(debuggingInformation)
+    val array2d = Operator1.operator1(array2dFactory)
 
-    final def array[NumberOfDimensions <: Nat](
-        implicit factory: Factory.Lt[ArrayType[NumberOfDimensions],
-                                     (DebuggingInformation, this.type) => ArrayType[NumberOfDimensions]])
-      : ArrayType[NumberOfDimensions] = {
-      factory.newInstance(debuggingInformation, this)
+    @inject
+    protected def array3dFactory: Factory2[Implicitly[DebuggingInformation], Sized[IndexedSeq[Int], _3], ArrayType[_3]]
+
+    /**
+      * @note I hope we can inject array3d directly:
+      *       {{{
+      *       @inject
+      *       val array3d: Operator1[Sized[IndexedSeq[Int], shapeless.nat._3], ArrayType[shapeless.nat._3]]
+      *       }}}
+      *       However, the above code does not compile on Scala 2.12.4 and 2.11.12 .
+      *
+      *       As a workaround, we inject an [[array3dFactory]] instead, then manually creates this [[array3d]]
+      */
+    val array3d = Operator1.operator1(array3dFactory)
+
+    // TODO: I don't like the injected `ToInt`. It's better to create a path-dependent type based Nat instead.
+    @inject
+    def arrayFactory[NumberOfDimensions <: Nat: ToInt]: Factory2[Implicitly[DebuggingInformation],
+                                                                 Sized[IndexedSeq[Int], NumberOfDimensions],
+                                                                 ArrayType[NumberOfDimensions]]
+
+    def array[NumberOfDimensions <: Nat: ToInt](dimensions: Sized[IndexedSeq[Int], NumberOfDimensions])(
+        implicit debuggingInformation: Implicitly[DebuggingInformation]) = {
+      arrayFactory[NumberOfDimensions].newInstance(debuggingInformation, dimensions)
     }
 
   }

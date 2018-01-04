@@ -17,13 +17,13 @@ trait OpenCLArrayExpressions extends ArrayExpressions with OpenCLBooleanExpressi
   }
 
   type Type <: (Expression with Any) with TypeApi
-  trait ValueTypeApi extends TypeApi with super.ValueTypeApi { elementType: ValueType =>
+  protected trait ValueTypeApi extends TypeApi with super.ValueTypeApi { elementType: ValueType =>
 
     protected trait ArrayTypeApi[NumberOfDimensions <: Nat]
         extends super.ArrayTypeApi[NumberOfDimensions]
         with TypeApi { arrayType: ArrayType[NumberOfDimensions] =>
 
-      type AffineTransform = Sized[Seq[Sized[Double, Succ[NumberOfDimensions]]], NumberOfDimensions]
+      type AffineTransform = Sized[IndexedSeq[Sized[Double, Succ[NumberOfDimensions]]], NumberOfDimensions]
 
       override def toCode(context: Context): Type.Code = {
         val element = context.get(elementType)

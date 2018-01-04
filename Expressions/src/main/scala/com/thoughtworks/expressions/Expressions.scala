@@ -2,6 +2,7 @@ package com.thoughtworks.expressions
 
 import com.thoughtworks.expressions.Anonymous.Implicitly
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
+import shapeless.Lazy
 
 /**
   * @author 杨博 (Yang Bo)
@@ -64,7 +65,7 @@ trait Expressions {
 
   protected trait TypeApi extends ExpressionApi { this: Type =>
 
-    trait TypedTermApi extends TermApi {
+    protected trait TypedTermApi extends TermApi {
       val `type`: TypeApi.this.type = TypeApi.this
     }
 

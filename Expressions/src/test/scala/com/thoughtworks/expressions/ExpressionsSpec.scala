@@ -2,6 +2,7 @@ package com.thoughtworks.expressions
 
 import org.scalatest._
 import com.thoughtworks.feature.Factory
+import shapeless.Sized
 import shapeless.nat._
 
 /**
@@ -26,13 +27,13 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "id" ignore {
 
-    val hyperparameters = {
-      Factory[BuiltIns].newInstance()
-    }
+    val hyperparameters = Factory[BuiltIns].newInstance()
 
     import hyperparameters._
 
-    val x: float.array3d.Identifier = float.array3d.Identifier()
+    val floatArray3d = float.array(Sized(32, 32, 32))
+
+    val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
     val shader = ShaderDefinition("id", Seq(x), x.dereference)
     val sourceCode = generateSourceCode(shader).mkString

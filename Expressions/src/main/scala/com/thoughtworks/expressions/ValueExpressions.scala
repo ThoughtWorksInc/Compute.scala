@@ -8,7 +8,7 @@ import com.thoughtworks.feature.Factory.inject
   */
 trait ValueExpressions extends Expressions {
 
-  trait ValueTypeApi extends TypeApi { this: ValueType =>
+  protected trait ValueTypeApi extends TypeApi { this: ValueType =>
     type JvmType
   }
 
