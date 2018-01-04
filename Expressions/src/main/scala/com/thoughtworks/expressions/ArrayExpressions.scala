@@ -11,18 +11,18 @@ import scala.language.higherKinds
 /**
   * @author 杨博 (Yang Bo)
   */
-trait PointerExpressions extends BooleanExpressions {
+trait ArrayExpressions extends BooleanExpressions {
 
   protected trait ValueTypeApi extends super.ValueTypeApi { elementType: ValueType =>
 
-    protected trait PointerTypeApi[NumberOfDimensions <: Nat] extends TypeApi {
-      pointerType: PointerType[NumberOfDimensions] =>
+    protected trait ArrayTypeApi[NumberOfDimensions <: Nat] extends TypeApi {
+      arrayType: ArrayType[NumberOfDimensions] =>
       @inject
       protected def witnessNumberOfDimensions: Witness.Aux[NumberOfDimensions]
 
       final def numberOfDimensions: NumberOfDimensions = witnessNumberOfDimensions.value
 
-      trait TypedTermApi extends TermApi with PointerTypeApi.super.TypedTermApi {
+      trait TypedTermApi extends TermApi with ArrayTypeApi.super.TypedTermApi {
         this: TypedTerm =>
         def isOutOfBound: BooleanTerm = ???
 
@@ -46,26 +46,26 @@ trait PointerExpressions extends BooleanExpressions {
     }
 
     /** @template */
-    type PointerType[NumberOfDimensions <: Nat] <: (Type with Any) with PointerTypeApi[NumberOfDimensions]
+    type ArrayType[NumberOfDimensions <: Nat] <: (Type with Any) with ArrayTypeApi[NumberOfDimensions]
     @inject
-    def pointer1dFactory: Factory1[DebuggingInformation, PointerType[_1]]
+    def array1dFactory: Factory1[DebuggingInformation, ArrayType[_1]]
 
-    val pointer1d: PointerType[_1] = pointer1dFactory.newInstance(debuggingInformation)
-
-    @inject
-    def pointer2dFactory: Factory1[DebuggingInformation, PointerType[_2]]
-
-    val pointer2d: PointerType[_2] = pointer2dFactory.newInstance(debuggingInformation)
+    val array1d: ArrayType[_1] = array1dFactory.newInstance(debuggingInformation)
 
     @inject
-    def pointer3dFactory: Factory1[DebuggingInformation, PointerType[_3]]
+    def array2dFactory: Factory1[DebuggingInformation, ArrayType[_2]]
 
-    val pointer3d: PointerType[_3] = pointer3dFactory.newInstance(debuggingInformation)
+    val array2d: ArrayType[_2] = array2dFactory.newInstance(debuggingInformation)
 
-    final def pointer[NumberOfDimensions <: Nat](
-        implicit factory: Factory.Lt[PointerType[NumberOfDimensions],
-                                     (DebuggingInformation, this.type) => PointerType[NumberOfDimensions]])
-      : PointerType[NumberOfDimensions] = {
+    @inject
+    def array3dFactory: Factory1[DebuggingInformation, ArrayType[_3]]
+
+    val array3d: ArrayType[_3] = array3dFactory.newInstance(debuggingInformation)
+
+    final def array[NumberOfDimensions <: Nat](
+        implicit factory: Factory.Lt[ArrayType[NumberOfDimensions],
+                                     (DebuggingInformation, this.type) => ArrayType[NumberOfDimensions]])
+      : ArrayType[NumberOfDimensions] = {
       factory.newInstance(debuggingInformation, this)
     }
 

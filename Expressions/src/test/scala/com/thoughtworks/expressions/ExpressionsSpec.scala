@@ -32,7 +32,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     import hyperparameters._
 
-    val x: float.pointer3d.Identifier = float.pointer3d.Identifier()
+    val x: float.array3d.Identifier = float.array3d.Identifier()
 
     val shader = ShaderDefinition("id", Seq(x), x.dereference)
     val sourceCode = generateSourceCode(shader).mkString

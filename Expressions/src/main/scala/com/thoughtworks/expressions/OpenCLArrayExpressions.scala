@@ -9,9 +9,9 @@ import scala.language.higherKinds
 /**
   * @author 杨博 (Yang Bo)
   */
-trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpressions {
+trait OpenCLArrayExpressions extends ArrayExpressions with OpenCLBooleanExpressions {
 
-  protected trait TypeApi extends super[PointerExpressions].TypeApi with super[OpenCLBooleanExpressions].TypeApi {
+  protected trait TypeApi extends super[ArrayExpressions].TypeApi with super[OpenCLBooleanExpressions].TypeApi {
     this: Type =>
 
   }
@@ -19,9 +19,9 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
   type Type <: (Expression with Any) with TypeApi
   trait ValueTypeApi extends TypeApi with super.ValueTypeApi { elementType: ValueType =>
 
-    protected trait PointerTypeApi[NumberOfDimensions <: Nat]
-        extends super.PointerTypeApi[NumberOfDimensions]
-        with TypeApi { pointerType: PointerType[NumberOfDimensions] =>
+    protected trait ArrayTypeApi[NumberOfDimensions <: Nat]
+        extends super.ArrayTypeApi[NumberOfDimensions]
+        with TypeApi { arrayType: ArrayType[NumberOfDimensions] =>
 
       type AffineTransform = Sized[Seq[Sized[Double, Succ[NumberOfDimensions]]], NumberOfDimensions]
 
@@ -35,7 +35,7 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
 
       }
 
-      protected trait TypedTermApi extends super[TypeApi].TypedTermApi with super[PointerTypeApi].TypedTermApi {
+      protected trait TypedTermApi extends super[TypeApi].TypedTermApi with super[ArrayTypeApi].TypedTermApi {
         this: TypedTerm =>
       }
 
@@ -50,7 +50,7 @@ trait OpenCLPointerExpressions extends PointerExpressions with OpenCLBooleanExpr
 
     }
 
-    type PointerType[NumberOfDimensions <: Nat] <: (Type with Any) with PointerTypeApi[NumberOfDimensions]
+    type ArrayType[NumberOfDimensions <: Nat] <: (Type with Any) with ArrayTypeApi[NumberOfDimensions]
 
   }
   type ValueType <: (Type with Any) with ValueTypeApi
