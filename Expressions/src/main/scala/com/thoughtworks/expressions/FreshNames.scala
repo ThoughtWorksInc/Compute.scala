@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
   * @author 杨博 (Yang Bo)
   */
-trait FreshNames extends Names {
+trait FreshNames extends Debugging {
 
   protected val freshNameSeed = new AtomicInteger()
 
