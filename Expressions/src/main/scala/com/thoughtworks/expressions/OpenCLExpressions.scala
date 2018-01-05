@@ -41,9 +41,9 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
             globalDeclarations += code.globalDeclarations
             globalDefinitions += code.globalDefinitions
             code.accessor
-
           })
         }
+
         override def get(expression: Term): Term.Accessor = {
           expressionCodeCache.getOrElseUpdate(
             expression, {
