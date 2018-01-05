@@ -1,7 +1,7 @@
 package com.thoughtworks.expressions
 
 import com.thoughtworks.expressions.Anonymous.Implicitly
-import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 import shapeless.Lazy
 
 /**
@@ -37,6 +37,23 @@ trait Expressions {
 
   trait Operator1[Operand0, Out] {
     def apply(operand0: Operand0)(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out
+  }
+
+  object Operator2 {
+    implicit def operator2[Operand0, Operand1, Out](
+        implicit factory: Factory3[Implicitly[DebuggingInformation], Operand0, Operand1, Out])
+      : Operator2[Operand0, Operand1, Out] =
+      new Operator2[Operand0, Operand1, Out] {
+        def apply(operand0: Operand0, operand1: Operand1)(
+            implicit debuggingInformation: Implicitly[DebuggingInformation]): Out = {
+          factory.newInstance(debuggingInformation, operand0, operand1)
+        }
+      }
+  }
+
+  trait Operator2[Operand0, Operand1, Out] {
+    def apply(operand0: Operand0, operand1: Operand1)(
+        implicit debuggingInformation: Implicitly[DebuggingInformation]): Out
   }
 
   /** @template */

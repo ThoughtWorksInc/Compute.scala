@@ -2,7 +2,7 @@ package com.thoughtworks.expressions
 
 import org.scalatest._
 import com.thoughtworks.feature.Factory
-import shapeless.Sized
+import shapeless.{Sized, Witness}
 import shapeless.nat._
 
 /**
@@ -30,11 +30,11 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     import hyperparameters._
 
-    val floatArray3d = float.array(Sized(32, 32, 32))
+    val floatArray3d = float.array(32, 32, 32)
 
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
-    val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), x.dereference).mkString
+    val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), x.extract).mkString
 
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 

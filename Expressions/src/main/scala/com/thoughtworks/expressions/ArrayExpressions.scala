@@ -3,9 +3,6 @@ package com.thoughtworks.expressions
 import com.thoughtworks.expressions.Anonymous.Implicitly
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
-import shapeless.{Lazy, Nat, Sized, Witness}
-import shapeless.nat._
-import shapeless.ops.nat.ToInt
 
 import scala.language.higherKinds
 
@@ -16,76 +13,57 @@ trait ArrayExpressions extends BooleanExpressions {
 
   protected trait ValueTypeApi extends super.ValueTypeApi { elementType: ValueType =>
 
-    protected trait ArrayTypeApi[NumberOfDimensions <: Nat] extends TypeApi {
-      arrayType: ArrayType[NumberOfDimensions] =>
+    protected trait ArrayTypeApi extends TypeApi {
+      arrayType: ArrayType =>
 
-      val shape: Sized[IndexedSeq[Int], NumberOfDimensions]
-
-      @inject
-      implicit protected def numberOfDimensionsToInt: ToInt[NumberOfDimensions]
-
-      final def numberOfDimensions: Int = numberOfDimensionsToInt()
+      val operand0: Seq[Int]
+      def shape: Seq[Int] = operand0
 
       protected trait TypedTermApi extends TermApi with ArrayTypeApi.super.TypedTermApi {
         this: TypedTerm =>
         def isOutOfBound: BooleanTerm = ???
 
-        def dereference(implicit debuggingInformation: Implicitly[DebuggingInformation]): elementType.TypedTerm = {
-          Dereference(this)
+        def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): elementType.TypedTerm = {
+          Extract(this)
         }
-        def +(offset: Sized[IndexedSeq[Int], NumberOfDimensions]): TypedTerm = ???
 
       }
 
-      type TypedTerm <: (Term with Any) with TypedTermApi
+      type TypedTerm <: (ArrayTerm with Any) with TypedTermApi
 
-      protected trait DereferenceApi {
+      protected trait ExtractApi {
         val operand0: TypedTerm
       }
 
-      type Dereference <: elementType.TypedTerm with DereferenceApi
+      type Extract <: elementType.TypedTerm with ExtractApi
 
       @inject
-      def Dereference: Operator1[TypedTerm, Dereference]
+      def Extract: Operator1[TypedTerm, Extract]
+
+//      FIXME: Transform 的类型应该怎么定义
+//      trait TransformApi { this: Transform =>
+//        val operand0: ArrayTerm
+//        val operand1: Array[Array[Int]]
+//      }
+//
+//      type Transform <: TypedTerm with TransformApi
+//      @inject
+//      def Transform: Operator2[ArrayTerm, Array[Array[Int]], Transform]
+
     }
 
+    trait ArrayTermApi {}
+
+    type ArrayTerm <: (Term with Any) with ArrayTermApi
+
     /** @template */
-    type ArrayType[NumberOfDimensions <: Nat] <: (Type with Any) with ArrayTypeApi[NumberOfDimensions]
+    type ArrayType <: (Type with Any) with ArrayTypeApi
 
     @inject
-    protected def array1dFactory: Factory2[Implicitly[DebuggingInformation], Sized[IndexedSeq[Int], _1], ArrayType[_1]]
+    def arrayFactory: Factory2[Implicitly[DebuggingInformation], Seq[Int], ArrayType]
 
-    val array1d = Operator1.operator1(array1dFactory)
-
-    @inject
-    protected def array2dFactory: Factory2[Implicitly[DebuggingInformation], Sized[IndexedSeq[Int], _2], ArrayType[_2]]
-
-    val array2d = Operator1.operator1(array2dFactory)
-
-    @inject
-    protected def array3dFactory: Factory2[Implicitly[DebuggingInformation], Sized[IndexedSeq[Int], _3], ArrayType[_3]]
-
-    /**
-      * @note I hope we can inject this [[array3d]] directly:
-      *       {{{
-      *       @inject
-      *       val array3d: Operator1[Sized[IndexedSeq[Int], shapeless.nat._3], ArrayType[shapeless.nat._3]]
-      *       }}}
-      *       However, the above code does not compile on Scala 2.12.4 and 2.11.12 .
-      *
-      *       As a workaround, we inject an [[array3dFactory]] instead, then manually creates this [[array3d]]
-      */
-    val array3d = Operator1.operator1(array3dFactory)
-
-    // TODO: I don't like the injected `ToInt`. It's better to create a path-dependent type based Nat instead.
-    @inject
-    def arrayFactory[NumberOfDimensions <: Nat: ToInt]: Factory2[Implicitly[DebuggingInformation],
-                                                                 Sized[IndexedSeq[Int], NumberOfDimensions],
-                                                                 ArrayType[NumberOfDimensions]]
-
-    def array[NumberOfDimensions <: Nat: ToInt](dimensions: Sized[IndexedSeq[Int], NumberOfDimensions])(
-        implicit debuggingInformation: Implicitly[DebuggingInformation]) = {
-      arrayFactory[NumberOfDimensions].newInstance(debuggingInformation, dimensions)
+    def array(dimensions: Int*)(implicit debuggingInformation: Implicitly[DebuggingInformation]) = {
+      arrayFactory.newInstance(debuggingInformation, dimensions)
     }
 
   }

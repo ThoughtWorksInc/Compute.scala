@@ -12,6 +12,8 @@ libraryDependencies += "com.lihaoyi" %% "sourcecode" % "0.1.4"
 
 libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.5"
 
+libraryDependencies += "org.apache.commons" % "commons-math3" % "3.6.1"
+
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % Test
 
 scalacOptions += "-Xexperimental"
