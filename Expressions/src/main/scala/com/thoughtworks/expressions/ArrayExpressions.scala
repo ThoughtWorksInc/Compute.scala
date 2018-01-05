@@ -19,10 +19,10 @@ trait ArrayExpressions extends BooleanExpressions {
     protected trait ArrayTypeApi[NumberOfDimensions <: Nat] extends TypeApi {
       arrayType: ArrayType[NumberOfDimensions] =>
 
-      val operand0: Sized[IndexedSeq[Int], NumberOfDimensions]
+      val shape: Sized[IndexedSeq[Int], NumberOfDimensions]
 
       @inject
-      protected def numberOfDimensionsToInt: ToInt[NumberOfDimensions]
+      implicit protected def numberOfDimensionsToInt: ToInt[NumberOfDimensions]
 
       final def numberOfDimensions: Int = numberOfDimensionsToInt()
 
