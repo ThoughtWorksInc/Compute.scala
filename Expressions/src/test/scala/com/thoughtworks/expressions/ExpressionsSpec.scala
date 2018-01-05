@@ -19,8 +19,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     import hyperparameters._
 
     val x: float.Identifier = float.Identifier()
-    val shader = ShaderDefinition("fill", Seq(x), x)
-    val sourceCode = generateSourceCode(shader).mkString
+    val sourceCode = generateOpenCLKernelSourceCode("fill", Seq(x), x).mkString
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 
   }
@@ -35,8 +34,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
-    val shader = ShaderDefinition("id", Seq(x), x.dereference)
-    val sourceCode = generateSourceCode(shader).mkString
+    val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), x.dereference).mkString
 
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 

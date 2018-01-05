@@ -8,6 +8,8 @@ import scala.collection.JavaConverters._
 import java.util.IdentityHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
+import shapeless.{Nat, Sized}
+
 /**
   * @author 杨博 (Yang Bo)
   */
@@ -18,17 +20,15 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
     def name: String
   }
 
-  final case class ShaderDefinition(name: String, parameters: Seq[Parameter], rhs: Term)
-
-  def generateSourceCode(shaders: ShaderDefinition*): Fastring = {
+  def generateOpenCLKernelSourceCode[NumberOfDimensions <: Nat](functionName: String,
+                                                                parameters: Seq[Parameter],
+                                                                rhs: Term): Fastring = {
 
     val globalDeclarations = mutable.Buffer.empty[Fastring]
     val globalDefinitions = mutable.Buffer.empty[Fastring]
     val typeCodeCache = mutable.HashMap.empty[Type, Type.Accessor]
 
-    val exportedFunctions = for {
-      ShaderDefinition(functionName, parameters, rhs) <- shaders
-    } yield {
+    val exportedFunction = {
 
       val localDefinitions = mutable.Buffer.empty[Fastring]
 
@@ -78,7 +78,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
     fastraw"""
 ${globalDeclarations.mkFastring}
 ${globalDefinitions.mkFastring}
-${exportedFunctions.mkFastring}
+${exportedFunction}
 """
   }
 
