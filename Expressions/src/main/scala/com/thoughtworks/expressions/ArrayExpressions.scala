@@ -6,7 +6,6 @@ import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
 import shapeless.{Lazy, Nat, Sized, Witness}
 import shapeless.nat._
 import shapeless.ops.nat.ToInt
-import shapeless.syntax.inject
 
 import scala.language.higherKinds
 
@@ -42,8 +41,8 @@ trait ArrayExpressions extends BooleanExpressions {
 
       protected trait DereferenceApi {
         val operand0: TypedTerm
-
       }
+
       type Dereference <: elementType.TypedTerm with DereferenceApi
 
       @inject
@@ -67,7 +66,7 @@ trait ArrayExpressions extends BooleanExpressions {
     protected def array3dFactory: Factory2[Implicitly[DebuggingInformation], Sized[IndexedSeq[Int], _3], ArrayType[_3]]
 
     /**
-      * @note I hope we can inject array3d directly:
+      * @note I hope we can inject this [[array3d]] directly:
       *       {{{
       *       @inject
       *       val array3d: Operator1[Sized[IndexedSeq[Int], shapeless.nat._3], ArrayType[shapeless.nat._3]]

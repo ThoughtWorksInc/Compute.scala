@@ -13,36 +13,6 @@ import java.util.concurrent.atomic.AtomicInteger
   */
 trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
-//  trait DslEffect {
-//
-//    def toCode(context: Context): DslEffect.Code
-//
-//  }
-
-//  object DslEffect {
-//
-//    type Statement = Fastring
-//
-//    final case class Code(globalDeclarations: Fastring = Fastring.empty,
-//                          globalDefinitions: Fastring = Fastring.empty,
-//                          localDefinitions: Fastring = Fastring.empty,
-//                          statements: Fastring = Fastring.empty)
-//
-//    final case class Update(buffer: Term, index: Term, value: Term, valueType: Type)
-//        extends DslEffect {
-//      override def toCode(context: Context): Code = {
-//        val valueName = context.freshName("update")
-//        Code(
-//          localDefinitions = fast"""
-//  ${context.get(valueType).packed} $valueName = ${context.get(value).packed};""",
-//          statements = fast"""
-//  ${context.get(buffer).packed}[${context.get(index).packed}] = $valueName;"""
-//        )
-//      }
-//    }
-//
-//  }
-
   trait Parameter {
     def `type`: Type
     def name: String
