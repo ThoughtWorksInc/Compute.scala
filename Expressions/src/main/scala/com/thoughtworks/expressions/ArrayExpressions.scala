@@ -13,6 +13,7 @@ trait ArrayExpressions extends BooleanExpressions {
 
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
 
+    // TODO: try to move to ArrayTypeApi
     protected trait ExtractApi extends TypedTermApi {
       val operand0: ArrayTerm { type ElementTerm = TypedTerm }
     }
