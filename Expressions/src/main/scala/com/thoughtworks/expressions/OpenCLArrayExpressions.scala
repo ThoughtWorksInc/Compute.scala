@@ -42,7 +42,7 @@ import scala.language.higherKinds
 /**
   * @author 杨博 (Yang Bo)
   */
-trait OpenCLArrayExpressions extends ArrayExpressions with OpenCLBooleanExpressions {
+trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressions {
 
   protected trait TypeApi extends super[ArrayExpressions].TypeApi with super[OpenCLBooleanExpressions].TypeApi {
     this: Type =>
@@ -50,47 +50,66 @@ trait OpenCLArrayExpressions extends ArrayExpressions with OpenCLBooleanExpressi
   }
 
   type Type <: (Expression with Any) with TypeApi
-  protected trait ValueTypeApi extends TypeApi with super.ValueTypeApi { elementType: ValueType =>
 
-    protected trait ArrayTypeApi
-        extends super.ArrayTypeApi
-        with TypeApi { arrayType: ArrayType =>
+  protected trait ValueTypeApi
+      extends super[ArrayExpressions].ValueTypeApi
+      with super[OpenCLBooleanExpressions].ValueTypeApi { elementType: ValueType =>
 
-      override def toCode(context: Context): Type.Code = {
-        val element = context.get(elementType)
-        Type.Code(
-          globalDeclarations = Fastring.empty,
-          globalDefinitions =
-            fast"typedef global ${element.packed} (* $name)${for (size <- arrayType.shape) yield fast"[$size]"};",
-          Type.Accessor.Atom(name)
+    protected trait ExtractApi extends super.ExtractApi {
+      def name: String
+      def toCode(context: Context): Term.Code = {
+//        val name = context.freshName("getElement")
+//        val typeReference = context.get(elementType)
+//        val packedType = typeReference.packed
+//        Code(
+//          localDefinitions = fastraw"""
+//  $packedType $name = ${context.get(operand0).packed}[${context.get(operand1).packed}];""",
+//          accessor = Packed(Fastring(name), typeReference.unpacked.length)
+//        )
+//        val name = freshName("extr")
+        val typeReference = context.get(elementType)
+        val packedType = typeReference.packed
+
+        val arrayTerm = operand0
+
+        // TODO: check boundary
+        val globalIndices = for {
+          i <- 0 until arrayTerm.`type`.shape.length
+        } yield fast"[get_global_id($i)]"
+        Term.Code(
+          localDefinitions = fastraw"""
+            $packedType $name = ${context.get(arrayTerm).packed}${globalIndices.mkFastring};
+          """,
+          accessor = Term.Accessor.Atom(fast"$name")
         )
       }
-
-      protected trait TypedTermApi extends ArrayTermApi with super[TypeApi].TypedTermApi with super[ArrayTypeApi].TypedTermApi {
-        this: TypedTerm =>
-//        def matrix: TransformationMatrix
-      }
-
-      type TypedTerm <: (ArrayTerm with Any) with TypedTermApi
-
-      protected trait ExtractApi extends super.ExtractApi with elementType.TypedTermApi {
-        this: elementType.TypedTerm =>
-        def toCode(context: Context): Term.Code = ???
-      }
-
-      type Extract <: (elementType.TypedTerm with Any) with ExtractApi
-
-      protected trait IdentifierApi extends super.IdentifierApi with TypedTermApi { this: Identifier =>
-//        def matrix: TransformationMatrix = TransformationMatrix.identity
-      }
-
-      type Identifier <: (TypedTerm with Any) with IdentifierApi
-
     }
 
-    type ArrayType <: (Type with Any) with ArrayTypeApi
+    type Extract <: (TypedTerm with Any) with ExtractApi
 
   }
+
   type ValueType <: (Type with Any) with ValueTypeApi
+
+  protected trait ArrayTypeApi extends super.ArrayTypeApi with TypeApi { arrayType: ArrayType =>
+
+    override def toCode(context: Context): Type.Code = {
+      val element = context.get(operand0)
+      Type.Code(
+        globalDefinitions =
+          fast"typedef global ${element.packed} (* $name)${for (size <- arrayType.shape) yield fast"[$size]"};",
+        accessor = Type.Accessor.Atom(name)
+      )
+    }
+
+    protected trait IdentifierApi extends super.IdentifierApi with TypedTermApi { this: Identifier =>
+//        def matrix: TransformationMatrix = TransformationMatrix.identity
+    }
+
+    type Identifier <: (TypedTerm with Any) with IdentifierApi
+
+  }
+
+  type ArrayType <: (Type with Any) with ArrayTypeApi
 
 }

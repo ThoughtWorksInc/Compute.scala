@@ -43,7 +43,8 @@ trait Expressions extends Debugging {
       new Operator2[Operand0, Operand1, Out] {
         def apply(operand0: Operand0, operand1: Operand1)(
             implicit debuggingInformation: Implicitly[DebuggingInformation]): Out = {
-          factory.newInstance(debuggingInformation, operand0, operand1)
+          val x = factory.newInstance(debuggingInformation, operand0, operand1)
+          x
         }
       }
   }

@@ -24,14 +24,13 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   }
 
-  "id" ignore {
+  "id" in {
 
     val hyperparameters = Factory[BuiltIns].newInstance()
 
     import hyperparameters._
 
-    val floatArray3d = float.array(32, 32, 32)
-
+    val floatArray3d = ArrayType(float, Seq(32, 32, 32))
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
     val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), x.extract).mkString
