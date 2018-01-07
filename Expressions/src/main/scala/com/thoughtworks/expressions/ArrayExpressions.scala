@@ -66,7 +66,7 @@ trait ArrayExpressions extends BooleanExpressions {
 
     def isOutOfBound: BooleanTerm = ???
 
-//    def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm
+    def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm
 
   }
 
