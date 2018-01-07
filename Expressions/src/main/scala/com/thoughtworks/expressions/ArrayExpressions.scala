@@ -18,10 +18,10 @@ trait ArrayExpressions extends BooleanExpressions {
       val operand0: ArrayTerm { type ElementTerm = TypedTerm }
     }
 
-    type Extract <: (TypedTerm with Any) with ExtractApi
+    type ExtractFromArray <: (TypedTerm with Any) with ExtractApi
 
     @inject
-    def Extract: Operator1[ArrayTerm { type ElementTerm = TypedTerm }, Extract]
+    def ExtractFromArray: Operator1[ArrayTerm { type ElementTerm = TypedTerm }, ExtractFromArray]
   }
 
   type ValueType <: (Type with Any) with ValueTypeApi
@@ -40,7 +40,7 @@ trait ArrayExpressions extends BooleanExpressions {
       type ElementTerm = arrayType.operand0.TypedTerm
 
       def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
-        arrayType.operand0.Extract(this)
+        arrayType.operand0.ExtractFromArray(this)
       }
     }
 

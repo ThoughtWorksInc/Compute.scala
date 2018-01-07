@@ -85,7 +85,7 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
       }
     }
 
-    type Extract <: (TypedTerm with Any) with ExtractApi
+    type ExtractFromArray <: (TypedTerm with Any) with ExtractApi
 
   }
 
