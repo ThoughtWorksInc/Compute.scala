@@ -13,59 +13,25 @@ trait ArrayExpressions extends BooleanExpressions {
 
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
 
-    // TODO: try to move to ArrayTypeApi
-    protected trait ExtractApi extends TypedTermApi {
-      val operand0: ArrayTerm { type ElementTerm = TypedTerm }
+    // TODO: try to move to ArrayBufferTypeApi
+    protected trait ExtractFromArrayBufferApi extends TypedTermApi {
+      protected val operand0: ArrayBufferTerm { type ElementTerm = TypedTerm }
     }
 
-    type ExtractFromArray <: (TypedTerm with Any) with ExtractApi
+    type ExtractFromArrayBuffer <: (TypedTerm with Any) with ExtractFromArrayBufferApi
 
     @inject
-    def ExtractFromArray: Operator1[ArrayTerm { type ElementTerm = TypedTerm }, ExtractFromArray]
+    val ExtractFromArrayBuffer: Factory2[DebuggingInformation,
+                                         ArrayBufferTerm { type ElementTerm = TypedTerm },
+                                         ExtractFromArrayBuffer]
+
   }
 
   type ValueType <: (Type with Any) with ValueTypeApi
 
-  protected trait ArrayTypeApi extends TypeApi {
-    arrayType: ArrayType =>
-
-    type ElementType <: ValueType
-
-    val operand0: ElementType
-    val operand1: Seq[Int]
-
-    def shape: Seq[Int] = operand1
-
-    trait TypedTermApi extends super.TypedTermApi with ArrayTermApi { this: TypedTerm =>
-      type ElementTerm = arrayType.operand0.TypedTerm
-
-      def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
-        arrayType.operand0.ExtractFromArray(this)
-      }
-    }
-
-    type TypedTerm <: (ArrayTerm with Any) with TypedTermApi
-    //      FIXME: Transform 的类型应该怎么定义
-//      trait TransformApi { this: Transform =>
-//        val operand0: ArrayTerm
-//        val operand1: Array[Array[Int]]
-//      }
-//
-//      type Transform <: TypedTerm with TransformApi
-//      @inject
-//      def Transform: Operator2[ArrayTerm, Array[Array[Int]], Transform]
-
-  }
-
-  trait ArrayTermApi { this: ArrayTerm =>
-
-    val `type`: ArrayType
-
-//    protected def asTypedTerm: `type`.TypedTerm
+  protected trait ArrayTermApi {
 
     type ElementTerm <: ValueTerm
-
-    def isOutOfBound: BooleanTerm = ???
 
     def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm
 
@@ -73,11 +39,57 @@ trait ArrayExpressions extends BooleanExpressions {
 
   type ArrayTerm <: (Term with Any) with ArrayTermApi
 
+  type ArrayType <: Type
+
+  protected trait ArrayBufferApi {
+    val `type`: ArrayBufferType
+  }
+
+  type ArrayBufferTerm <: (ArrayTerm with Any) with ArrayBufferApi
+
+  protected trait ArrayBufferTypeApi extends TypeApi {
+    arrayType: ArrayBufferType =>
+
+    type ElementType <: ValueType
+
+    protected val operand0: ElementType
+
+    protected val operand1: Seq[Int]
+    def shape: Seq[Int] = operand1
+
+    trait TypedTermApi extends super.TypedTermApi with ArrayTermApi { this: TypedTerm =>
+      type ElementTerm = arrayType.operand0.TypedTerm
+
+      def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
+        arrayType.operand0.ExtractFromArrayBuffer.newInstance(debuggingInformation, this)
+      }
+    }
+
+    type TypedTerm <: (ArrayBufferTerm with Any) with TypedTermApi
+
+  }
+
   /** @template */
-  type ArrayType <: (Type with Any) with ArrayTypeApi
+  type ArrayBufferType <: (ArrayType with Any) with ArrayBufferTypeApi
+
+  type ArrayViewTerm <: ArrayTerm
+
+  protected trait ArrayViewTypeApi {
+    //      FIXME: Transform 的类型应该怎么定义
+    //      trait TransformApi { this: Transform =>
+    //        val operand0: ArrayBufferTerm
+    //        val operand1: Array[Array[Int]]
+    //      }
+    //
+    //      type Transform <: TypedTerm with TransformApi
+    //      @inject
+    //      def Transform: Operator2[ArrayBufferTerm, Array[Array[Int]], Transform]
+
+  }
+  type ArrayViewType <: (ArrayType with Any) with ArrayViewTypeApi
 
   @inject
-  def ArrayType[ElementType0 <: ValueType]
-    : Operator2[ElementType0, Seq[Int], ArrayType { type ElementType = ElementType0 }]
+  def ArrayBufferType[ElementType0 <: ValueType]
+    : Operator2[ElementType0, Seq[Int], ArrayBufferType { type ElementType = ElementType0 }]
 
 }
