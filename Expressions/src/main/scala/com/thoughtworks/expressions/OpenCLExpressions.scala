@@ -193,4 +193,17 @@ ${exportedFunction}
 
   type Type <: (Expression with Any) with TypeApi
 
+  protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
+
+    protected trait LiteralTermApi extends super.LiteralTermApi {
+      def toCode(context: Context): Term.Code = {
+        Term.Code(accessor = Term.Accessor.Atom(fast"${operand0.toString}"))
+      }
+    }
+    type LiteralTerm <: (TypedTerm with Any) with LiteralTermApi
+  }
+
+  /** @template */
+  type ValueType <: (Type with Any) with ValueTypeApi
+
 }
