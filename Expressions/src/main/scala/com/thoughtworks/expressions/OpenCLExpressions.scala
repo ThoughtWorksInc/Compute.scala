@@ -22,7 +22,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
   def generateOpenCLKernelSourceCode[NumberOfDimensions <: Nat](functionName: String,
                                                                 parameters: Seq[Parameter],
-                                                                rhs: Term): Fastring = {
+                                                                outputs: Seq[Term]): Fastring = {
 
     val globalDeclarations = mutable.Buffer.empty[Fastring]
     val globalDefinitions = mutable.Buffer.empty[Fastring]
@@ -63,15 +63,21 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
         fast"$typeName ${parameter.name}"
       }
 
-      val output = functionContext.get(rhs).packed
-      val outputType = functionContext.get(rhs.`type`).packed
+      val (outputParameters, outputAssignments) = outputs.map { output =>
+        val packedOutput = functionContext.get(output).packed
+        val packedOutputType = functionContext.get(output.`type`).packed
+        val outputName = output.name
+        val outputParameter = fast"global $packedOutputType *$outputName"
+        val outputAssignment = fast"$outputName[get_global_linear_id()] = packedOutput;\n"
+        (outputParameter, outputAssignment)
+      }.unzip
 
       fastraw"""
-        kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, global $outputType *__output) {
+        kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, ${outputParameters.mkFastring(", ")}) {
           ${localDefinitions.mkFastring}
 
           // TODO: polyfill for get_global_linear_id
-          __output[get_global_linear_id()] = $output;
+          ${outputAssignments.mkFastring}
         }
       """
     }
