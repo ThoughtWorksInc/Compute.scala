@@ -95,9 +95,10 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
 
     override def toCode(context: Context): Type.Code = {
       val element = context.get(operand0)
+      val dimensions = for (size <- arrayType.shape) yield fast"[$size]"
       Type.Code(
         globalDefinitions =
-          fast"typedef global ${element.packed} (* $name)${for (size <- arrayType.shape) yield fast"[$size]"};",
+          fast"typedef global ${element.packed} (* $name)${dimensions.mkFastring};",
         accessor = Type.Accessor.Atom(name)
       )
     }
