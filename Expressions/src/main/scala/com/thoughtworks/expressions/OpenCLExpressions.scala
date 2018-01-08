@@ -8,85 +8,43 @@ import scala.collection.JavaConverters._
 import java.util.IdentityHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
+import shapeless.{Nat, Sized}
+
 /**
   * @author 杨博 (Yang Bo)
   */
 trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
-  protected trait IdentifierApi extends DslExpressionApi { this: Identifier =>
-    // TODO:
-
-    def toCode(context: Context): DslExpression.Code = {
-      DslExpression.Code(accessor = DslExpression.Accessor.Packed(fast"$name", context.get(dslType).unpacked.length))
-    }
+  trait Parameter {
+    def `type`: Type
+    def name: String
   }
 
-  type Identifier <: (DslExpression with Any) with IdentifierApi
+  def generateOpenCLKernelSourceCode[NumberOfDimensions <: Nat](functionName: String,
+                                                                parameters: Seq[Parameter],
+                                                                rhs: Term): Fastring = {
 
-//  trait DslEffect {
-//
-//    def toCode(context: Context): DslEffect.Code
-//
-//  }
-
-//  object DslEffect {
-//
-//    type Statement = Fastring
-//
-//    final case class Code(globalDeclarations: Fastring = Fastring.empty,
-//                          globalDefinitions: Fastring = Fastring.empty,
-//                          localDefinitions: Fastring = Fastring.empty,
-//                          statements: Fastring = Fastring.empty)
-//
-//    final case class Update(buffer: DslExpression, index: DslExpression, value: DslExpression, valueType: DslType)
-//        extends DslEffect {
-//      override def toCode(context: Context): Code = {
-//        val valueName = context.freshName("update")
-//        Code(
-//          localDefinitions = fast"""
-//  ${context.get(valueType).packed} $valueName = ${context.get(value).packed};""",
-//          statements = fast"""
-//  ${context.get(buffer).packed}[${context.get(index).packed}] = $valueName;"""
-//        )
-//      }
-//    }
-//
-//  }
-
-  final case class ShaderDefinition(name: String,
-                                    parameters: Seq[Identifier],
-                                    rhs: DslExpression)
-
-  def generateSourceCode(shaders: ShaderDefinition*): Fastring = {
-
-//    val types = mutable.Set.empty[Seq[String]]
     val globalDeclarations = mutable.Buffer.empty[Fastring]
     val globalDefinitions = mutable.Buffer.empty[Fastring]
-    val typeCodeCache = mutable.HashMap.empty[DslType, DslType.Accessor]
+    val typeCodeCache = mutable.HashMap.empty[Type, Type.Accessor]
 
-    val exportedFunctions = for {
-      ShaderDefinition(functionName, parameters, rhs) <- shaders
-    } yield {
-
-//      val parameterMap = mutable.Map.empty[Identifier, String]
+    val exportedFunction = {
 
       val localDefinitions = mutable.Buffer.empty[Fastring]
 
-      val expressionCodeCache = new IdentityHashMap[DslExpression, DslExpression.Accessor]().asScala
-//      val effectCodeCache = new IdentityHashMap[DslEffect, Fastring]().asScala
-//
+      val expressionCodeCache = new IdentityHashMap[Term, Term.Accessor]().asScala
       val functionContext = new Context {
 
-        override def get(dslType: DslType): DslType.Accessor = {
-          typeCodeCache.getOrElseUpdate(dslType, {
-            val code = dslType.toCode(this)
+        override def get(`type`: Type): Type.Accessor = {
+          typeCodeCache.getOrElseUpdate(`type`, {
+            val code = `type`.toCode(this)
             globalDeclarations += code.globalDeclarations
             globalDefinitions += code.globalDefinitions
             code.accessor
-
           })
         }
-        override def get(expression: DslExpression): DslExpression.Accessor = {
+
+        override def get(expression: Term): Term.Accessor = {
           expressionCodeCache.getOrElseUpdate(
             expression, {
               val code = expression.toCode(this)
@@ -101,12 +59,12 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
       }
 
       val parameterDeclarations = for (parameter <- parameters) yield {
-        val typeName = functionContext.get(parameter.dslType).packed
+        val typeName = functionContext.get(parameter.`type`).packed
         fast"$typeName ${parameter.name}"
       }
 
       val output = functionContext.get(rhs).packed
-      val outputType = functionContext.get(rhs.dslType).packed
+      val outputType = functionContext.get(rhs.`type`).packed
 
       fastraw"""
         kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, global $outputType *__output) {
@@ -120,19 +78,17 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
     fastraw"""
 ${globalDeclarations.mkFastring}
 ${globalDefinitions.mkFastring}
-${exportedFunctions.mkFastring}
+${exportedFunction}
 """
   }
 
   trait Context {
-//    def resolve(id: Identifier): DslExpression.Accessor
-    def get(dslFunction: DslExpression): DslExpression.Accessor
-    def get(dslType: DslType): DslType.Accessor
-//    def get(effect: DslEffect): DslEffect.Statement
+    def get(term: Term): Term.Accessor
+    def get(`type`: Type): Type.Accessor
   }
 
-  protected type DslExpressionCompanion <: DslExpressionCompanionApi
-  protected trait DslExpressionCompanionApi {
+  protected type TermCompanion <: TermCompanionApi
+  protected trait TermCompanionApi {
 
     final case class Code(globalDeclarations: Fastring = Fastring.empty,
                           globalDefinitions: Fastring = Fastring.empty,
@@ -171,17 +127,20 @@ ${exportedFunctions.mkFastring}
     }
   }
 
-  protected trait DslExpressionApi extends ExpressionApi {
-    def dslType: DslType
-    def toCode(context: Context): DslExpression.Code
+  protected trait TermApi extends ExpressionApi with super.TermApi {
+    def toCode(context: Context): Term.Code
   }
 
-  type DslExpression <: (Expression with Any) with DslExpressionApi
+  type Term <: (Expression with Any) with TermApi
 
-  protected trait DslTypeCompanionApi {
+  protected trait TypeCompanionApi {
 
     trait Accessor {
       def packed: Fastring
+
+      // TODO: remove unpacked.
+      // unpacked is designed to support weak type check.
+      // We don't need it as we have strong type system.
       def unpacked: Seq[String]
     }
 
@@ -203,21 +162,29 @@ ${exportedFunctions.mkFastring}
                           accessor: Accessor)
 
   }
-  protected type DslTypeCompanion <: DslTypeCompanionApi
+  protected type TypeCompanion <: TypeCompanionApi
 
-  protected trait DslTypeApi extends super.DslTypeApi { this: DslType =>
+  protected trait TypeApi extends super.TypeApi { this: Type =>
 
-    def toCode(context: Context): DslType.Code
+    def toCode(context: Context): Type.Code
 
-    protected trait DslExpressionApi extends OpenCLExpressions.this.DslExpressionApi {
-      def dslType: DslTypeApi.this.type = DslTypeApi.this
-    }
+    protected trait TypedTermApi extends TermApi with super.TypedTermApi {}
 
     /** @template */
-    type DslExpression <: (OpenCLExpressions.this.DslExpression with Any) with DslExpressionApi
+    type TypedTerm <: (Term with Any) with TypedTermApi
+
+    protected trait IdentifierApi extends Parameter with TermApi { this: Identifier =>
+      // TODO:
+
+      def toCode(context: Context): Term.Code = {
+        Term.Code(accessor = Term.Accessor.Packed(fast"$name", context.get(`type`).unpacked.length))
+      }
+    }
+
+    type Identifier <: (TypedTerm with Any) with IdentifierApi
 
   }
 
-  type DslType <: (Expression with Any) with DslTypeApi
+  type Type <: (Expression with Any) with TypeApi
 
 }

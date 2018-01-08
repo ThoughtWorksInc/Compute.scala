@@ -1,7 +1,8 @@
 package com.thoughtworks.expressions
-import scala.language.higherKinds
+import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.feature.Factory.inject
 
-import com.thoughtworks.feature.{Factory, ImplicitApply}
+import scala.language.higherKinds
 
 object Debugging {
 
@@ -21,28 +22,16 @@ object Debugging {
     implicit def fullName: sourcecode.FullName
   }
 
-//  private[Debugging] trait OpaqueTypes {
-//    type Opaque[+DebuggingInformation] <: DebuggingInformation
-//
-//    def summonOpaque[DebuggingInformation, DebuggingInformationConstructor, ImplicitApplied](
-//        implicit debuggingInformationFactory: Factory.Aux[Opaque[DebuggingInformation],
-//                                                          DebuggingInformationConstructor],
-//        implicitApply: ImplicitApply.Aux[DebuggingInformationConstructor, ImplicitApplied],
-//        asDebuggingInformation: ImplicitApplied <:< Opaque[DebuggingInformation]): Opaque[DebuggingInformation] = {
-//      implicitApply(debuggingInformationFactory.newInstance)
-//    }
-//  }
-//
-//  private[Debugging] val opaqueTypes: OpaqueTypes = new OpaqueTypes {
-//    type Opaque[DebuggingInformation] = DebuggingInformation
-//  }
-//
-//  import opaqueTypes._
-//  implicit def debugging[DebuggingInformation, DebuggingInformationConstructor, ImplicitApplied](
-//      implicit debuggingInformationFactory: Factory.Aux[Opaque[DebuggingInformation], DebuggingInformationConstructor],
-//      implicitApply: ImplicitApply.Aux[DebuggingInformationConstructor, ImplicitApplied],
-//      asDebuggingInformation: ImplicitApplied <:< Opaque[DebuggingInformation]): Opaque[DebuggingInformation] = {
-//    summonOpaque(debuggingInformationFactory, implicitApply, asDebuggingInformation)
-//  }
+}
 
+trait Debugging {
+  @inject
+  val debuggingInformation: Implicitly[DebuggingInformation]
+
+  type DebuggingInformation <: Debugging.Name
+  protected trait ExpressionApi {
+    val debuggingInformation: DebuggingInformation
+    def name: String = debuggingInformation.name.value
+  }
+  type Expression <: ExpressionApi
 }

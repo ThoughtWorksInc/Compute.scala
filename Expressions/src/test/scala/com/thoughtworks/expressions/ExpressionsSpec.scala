@@ -2,6 +2,7 @@ package com.thoughtworks.expressions
 
 import org.scalatest._
 import com.thoughtworks.feature.Factory
+import shapeless.{Sized, Witness}
 import shapeless.nat._
 
 /**
@@ -18,27 +19,24 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     import hyperparameters._
 
     val x: float.Identifier = float.Identifier()
-    val fillShader = ShaderDefinition("fill", Seq(x), x)
-    val sourceCode = generateSourceCode(fillShader).mkString
+    val sourceCode = generateOpenCLKernelSourceCode("fill", Seq(x), x).mkString
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 
   }
 
-  "map" in {
+  "id" in {
 
-    val hyperparameters: BuiltIns { type DebuggingInformation = Debugging.Name } = {
-      Factory[BuiltIns].newInstance()
-    }
+    val hyperparameters = Factory[BuiltIns].newInstance()
 
     import hyperparameters._
-    val x: float.pointer3d.Identifier = float.pointer3d.Identifier()
+
+    val floatArray3d = ArrayType(float, Seq(32, 32, 32))
+    val x: floatArray3d.Identifier = floatArray3d.Identifier()
+
+    val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), x.extract).mkString
+
+    println(sourceCode) // FIXME: replace println to a scalatest assertion
 
   }
-
-  // TODO: Don't use GetGlobalId, use TheNet instead
-  // TODO: Use ShaderDefinition instead of ShaderDefinition
-  // ShaderDefinition("my_kernel", Seq(Parameter(x, DslFloat)), Seq(DslEffect(DslEffect.Update(x))))
-
-  //  hyperparameters.Dsl
 
 }
