@@ -80,7 +80,7 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
           localDefinitions = fastraw"""
             $packedType $name = (*${context.get(arrayTerm).packed})${globalIndices.mkFastring};
           """,
-          accessor = Term.Accessor.Atom(fast"$name")
+          accessor = Term.Accessor.Packed(fast"$name", context.get(arrayTerm.`type`).unpacked.length)
         )
       }
     }
@@ -97,8 +97,7 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
       val element = context.get(operand0)
       val dimensions = for (size <- arrayType.shape) yield fast"[$size]"
       Type.Code(
-        globalDefinitions =
-          fast"typedef global ${element.packed} (* $name)${dimensions.mkFastring};",
+        globalDefinitions = fast"typedef global ${element.packed} (* $name)${dimensions.mkFastring};",
         accessor = Type.Accessor.Atom(name)
       )
     }
@@ -108,8 +107,6 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
     }
 
     type Identifier <: (TypedTerm with Any) with IdentifierApi
-
-
 
   }
 
