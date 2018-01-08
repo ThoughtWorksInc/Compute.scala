@@ -78,7 +78,7 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
         } yield fast"[get_global_id($i)]"
         Term.Code(
           localDefinitions = fastraw"""
-            $packedType $name = ${context.get(arrayTerm).packed}${globalIndices.mkFastring};
+            $packedType $name = (*${context.get(arrayTerm).packed})${globalIndices.mkFastring};
           """,
           accessor = Term.Accessor.Atom(fast"$name")
         )
