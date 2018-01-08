@@ -108,6 +108,8 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
 
     type Identifier <: (TypedTerm with Any) with IdentifierApi
 
+
+
   }
 
   type ArrayBufferType <: (ArrayType with Any) with ArrayBufferTypeApi
