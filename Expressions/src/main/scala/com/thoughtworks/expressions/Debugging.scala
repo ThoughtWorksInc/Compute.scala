@@ -25,8 +25,7 @@ object Debugging {
 }
 
 trait Debugging {
-  @inject
-  val debuggingInformation: Implicitly[DebuggingInformation]
+  @inject val debuggingInformation: Implicitly[DebuggingInformation]
 
   type DebuggingInformation <: Debugging.Name
   protected trait ExpressionApi {

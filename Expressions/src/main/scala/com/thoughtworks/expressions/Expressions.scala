@@ -43,8 +43,7 @@ trait Expressions extends Debugging {
       new Operator2[Operand0, Operand1, Out] {
         def apply(operand0: Operand0, operand1: Operand1)(
             implicit debuggingInformation: Implicitly[DebuggingInformation]): Out = {
-          val x = factory.newInstance(debuggingInformation, operand0, operand1)
-          x
+          factory.newInstance(debuggingInformation, operand0, operand1)
         }
       }
   }
@@ -64,8 +63,7 @@ trait Expressions extends Debugging {
   /** @template */
   protected type TermCompanion <: AnyRef
 
-  @inject
-  protected def TermCompanion(): Implicitly[TermCompanion]
+  @inject protected def TermCompanion(): Implicitly[TermCompanion]
 
   val Term: TermCompanion = TermCompanion()
 
@@ -83,8 +81,7 @@ trait Expressions extends Debugging {
     // FIXME: Some identifiers need additional settings,
     // so the arity may be not nullary,
     // and this method will be removed then.
-    @inject
-    def Identifier: Operator0[Identifier]
+    @inject def Identifier: Operator0[Identifier]
 
   }
 
@@ -94,8 +91,7 @@ trait Expressions extends Debugging {
   /** @template */
   protected type TypeCompanion <: AnyRef // TODO: Rename to TypeCompanion
 
-  @inject
-  protected def TypeCompanion(): Implicitly[TypeCompanion]
+  @inject protected def TypeCompanion(): Implicitly[TypeCompanion]
 
   val Type: TypeCompanion = TypeCompanion()
 

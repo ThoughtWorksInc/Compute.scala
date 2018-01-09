@@ -15,8 +15,7 @@ trait FloatExpressions extends ValueExpressions {
   /** @template */
   type FloatType <: (ValueType with Any) with FloatTypeApi
 
-  @inject
-  protected def FloatType: Factory.Factory1[DebuggingInformation, FloatType]
+  @inject protected def FloatType: Factory.Factory1[DebuggingInformation, FloatType]
 
   val float: FloatType = FloatType.newInstance(debuggingInformation)
 

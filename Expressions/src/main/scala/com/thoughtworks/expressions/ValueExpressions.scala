@@ -12,16 +12,16 @@ trait ValueExpressions extends Expressions {
     type JvmType
     type TypedTerm <: ValueTerm with TypedTermApi
 
-    protected trait LiteralTermApi extends TypedTermApi {
+    protected trait LiteralApi extends TypedTermApi {
       protected val operand0: JvmType
     }
-    type LiteralTerm <: (TypedTerm with Any) with LiteralTermApi
-    @inject
-    def LiteralTerm: Operator1[JvmType, LiteralTerm]
+    type Literal <: (TypedTerm with Any) with LiteralApi
+    @inject def Literal: Operator1[JvmType, Literal]
   }
 
   /** @template */
   type ValueType <: (Type with Any) with ValueTypeApi
 
+  /** @template */
   type ValueTerm <: Term
 }
