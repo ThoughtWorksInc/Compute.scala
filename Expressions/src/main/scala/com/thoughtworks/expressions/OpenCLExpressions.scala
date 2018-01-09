@@ -195,12 +195,12 @@ ${exportedFunction}
 
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
 
-    protected trait LiteralTermApi extends super.LiteralTermApi {
+    protected trait LiteralApi extends super.LiteralApi {
       def toCode(context: Context): Term.Code = {
         Term.Code(accessor = Term.Accessor.Atom(fast"${operand0.toString}"))
       }
     }
-    type LiteralTerm <: (TypedTerm with Any) with LiteralTermApi
+    type Literal <: (TypedTerm with Any) with LiteralApi
   }
 
   /** @template */

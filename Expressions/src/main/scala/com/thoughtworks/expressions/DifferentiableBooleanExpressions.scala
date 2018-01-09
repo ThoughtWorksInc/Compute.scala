@@ -14,7 +14,7 @@ trait DifferentiableBooleanExpressions extends DifferentiableValueExpressions wi
     type TypedTerm <: (ValueTerm with Any) with TypedTermApi
 
     protected trait IdentifierApi extends TypedTermApi {
-      type DeltaTerm = LiteralTerm
+      type DeltaTerm = Literal
       def gradient(x: ValueTerm)(
           implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
         val delta = if (x eq this) {
@@ -22,20 +22,20 @@ trait DifferentiableBooleanExpressions extends DifferentiableValueExpressions wi
         } else {
           false
         }
-        LiteralTerm(delta)
+        Literal(delta)
       }
     }
     type Identifier <: (TypedTerm with Any) with IdentifierApi
 
-    protected trait LiteralTermApi extends super.LiteralTermApi with TypedTermApi {
-      type DeltaTerm = LiteralTerm
+    protected trait LiteralApi extends super.LiteralApi with TypedTermApi {
+      type DeltaTerm = Literal
       def gradient(x: ValueTerm)(
           implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
 
-        LiteralTerm(false)
+        Literal(false)
       }
     }
-    type LiteralTerm <: (TypedTerm with Any) with LiteralTermApi
+    type Literal <: (TypedTerm with Any) with LiteralApi
 
   }
 
