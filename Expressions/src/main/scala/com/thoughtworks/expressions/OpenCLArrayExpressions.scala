@@ -94,7 +94,7 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
 
   protected trait ArrayBufferTypeApi extends super.ArrayBufferTypeApi with TypeApi { arrayType: ArrayBufferType =>
 
-    override def toCode(context: OpenCLContext): OpenCLType.Code = {
+    def toCode(context: OpenCLContext): OpenCLType.Code = {
       val element = context.get(operand0)
       val dimensions = for (size <- arrayType.shape) yield fast"[$size]"
       OpenCLType.Code(

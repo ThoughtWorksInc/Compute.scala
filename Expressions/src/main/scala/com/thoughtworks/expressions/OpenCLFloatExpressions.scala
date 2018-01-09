@@ -10,7 +10,7 @@ trait OpenCLFloatExpressions extends FloatExpressions with OpenCLExpressions {
 
   protected trait FloatTypeApi extends super.FloatTypeApi with super[OpenCLExpressions].ValueTypeApi {
     this: FloatType =>
-    override def toCode(context: OpenCLContext): OpenCLType.Code =
+    def toCode(context: OpenCLContext): OpenCLType.Code =
       OpenCLType.Code(accessor = OpenCLType.Accessor.Atom("float"))
 
     protected trait LiteralApi extends super[ValueTypeApi].LiteralApi {

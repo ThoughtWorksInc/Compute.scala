@@ -9,7 +9,7 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
 
   trait ArrayBufferTermApi extends TermApi with super.ArrayBufferTermApi { outer: ArrayBufferTerm =>
     type DeltaTerm <: ArrayBufferTerm { type ElementTerm = outer.ElementTerm }
-    override def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
+    def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
       ???
     }
   }
@@ -25,7 +25,7 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
       type DeltaTerm = ExtractFromArrayBuffer
 
       protected val operand0: ArrayBufferTerm { type ElementTerm = TypedTerm }
-      override def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
+      def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
         ExtractFromArrayBuffer.newInstance(debuggingInformation, operand0.gradient(x))
       }
 

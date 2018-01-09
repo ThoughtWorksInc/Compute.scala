@@ -33,19 +33,19 @@ object OpenCLExpressions {
     object Accessor {
 
       final case class Atom(value: Fastring) extends Accessor {
-        override def packed: Fastring = value
-        override def unpacked = Seq(value)
+        def packed: Fastring = value
+        def unpacked = Seq(value)
       }
 
       final case class Unpacked(unpacked: Seq[Fastring]) extends Accessor {
-        override def packed: Fastring = unpacked match {
+        def packed: Fastring = unpacked match {
           case Seq(single) => single
           case _           => fast"{ ${unpacked.mkFastring(", ")} }"
         }
       }
 
       final case class Packed(packed: Fastring, numberOfFields: Int) extends Accessor {
-        override def unpacked: Seq[Fastring] = {
+        def unpacked: Seq[Fastring] = {
           if (numberOfFields == 1) {
             Seq(packed)
           } else {
@@ -74,14 +74,14 @@ object OpenCLExpressions {
     }
 
     object Accessor {
-      final case class Structure(name: String, override val unpacked: Seq[String]) extends Accessor {
-        override def packed: Fastring = fast"struct $name"
+      final case class Structure(name: String, unpacked: Seq[String]) extends Accessor {
+        def packed: Fastring = fast"struct $name"
       }
 
       final case class Atom(name: String) extends Accessor {
-        override def packed: Fastring = fast"$name"
+        def packed: Fastring = fast"$name"
 
-        override def unpacked: Seq[String] = Seq(name)
+        def unpacked: Seq[String] = Seq(name)
       }
     }
     import Accessor._
@@ -107,7 +107,7 @@ object OpenCLExpressions {
       val expressionCodeCache = new java.util.IdentityHashMap[OpenCLTerm, OpenCLTerm.Accessor]().asScala
       val functionContext = new OpenCLContext {
 
-        override def get(`type`: OpenCLType): OpenCLType.Accessor = {
+        def get(`type`: OpenCLType): OpenCLType.Accessor = {
           typeCodeCache.getOrElseUpdate(`type`, {
             val code = `type`.toCode(this)
             globalDeclarations += code.globalDeclarations
@@ -116,7 +116,7 @@ object OpenCLExpressions {
           })
         }
 
-        override def get(expression: OpenCLTerm): OpenCLTerm.Accessor = {
+        def get(expression: OpenCLTerm): OpenCLTerm.Accessor = {
           expressionCodeCache.getOrElseUpdate(
             expression, {
               val code = expression.toCode(this)
