@@ -1,5 +1,6 @@
 package com.thoughtworks.expressions
 
+import com.thoughtworks.expressions.Anonymous.Implicitly
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.inject
 
@@ -10,6 +11,8 @@ trait FloatExpressions extends ValueExpressions {
 
   protected trait FloatTypeApi extends ValueTypeApi { this: FloatType =>
     type JvmType = Float
+
+    def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): Literal = Literal(0.0f)
   }
 
   /** @template */

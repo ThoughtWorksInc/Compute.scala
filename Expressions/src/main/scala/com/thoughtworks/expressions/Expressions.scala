@@ -79,6 +79,6 @@ trait Expressions extends Debugging {
   }
 
   /** @template */
-  type Type <: (Expression with Any) with TypeApi // TODO: Rename to Type
+  type Type <: (Expression with Any) with TypeApi
 
 }

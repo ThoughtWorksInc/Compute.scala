@@ -7,9 +7,6 @@ object Builtins {
     */
   trait AllOpenCLExpressions extends OpenCLArrayExpressions with OpenCLFloatExpressions with FreshNames
 
-  trait AllDifferentiableExpressions
-      extends DifferentiableArrayExpressions
-      with DifferentiableFloatExpressions
-      with DifferentiableBooleanExpressions
+  trait AllDifferentiableExpressions extends DifferentiableArrayExpressions
 
 }

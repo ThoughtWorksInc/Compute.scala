@@ -39,11 +39,11 @@ trait ArrayExpressions extends BooleanExpressions {
 
   type ArrayType <: Type
 
-  protected trait ArrayBufferApi {
+  protected trait ArrayBufferTermApi {
     val `type`: ArrayBufferType
   }
 
-  type ArrayBufferTerm <: (ArrayTerm with Any) with ArrayBufferApi
+  type ArrayBufferTerm <: (ArrayTerm with Any) with ArrayBufferTermApi
 
   protected trait ArrayBufferTypeApi extends TypeApi {
     arrayType: ArrayBufferType =>

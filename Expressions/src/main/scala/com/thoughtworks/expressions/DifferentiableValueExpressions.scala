@@ -5,27 +5,30 @@ import com.thoughtworks.expressions.Anonymous.Implicitly
 /**
   * @author 杨博 (Yang Bo)
   */
-trait DifferentiableValueExpressions extends ValueExpressions {
+trait DifferentiableValueExpressions extends DifferentiableExpressions with ValueExpressions {
 
-  protected trait ValueTermApi extends super.TermApi {
-    type DeltaTerm <: ValueTerm
+  protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
+    def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): TypedTerm
 
-    // FIXME: `x` should be narrow to FloatTerm
-    /** Returns the symbolic difference `∂this/∂x` */
-    def gradient(x: ValueTerm)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm
+    protected trait TypedTermApi extends super.TypedTermApi with TermApi {
+      type DeltaTerm <: TypedTerm
+    }
+    type TypedTerm <: (ValueTerm with Any) with TypedTermApi
+
+    protected trait ZeroGradientApi extends TypedTermApi {
+      type DeltaTerm = TypedTerm
+      def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
+        zero
+      }
+    }
+
+    type Identifier <: (TypedTerm with Any) with ZeroGradientApi
+
+    type Literal <: (TypedTerm with Any) with LiteralApi with ZeroGradientApi
+
   }
 
-  type ValueTerm <: (Term with Any) with ValueTermApi
-
-//  protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
-//
-//    type Delta
-//
-//    trait TypedTermApi extends super.TypedTermApi {}
-//    type TypedTerm <: ValueTerm with TypedTermApi
-//  }
-//
-//  /** @template */
-//  type ValueType <: (Type with Any) with ValueTypeApi
+  /** @template */
+  type ValueType <: (Type with Any) with ValueTypeApi
 
 }

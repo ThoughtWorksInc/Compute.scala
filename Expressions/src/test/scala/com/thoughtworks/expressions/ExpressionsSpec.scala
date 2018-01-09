@@ -43,7 +43,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
   "differentiable id" in {
 
     val hyperparameters
-      : AllOpenCLExpressions with AllDifferentiableExpressions { type DebuggingInformation = Debugging.Name } =
+      : AllDifferentiableExpressions with AllOpenCLExpressions { type DebuggingInformation = Debugging.Name } =
       Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
 
     import hyperparameters._
