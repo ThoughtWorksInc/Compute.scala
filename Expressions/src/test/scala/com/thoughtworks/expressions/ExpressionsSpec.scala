@@ -3,8 +3,7 @@ package com.thoughtworks.expressions
 import com.thoughtworks.expressions.Builtins.{AllDifferentiableExpressions, AllOpenCLExpressions}
 import org.scalatest._
 import com.thoughtworks.feature.Factory
-import shapeless.{Sized, Witness}
-import shapeless.nat._
+import OpenCLExpressions.generateOpenCLKernelSourceCode
 
 /**
   * @author 杨博 (Yang Bo)
