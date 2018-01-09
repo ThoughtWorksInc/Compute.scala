@@ -59,15 +59,6 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
     protected trait ExtractFromArrayBufferApi extends super.ExtractFromArrayBufferApi {
       def name: String
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
-//        val name = context.freshName("getElement")
-//        val typeReference = context.get(elementType)
-//        val packedType = typeReference.packed
-//        Code(
-//          localDefinitions = fastraw"""
-//  $packedType $name = ${context.get(operand0).packed}[${context.get(operand1).packed}];""",
-//          accessor = Packed(Fastring(name), typeReference.unpacked.length)
-//        )
-//        val name = freshName("extr")
         val typeReference = context.get(elementType)
         val packedType = typeReference.packed
 
@@ -75,7 +66,7 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
 
         // TODO: check boundary
         val globalIndices = for {
-          i <- 0 until arrayTerm.`type`.shape.length
+          i <- arrayTerm.`type`.shape.indices
         } yield fast"[get_global_id($i)]"
         OpenCLTerm.Code(
           localDefinitions = fastraw"""
@@ -101,10 +92,6 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
         globalDefinitions = fast"typedef global ${element.packed} (*$name)${dimensions.mkFastring};",
         accessor = OpenCLType.Accessor.Atom(name)
       )
-    }
-
-    protected trait IdentifierApi extends super.IdentifierApi with TypedTermApi { this: Identifier =>
-//        def matrix: TransformationMatrix = TransformationMatrix.identity
     }
 
     type Identifier <: (TypedTerm with Any) with IdentifierApi
