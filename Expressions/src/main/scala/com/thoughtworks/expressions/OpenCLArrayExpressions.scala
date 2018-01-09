@@ -7,6 +7,7 @@ import shapeless.{Nat, Sized, Succ}
 
 import scala.collection.{AbstractSeq, IndexedSeqOptimized}
 import scala.language.higherKinds
+import OpenCLExpressions._
 //object OpenCLArrayExpressions {
 //
 //
@@ -57,7 +58,7 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
 
     protected trait ExtractFromArrayBufferApi extends super.ExtractFromArrayBufferApi {
       def name: String
-      def toCode(context: Context): Term.Code = {
+      def toCode(context: OpenCLContext): OpenCLTerm.Code = {
 //        val name = context.freshName("getElement")
 //        val typeReference = context.get(elementType)
 //        val packedType = typeReference.packed
@@ -76,11 +77,11 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
         val globalIndices = for {
           i <- 0 until arrayTerm.`type`.shape.length
         } yield fast"[get_global_id($i)]"
-        Term.Code(
+        OpenCLTerm.Code(
           localDefinitions = fastraw"""
             $packedType $name = (*${context.get(arrayTerm).packed})${globalIndices.mkFastring};
           """,
-          accessor = Term.Accessor.Packed(fast"$name", context.get(arrayTerm.`type`).unpacked.length)
+          accessor = OpenCLTerm.Accessor.Packed(fast"$name", context.get(arrayTerm.`type`).unpacked.length)
         )
       }
     }
@@ -93,12 +94,12 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
 
   protected trait ArrayBufferTypeApi extends super.ArrayBufferTypeApi with TypeApi { arrayType: ArrayBufferType =>
 
-    override def toCode(context: Context): Type.Code = {
+    override def toCode(context: OpenCLContext): OpenCLType.Code = {
       val element = context.get(operand0)
       val dimensions = for (size <- arrayType.shape) yield fast"[$size]"
-      Type.Code(
+      OpenCLType.Code(
         globalDefinitions = fast"typedef global ${element.packed} (*$name)${dimensions.mkFastring};",
-        accessor = Type.Accessor.Atom(name)
+        accessor = OpenCLType.Accessor.Atom(name)
       )
     }
 

@@ -5,37 +5,109 @@ import com.dongxiguo.fastring.Fastring.Implicits._
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
-import java.util.IdentityHashMap
-import java.util.concurrent.atomic.AtomicInteger
 
-import shapeless.{Nat, Sized}
+object OpenCLExpressions {
 
-/**
-  * @author 杨博 (Yang Bo)
-  */
-trait OpenCLExpressions extends ValueExpressions with FreshNames {
-
-  trait Parameter {
-    def `type`: Type
+  trait OpenCLTerm {
     def name: String
+    val `type`: OpenCLType
+    def toCode(context: OpenCLContext): OpenCLTerm.Code
   }
 
-  def generateOpenCLKernelSourceCode[NumberOfDimensions <: Nat](functionName: String,
-                                                                parameters: Seq[Parameter],
-                                                                outputs: Seq[Term]): Fastring = {
+  trait OpenCLContext {
+    def get(term: OpenCLTerm): OpenCLTerm.Accessor
+    def get(`type`: OpenCLType): OpenCLType.Accessor
+  }
+
+  object OpenCLTerm {
+
+    final case class Code(globalDeclarations: Fastring = Fastring.empty,
+                          globalDefinitions: Fastring = Fastring.empty,
+                          localDefinitions: Fastring = Fastring.empty,
+                          accessor: Accessor)
+    trait Accessor {
+      def unpacked: Seq[Fastring]
+      def packed: Fastring
+    }
+
+    object Accessor {
+
+      final case class Atom(value: Fastring) extends Accessor {
+        override def packed: Fastring = value
+        override def unpacked = Seq(value)
+      }
+
+      final case class Unpacked(unpacked: Seq[Fastring]) extends Accessor {
+        override def packed: Fastring = unpacked match {
+          case Seq(single) => single
+          case _           => fast"{ ${unpacked.mkFastring(", ")} }"
+        }
+      }
+
+      final case class Packed(packed: Fastring, numberOfFields: Int) extends Accessor {
+        override def unpacked: Seq[Fastring] = {
+          if (numberOfFields == 1) {
+            Seq(packed)
+          } else {
+            for (i <- 0 until numberOfFields) yield {
+              fast"$packed._$i"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  trait OpenCLType {
+    def toCode(context: OpenCLContext): OpenCLType.Code
+  }
+
+  object OpenCLType {
+
+    trait Accessor {
+      def packed: Fastring
+
+      // TODO: remove unpacked.
+      // unpacked is designed to support weak type check.
+      // We don't need it as we have strong type system.
+      def unpacked: Seq[String]
+    }
+
+    object Accessor {
+      final case class Structure(name: String, override val unpacked: Seq[String]) extends Accessor {
+        override def packed: Fastring = fast"struct $name"
+      }
+
+      final case class Atom(name: String) extends Accessor {
+        override def packed: Fastring = fast"$name"
+
+        override def unpacked: Seq[String] = Seq(name)
+      }
+    }
+    import Accessor._
+
+    final case class Code(globalDeclarations: Fastring = Fastring.empty,
+                          globalDefinitions: Fastring = Fastring.empty,
+                          accessor: Accessor)
+
+  }
+
+  def generateOpenCLKernelSourceCode(functionName: String,
+                                     parameters: Seq[OpenCLTerm],
+                                     outputs: Seq[OpenCLTerm]): Fastring = {
 
     val globalDeclarations = mutable.Buffer.empty[Fastring]
     val globalDefinitions = mutable.Buffer.empty[Fastring]
-    val typeCodeCache = mutable.HashMap.empty[Type, Type.Accessor]
+    val typeCodeCache = mutable.HashMap.empty[OpenCLType, OpenCLType.Accessor]
 
     val exportedFunction = {
 
       val localDefinitions = mutable.Buffer.empty[Fastring]
 
-      val expressionCodeCache = new IdentityHashMap[Term, Term.Accessor]().asScala
-      val functionContext = new Context {
+      val expressionCodeCache = new java.util.IdentityHashMap[OpenCLTerm, OpenCLTerm.Accessor]().asScala
+      val functionContext = new OpenCLContext {
 
-        override def get(`type`: Type): Type.Accessor = {
+        override def get(`type`: OpenCLType): OpenCLType.Accessor = {
           typeCodeCache.getOrElseUpdate(`type`, {
             val code = `type`.toCode(this)
             globalDeclarations += code.globalDeclarations
@@ -44,7 +116,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
           })
         }
 
-        override def get(expression: Term): Term.Accessor = {
+        override def get(expression: OpenCLTerm): OpenCLTerm.Accessor = {
           expressionCodeCache.getOrElseUpdate(
             expression, {
               val code = expression.toCode(this)
@@ -88,102 +160,30 @@ ${exportedFunction}
 """
   }
 
-  trait Context {
-    def get(term: Term): Term.Accessor
-    def get(`type`: Type): Type.Accessor
-  }
+}
 
-  protected type TermCompanion <: TermCompanionApi
-  protected trait TermCompanionApi {
+/**
+  * @author 杨博 (Yang Bo)
+  */
+trait OpenCLExpressions extends ValueExpressions with FreshNames {
+  import OpenCLExpressions._
 
-    final case class Code(globalDeclarations: Fastring = Fastring.empty,
-                          globalDefinitions: Fastring = Fastring.empty,
-                          localDefinitions: Fastring = Fastring.empty,
-                          accessor: Accessor)
-    trait Accessor {
-      def unpacked: Seq[Fastring]
-      def packed: Fastring
-    }
-
-    object Accessor {
-
-      final case class Atom(value: Fastring) extends Accessor {
-        override def packed: Fastring = value
-        override def unpacked = Seq(value)
-      }
-
-      final case class Unpacked(unpacked: Seq[Fastring]) extends Accessor {
-        override def packed: Fastring = unpacked match {
-          case Seq(single) => single
-          case _           => fast"{ ${unpacked.mkFastring(", ")} }"
-        }
-      }
-
-      final case class Packed(packed: Fastring, numberOfFields: Int) extends Accessor {
-        override def unpacked: Seq[Fastring] = {
-          if (numberOfFields == 1) {
-            Seq(packed)
-          } else {
-            for (i <- 0 until numberOfFields) yield {
-              fast"$packed._$i"
-            }
-          }
-        }
-      }
-    }
-  }
-
-  protected trait TermApi extends ExpressionApi with super.TermApi {
-    def toCode(context: Context): Term.Code
-  }
+  protected trait TermApi extends OpenCLTerm with ExpressionApi with super.TermApi
 
   type Term <: (Expression with Any) with TermApi
 
-  protected trait TypeCompanionApi {
-
-    trait Accessor {
-      def packed: Fastring
-
-      // TODO: remove unpacked.
-      // unpacked is designed to support weak type check.
-      // We don't need it as we have strong type system.
-      def unpacked: Seq[String]
-    }
-
-    object Accessor {
-      final case class Structure(name: String, override val unpacked: Seq[String]) extends Accessor {
-        override def packed: Fastring = fast"struct $name"
-      }
-
-      final case class Atom(name: String) extends Accessor {
-        override def packed: Fastring = fast"$name"
-
-        override def unpacked: Seq[String] = Seq(name)
-      }
-    }
-    import Accessor._
-
-    final case class Code(globalDeclarations: Fastring = Fastring.empty,
-                          globalDefinitions: Fastring = Fastring.empty,
-                          accessor: Accessor)
-
-  }
-  protected type TypeCompanion <: TypeCompanionApi
-
-  protected trait TypeApi extends super.TypeApi { this: Type =>
-
-    def toCode(context: Context): Type.Code
+  protected trait TypeApi extends super.TypeApi with OpenCLType { this: Type =>
 
     protected trait TypedTermApi extends TermApi with super.TypedTermApi {}
 
     /** @template */
     type TypedTerm <: (Term with Any) with TypedTermApi
 
-    protected trait IdentifierApi extends Parameter with TermApi { this: Identifier =>
+    protected trait IdentifierApi extends TermApi { this: Identifier =>
       // TODO:
 
-      def toCode(context: Context): Term.Code = {
-        Term.Code(accessor = Term.Accessor.Packed(fast"$name", context.get(`type`).unpacked.length))
+      def toCode(context: OpenCLContext): OpenCLTerm.Code = {
+        OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Packed(fast"$name", context.get(`type`).unpacked.length))
       }
     }
 
@@ -196,8 +196,8 @@ ${exportedFunction}
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
 
     protected trait LiteralApi extends super.LiteralApi {
-      def toCode(context: Context): Term.Code = {
-        Term.Code(accessor = Term.Accessor.Atom(fast"${operand0.toString}"))
+      def toCode(context: OpenCLContext): OpenCLTerm.Code = {
+        OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Atom(fast"${operand0.toString}"))
       }
     }
     type Literal <: (TypedTerm with Any) with LiteralApi
