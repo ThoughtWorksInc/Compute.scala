@@ -73,7 +73,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
       }.unzip
 
       fastraw"""
-        kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, ${outputParameters.mkFastring(", ")}) {
+        kernel void $functionName(const ${parameterDeclarations.mkFastring(", ")}, ${outputParameters.mkFastring(", ")}) {
           ${localDefinitions.mkFastring}
 
           // TODO: polyfill for get_global_linear_id
