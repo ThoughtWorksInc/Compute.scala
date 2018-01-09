@@ -15,8 +15,7 @@ trait BooleanExpressions extends ValueExpressions {
   /** @template */
   type BooleanType <: (ValueType with Any) with BooleanTypeApi
 
-  @inject
-  protected def BooleanType: Factory1[DebuggingInformation, BooleanType]
+  @inject protected def BooleanType: Factory1[DebuggingInformation, BooleanType]
 
   type BooleanTerm = boolean.TypedTerm
 

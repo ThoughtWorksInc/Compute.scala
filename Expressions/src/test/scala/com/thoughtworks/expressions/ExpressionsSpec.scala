@@ -1,5 +1,6 @@
 package com.thoughtworks.expressions
 
+import com.thoughtworks.expressions.Builtins.{AllDifferentiableExpressions, AllOpenCLExpressions}
 import org.scalatest._
 import com.thoughtworks.feature.Factory
 import shapeless.{Sized, Witness}
@@ -12,8 +13,8 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "fill" in {
 
-    val hyperparameters: BuiltIns { type DebuggingInformation = Debugging.Name } = {
-      Factory[BuiltIns].newInstance()
+    val hyperparameters: AllOpenCLExpressions { type DebuggingInformation = Debugging.Name } = {
+      Factory[AllOpenCLExpressions].newInstance()
     }
 
     import hyperparameters._
@@ -26,7 +27,25 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "id" in {
 
-    val hyperparameters = Factory[BuiltIns].newInstance()
+    val hyperparameters: AllOpenCLExpressions { type DebuggingInformation = Debugging.Name } =
+      Factory[AllOpenCLExpressions].newInstance()
+
+    import hyperparameters._
+
+    val floatArray3d = ArrayBufferType(float, Seq(32, 32, 32))
+    val x: floatArray3d.Identifier = floatArray3d.Identifier()
+
+    val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), Seq(x.extract)).mkString
+
+    println(sourceCode) // FIXME: replace println to a scalatest assertion
+
+  }
+
+  "differentiable id" in {
+
+    val hyperparameters
+      : AllOpenCLExpressions with AllDifferentiableExpressions { type DebuggingInformation = Debugging.Name } =
+      Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
 
     import hyperparameters._
 

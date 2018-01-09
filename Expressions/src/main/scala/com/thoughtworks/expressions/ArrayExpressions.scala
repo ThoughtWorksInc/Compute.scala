@@ -13,17 +13,15 @@ trait ArrayExpressions extends BooleanExpressions {
 
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
 
-    // TODO: try to move to ArrayBufferTypeApi
     protected trait ExtractFromArrayBufferApi extends TypedTermApi {
       protected val operand0: ArrayBufferTerm { type ElementTerm = TypedTerm }
     }
 
     type ExtractFromArrayBuffer <: (TypedTerm with Any) with ExtractFromArrayBufferApi
 
-    @inject
-    val ExtractFromArrayBuffer: Factory2[DebuggingInformation,
-                                         ArrayBufferTerm { type ElementTerm = TypedTerm },
-                                         ExtractFromArrayBuffer]
+    @inject val ExtractFromArrayBuffer: Factory2[DebuggingInformation,
+                                                 ArrayBufferTerm { type ElementTerm = TypedTerm },
+                                                 ExtractFromArrayBuffer]
 
   }
 
@@ -82,14 +80,12 @@ trait ArrayExpressions extends BooleanExpressions {
     //      }
     //
     //      type Transform <: TypedTerm with TransformApi
-    //      @inject
-    //      def Transform: Operator2[ArrayBufferTerm, Array[Array[Int]], Transform]
+    //      @inject //      def Transform: Operator2[ArrayBufferTerm, Array[Array[Int]], Transform]
 
   }
   type ArrayViewType <: (ArrayType with Any) with ArrayViewTypeApi
 
-  @inject
-  def ArrayBufferType[ElementType0 <: ValueType]
+  @inject def ArrayBufferType[ElementType0 <: ValueType]
     : Operator2[ElementType0, Seq[Int], ArrayBufferType { type ElementType = ElementType0 }]
 
 }

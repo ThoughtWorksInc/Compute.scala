@@ -1,6 +1,15 @@
 package com.thoughtworks.expressions
 
-/**
-  * @author 杨博 (Yang Bo)
-  */
-trait BuiltIns extends OpenCLArrayExpressions with OpenCLFloatExpressions with FreshNames
+object Builtins {
+
+  /**
+    * @author 杨博 (Yang Bo)
+    */
+  trait AllOpenCLExpressions extends OpenCLArrayExpressions with OpenCLFloatExpressions with FreshNames
+
+  trait AllDifferentiableExpressions
+      extends DifferentiableArrayExpressions
+      with DifferentiableFloatExpressions
+      with DifferentiableBooleanExpressions
+
+}
