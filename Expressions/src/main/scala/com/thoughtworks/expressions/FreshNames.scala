@@ -18,7 +18,7 @@ trait FreshNames extends Expressions {
 
   protected trait ExpressionApi extends super.ExpressionApi {
     private lazy val _name: String = freshName(super.name)
-    override def name: String = _name
+    abstract override def name: String = _name
   }
 
   type Expression <: ExpressionApi
