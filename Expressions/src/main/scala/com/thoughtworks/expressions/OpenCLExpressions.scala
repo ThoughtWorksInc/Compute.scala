@@ -168,7 +168,7 @@ ${exportedFunction}
 trait OpenCLExpressions extends ValueExpressions with FreshNames {
   import OpenCLExpressions._
 
-  protected trait TermApi extends OpenCLTerm with ExpressionApi with super.TermApi
+  protected trait TermApi extends OpenCLTerm with super[FreshNames].ExpressionApi with super.TermApi
 
   type Term <: (Expression with Any) with TermApi
 
