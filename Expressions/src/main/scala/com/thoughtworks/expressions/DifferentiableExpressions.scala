@@ -12,7 +12,8 @@ trait DifferentiableExpressions extends Expressions {
 
     // FIXME: `x` should be narrow to FloatTerm or change to Context
     /** Returns the symbolic difference `∂this/∂x` */
-    def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm
+    def gradient(context: DifferentiableExpressions.Context)(
+        implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm
   }
 
   type Term <: (Expression with Any) with TermApi
@@ -25,4 +26,8 @@ trait DifferentiableExpressions extends Expressions {
 
   type Type <: (Expression with Any) with TypeApi
 
+}
+
+object DifferentiableExpressions {
+  trait Context
 }

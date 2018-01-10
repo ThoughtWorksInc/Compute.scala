@@ -12,7 +12,7 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
 //    type DeltaTerm <: ArrayBufferTerm { type ElementTerm = outer.ElementTerm }
 
     // TODO: `gradient` should be implemented in subtypes, not here
-    def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
+    def gradient(context: DifferentiableExpressions.Context)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
       ???
     }
   }
@@ -37,7 +37,7 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
     trait IdentifierApi extends super[ArrayFillTypeApi].TypedTermApi with super[TypeApi].TypedTermApi {
       outer: TypedTerm =>
 
-      def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
+      def gradient(context: DifferentiableExpressions.Context)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
         deltaType.Filled.newInstance(debuggingInformation, arrayFillType.operand0.deltaType.zero)
       }
 
@@ -47,8 +47,8 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
 
     trait FilledApi extends super.FilledApi with super[ArrayFillTypeApi].TypedTermApi with super[TypeApi].TypedTermApi {
       this: Filled =>
-      def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
-        deltaType.Filled.newInstance(debuggingInformation, operand0.gradient(x))
+      def gradient(context: DifferentiableExpressions.Context)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
+        deltaType.Filled.newInstance(debuggingInformation, operand0.gradient(context))
       }
     }
     type Filled <: (TypedTerm with Any) with FilledApi
@@ -64,8 +64,8 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
     protected trait ExtractFromArrayBufferApi extends TermApi with super.ExtractFromArrayBufferApi with TypedTermApi {
       this: ExtractFromArrayBuffer =>
 
-      def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): deltaType.TypedTerm = {
-        val arrayBufferGradient: operand0.`type`.deltaType.TypedTerm = operand0.gradient(x)
+      def gradient(context: DifferentiableExpressions.Context)(implicit debuggingInformation: Implicitly[DebuggingInformation]): deltaType.TypedTerm = {
+        val arrayBufferGradient: operand0.`type`.deltaType.TypedTerm = operand0.gradient(context)
         deltaType.ExtractFromArrayBuffer.newInstance(
           debuggingInformation,
           // I am sure it is correct but I can't prove it in Scala 2
