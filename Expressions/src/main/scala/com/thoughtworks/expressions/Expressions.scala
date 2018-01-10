@@ -59,6 +59,7 @@ trait Expressions {
     val debuggingInformation: DebuggingInformation
     override def name: String = debuggingInformation.name.value
 
+    def self: Self
   }
 
   /** @template */
@@ -67,8 +68,9 @@ trait Expressions {
   protected trait TypeApi extends ExpressionApi { this: Type =>
     override def name: String
 
-    protected trait TypedTermApi extends TermApi {
+    protected trait TypedTermApi extends TermApi { this: TypedTerm =>
       val `type`: TypeApi.this.type = TypeApi.this
+      def self: Self = this
     }
 
     type TypedTerm <: (Term with Any) with TypedTermApi

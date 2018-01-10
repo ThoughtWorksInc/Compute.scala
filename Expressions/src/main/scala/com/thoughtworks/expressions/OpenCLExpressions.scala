@@ -174,7 +174,9 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
   protected trait TypeApi extends super.TypeApi with OpenCLType { this: Type =>
 
-    protected trait TypedTermApi extends TermApi with super.TypedTermApi
+    protected trait TypedTermApi extends TermApi with super.TypedTermApi { this: TypedTerm =>
+
+    }
 
     /** @template */
     type TypedTerm <: (Term with Any) with TypedTermApi
@@ -193,7 +195,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
 
-    protected trait LiteralApi extends super.LiteralApi {
+    protected trait LiteralApi extends super.LiteralApi { this: Literal =>
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
         OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Atom(fast"${operand0.toString}"))
       }

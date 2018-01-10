@@ -107,7 +107,7 @@ trait ArrayExpressions extends BooleanExpressions {
     arrayType: ArrayBufferType =>
     def name = "ArrayBufferType"
 
-    protected val operand0: ElementType
+    val operand0: ElementType
 
     protected val operand1: Seq[Int]
     def shape: Seq[Int] = operand1

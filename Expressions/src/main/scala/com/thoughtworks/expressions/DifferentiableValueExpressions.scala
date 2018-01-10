@@ -8,17 +8,20 @@ import com.thoughtworks.expressions.Anonymous.Implicitly
 trait DifferentiableValueExpressions extends DifferentiableExpressions with ValueExpressions {
 
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
+
+    val deltaType: ValueType
+
     def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): TypedTerm
 
-    protected trait TypedTermApi extends TermApi with super.TypedTermApi {
-      type DeltaTerm <: TypedTerm
-    }
-    type TypedTerm <: (ValueTerm with Any) with TypedTermApi
+//    protected trait TypedTermApi extends TermApi with super.TypedTermApi {
+//      type DeltaTerm <: TypedTerm
+//    }
+//    type TypedTerm <: (ValueTerm with Any) with TypedTermApi
 
-    protected trait ZeroGradientApi extends TypedTermApi {
-      type DeltaTerm = TypedTerm
+    protected trait ZeroGradientApi extends TypedTermApi { this: TypedTerm =>
+
       def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
-        zero
+        deltaType.zero
       }
     }
 
