@@ -56,7 +56,7 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
       extends super[ArrayExpressions].ValueTypeApi
       with super[OpenCLBooleanExpressions].ValueTypeApi { elementType: ValueType =>
 
-    protected trait ExtractFromArrayBufferApi extends super.ExtractFromArrayBufferApi {
+    protected trait ExtractFromArrayBufferApi extends super.ExtractFromArrayBufferApi { this: ExtractFromArrayBuffer =>
       def name: String
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
         val typeReference = context.get(elementType)
@@ -108,13 +108,13 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
     }
     type Identifier <: (TypedTerm with Any) with IdentifierApi
 
-    trait FilledApi extends super.FilledApi with TypedTermApi { this: Filled =>
+    trait TypedValueTermApi extends super.TypedValueTermApi with TypedTermApi { this: Filled =>
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
         ???
       }
 
     }
-    type Filled <: (TypedTerm with Any) with FilledApi
+    type Filled <: (TypedTerm with Any) with TypedValueTermApi
 
   }
 

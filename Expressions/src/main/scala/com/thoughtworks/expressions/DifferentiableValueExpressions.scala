@@ -10,7 +10,7 @@ trait DifferentiableValueExpressions extends DifferentiableExpressions with Valu
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
     def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): TypedTerm
 
-    protected trait TypedTermApi extends super.TypedTermApi with TermApi {
+    protected trait TypedTermApi extends TermApi with super.TypedTermApi {
       type DeltaTerm <: TypedTerm
     }
     type TypedTerm <: (ValueTerm with Any) with TypedTermApi

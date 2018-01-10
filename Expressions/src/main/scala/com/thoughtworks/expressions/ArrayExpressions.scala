@@ -10,10 +10,15 @@ import scala.language.higherKinds
   * @author 杨博 (Yang Bo)
   */
 trait ArrayExpressions extends BooleanExpressions {
+  protected trait ValueTermApi { valueTerm: ValueTerm =>
+    def filled(implicit debuggingInformation: Implicitly[DebuggingInformation])
+      : ArrayFillTerm { type ElementTerm = valueTerm.`type`.TypedTerm }
+  }
+  type ValueTerm <: (Term with Any) with ValueTermApi
 
-  protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
+  protected trait ValueTypeApi extends super.ValueTypeApi { valueType: ValueType =>
 
-    protected trait ExtractFromArrayBufferApi extends TypedTermApi {
+    protected trait ExtractFromArrayBufferApi extends TypedValueTermApi { this: ExtractFromArrayBuffer =>
       protected val operand0: ArrayBufferTerm { type ElementTerm = TypedTerm }
     }
 
@@ -22,6 +27,16 @@ trait ArrayExpressions extends BooleanExpressions {
     @inject val ExtractFromArrayBuffer: Factory2[DebuggingInformation,
                                                  ArrayBufferTerm { type ElementTerm = TypedTerm },
                                                  ExtractFromArrayBuffer]
+
+    protected trait TypedValueTermApi extends super.TypedTermApi { this: TypedTerm =>
+      def filled(implicit debuggingInformation: Implicitly[DebuggingInformation])
+      : ArrayFillTerm { type ElementTerm = valueType.TypedTerm }= {
+        val arrayFillType = ArrayFillType[valueType.type](valueType)
+        arrayFillType.Filled.newInstance(debuggingInformation, this)
+      }
+
+    }
+    type TypedTerm <: ValueTerm with TypedValueTermApi
 
   }
 
@@ -62,12 +77,13 @@ trait ArrayExpressions extends BooleanExpressions {
 
     type TypedTerm <: (ArrayFillTerm with Any) with TypedTermApi
 
-    trait FilledApi extends TypedTermApi { this: Filled =>
+    trait TypedValueTermApi extends TypedTermApi { this: Filled =>
       val operand0: ElementTerm
     }
-    type Filled <: (TypedTerm with Any) with FilledApi
+    type Filled <: (TypedTerm with Any) with TypedValueTermApi
 
-    @inject protected def Filled: Factory2[Implicitly[DebuggingInformation], operand0.TypedTerm, Filled]
+    @inject protected[ArrayExpressions] def Filled
+      : Factory2[Implicitly[DebuggingInformation], operand0.TypedTerm, Filled]
 
   }
 
