@@ -7,7 +7,7 @@ import shapeless.Lazy
 /**
   * @author 杨博 (Yang Bo)
   */
-trait Expressions extends Debugging {
+trait Expressions   {
 
   object Operator0 {
     implicit def operator0[Out](implicit factory: Factory1[Implicitly[DebuggingInformation], Out]): Operator0[Out] =
@@ -81,5 +81,14 @@ trait Expressions extends Debugging {
 
   /** @template */
   type Type <: (Expression with Any) with TypeApi
+
+  @inject val debuggingInformation: Implicitly[DebuggingInformation]
+
+  type DebuggingInformation <: Debugging.Name
+  protected trait ExpressionApi {
+    val debuggingInformation: DebuggingInformation
+    def name: String = debuggingInformation.name.value
+  }
+  type Expression <: ExpressionApi
 
 }

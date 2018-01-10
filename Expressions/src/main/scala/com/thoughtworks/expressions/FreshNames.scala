@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
   * @author 杨博 (Yang Bo)
   */
-trait FreshNames extends Debugging {
+trait FreshNames extends Expressions {
   // TODO: Remove this plugin, use Context.freshName instead
 
   protected val freshNameSeed = new AtomicInteger()

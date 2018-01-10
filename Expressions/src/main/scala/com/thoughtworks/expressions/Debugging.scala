@@ -23,14 +23,3 @@ object Debugging {
   }
 
 }
-
-trait Debugging {
-  @inject val debuggingInformation: Implicitly[DebuggingInformation]
-
-  type DebuggingInformation <: Debugging.Name
-  protected trait ExpressionApi {
-    val debuggingInformation: DebuggingInformation
-    def name: String = debuggingInformation.name.value
-  }
-  type Expression <: ExpressionApi
-}
