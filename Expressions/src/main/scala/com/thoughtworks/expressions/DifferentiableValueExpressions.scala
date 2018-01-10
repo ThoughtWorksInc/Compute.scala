@@ -18,16 +18,16 @@ trait DifferentiableValueExpressions extends DifferentiableExpressions with Valu
 //    }
 //    type TypedTerm <: (ValueTerm with Any) with TypedTermApi
 
-    protected trait ZeroGradientApi extends TypedTermApi { this: TypedTerm =>
+    protected trait ZeroDeltaApi extends TypedTermApi { this: TypedTerm =>
 
-      def gradient(context: DifferentiableExpressions.Context): DeltaTerm = {
+      def computeDelta(context: DifferentiableContext): DeltaTerm = {
         deltaType.zero(debuggingInformation)
       }
     }
 
-    type Identifier <: (TypedTerm with Any) with ZeroGradientApi
+    type Identifier <: (TypedTerm with Any) with ZeroDeltaApi
 
-    type Literal <: (TypedTerm with Any) with LiteralApi with ZeroGradientApi
+    type Literal <: (TypedTerm with Any) with LiteralApi with ZeroDeltaApi
 
   }
 

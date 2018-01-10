@@ -11,8 +11,8 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
 
 //    type DeltaTerm <: ArrayBufferTerm { type ElementTerm = outer.ElementTerm }
 
-    // TODO: `gradient` should be implemented in subtypes, not here
-    def gradient(context: DifferentiableExpressions.Context): DeltaTerm = {
+    // TODO: `delta` should be implemented in subtypes, not here
+    def computeDelta(context: DifferentiableContext): DeltaTerm = {
       ???
     }
   }
@@ -37,7 +37,7 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
     trait IdentifierApi extends super[ArrayFillTypeApi].TypedTermApi with super[TypeApi].TypedTermApi {
       outer: TypedTerm =>
 
-      def gradient(context: DifferentiableExpressions.Context): DeltaTerm = {
+      def computeDelta(context: DifferentiableContext): DeltaTerm = {
         deltaType.Filled.newInstance(debuggingInformation, arrayFillType.operand0.deltaType.zero(debuggingInformation))
       }
 
@@ -47,8 +47,8 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
 
     trait FilledApi extends super.FilledApi with super[ArrayFillTypeApi].TypedTermApi with super[TypeApi].TypedTermApi {
       this: Filled =>
-      def gradient(context: DifferentiableExpressions.Context): DeltaTerm = {
-        deltaType.Filled.newInstance(debuggingInformation, operand0.gradient(context))
+      def computeDelta(context: DifferentiableContext): DeltaTerm = {
+        deltaType.Filled.newInstance(debuggingInformation, operand0.computeDelta(context))
       }
     }
     type Filled <: (TypedTerm with Any) with FilledApi
@@ -64,12 +64,12 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
     protected trait ExtractFromArrayBufferApi extends TermApi with super.ExtractFromArrayBufferApi with TypedTermApi {
       this: ExtractFromArrayBuffer =>
 
-      def gradient(context: DifferentiableExpressions.Context): deltaType.TypedTerm = {
-        val arrayBufferGradient: operand0.`type`.deltaType.TypedTerm = operand0.gradient(context)
+      def computeDelta(context: DifferentiableContext): deltaType.TypedTerm = {
+        val arrayBufferDelta: operand0.`type`.deltaType.TypedTerm = operand0.computeDelta(context)
         deltaType.ExtractFromArrayBuffer.newInstance(
           debuggingInformation,
           // I am sure it is correct but I can't prove it in Scala 2
-          arrayBufferGradient.asInstanceOf[ArrayBufferTerm { type ElementTerm = deltaType.TypedTerm }]
+          arrayBufferDelta.asInstanceOf[ArrayBufferTerm { type ElementTerm = deltaType.TypedTerm }]
         )
       }
 
