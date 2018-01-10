@@ -28,34 +28,70 @@ trait ArrayExpressions extends BooleanExpressions {
   type ValueType <: (Type with Any) with ValueTypeApi
 
   protected trait ArrayTermApi {
-
     type ElementTerm <: ValueTerm
 
     def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm
 
   }
 
+  /** @template */
   type ArrayTerm <: (Term with Any) with ArrayTermApi
 
-  type ArrayType <: Type
+  protected trait ArrayTypeApi extends TypeApi { this: ArrayType =>
+    type ElementType <: ValueType
+  }
+
+  /** @template */
+  type ArrayType <: (Type with Any) with ArrayTypeApi
+  protected trait ArrayFillTermApi {
+    val `type`: ArrayFillType
+  }
+
+  /** @template */
+  type ArrayFillTerm <: (ArrayTerm with Any) with ArrayFillTermApi
+
+  protected trait ArrayFillTypeApi extends ArrayTypeApi { arrayFillType: ArrayFillType =>
+    protected val operand0: ElementType
+    trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
+      type ElementTerm = arrayFillType.operand0.TypedTerm
+
+      def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
+        ???
+      }
+    }
+
+    type TypedTerm <: (ArrayFillTerm with Any) with TypedTermApi
+
+    trait FilledApi extends TypedTermApi { this: Filled =>
+      val operand0: ElementTerm
+    }
+    type Filled <: (TypedTerm with Any) with FilledApi
+
+    @inject protected def Filled: Factory2[Implicitly[DebuggingInformation], operand0.TypedTerm, Filled]
+
+  }
+
+  /** @template */
+  type ArrayFillType <: (ArrayType with Any) with ArrayFillTypeApi
+  @inject def ArrayFillType[ElementType0 <: ValueType]
+    : Operator1[ElementType0, ArrayFillType { type ElementType = ElementType0 }]
 
   protected trait ArrayBufferTermApi {
     val `type`: ArrayBufferType
   }
 
+  /** @template */
   type ArrayBufferTerm <: (ArrayTerm with Any) with ArrayBufferTermApi
 
-  protected trait ArrayBufferTypeApi extends TypeApi {
+  protected trait ArrayBufferTypeApi extends ArrayTypeApi {
     arrayType: ArrayBufferType =>
-
-    type ElementType <: ValueType
 
     protected val operand0: ElementType
 
     protected val operand1: Seq[Int]
     def shape: Seq[Int] = operand1
 
-    trait TypedTermApi extends super.TypedTermApi with ArrayTermApi { this: TypedTerm =>
+    trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
       type ElementTerm = arrayType.operand0.TypedTerm
 
       def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
@@ -70,6 +106,7 @@ trait ArrayExpressions extends BooleanExpressions {
   /** @template */
   type ArrayBufferType <: (ArrayType with Any) with ArrayBufferTypeApi
 
+  /** @template */
   type ArrayViewTerm <: ArrayTerm
 
   protected trait ArrayViewTypeApi {
@@ -83,6 +120,8 @@ trait ArrayExpressions extends BooleanExpressions {
     //      @inject //      def Transform: Operator2[ArrayBufferTerm, Array[Array[Int]], Transform]
 
   }
+
+  /** @template */
   type ArrayViewType <: (ArrayType with Any) with ArrayViewTypeApi
 
   @inject def ArrayBufferType[ElementType0 <: ValueType]

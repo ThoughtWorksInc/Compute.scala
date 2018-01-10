@@ -16,6 +16,35 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
 
   type ArrayBufferTerm <: (ArrayTerm with Any) with ArrayBufferTermApi
 
+  trait ArrayFillTermApi extends super.ArrayFillTermApi { outer: ArrayFillTerm =>
+    type DeltaTerm <: ArrayFillTerm { type ElementTerm = outer.ElementTerm }
+  }
+
+  type ArrayFillTerm <: (ArrayTerm with Any) with ArrayFillTermApi
+
+  protected trait ArrayFillTypeApi extends super.ArrayFillTypeApi {
+    arrayFillType: ArrayFillType =>
+
+    trait TypedTermApi extends super.TypedTermApi { outer: TypedTerm =>
+      type DeltaTerm = Filled
+
+//      def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
+//        ???
+//      }
+
+      def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
+        val zero = arrayFillType.operand0.zero // FIXME: should invoke elementTerm.gradient instead of zero
+        Filled.newInstance(debuggingInformation, zero)
+      }
+
+    }
+
+    type TypedTerm <: (ArrayFillTerm with Any) with TypedTermApi
+
+  }
+
+  type ArrayFillType <: (ArrayType with Any) with ArrayFillTypeApi
+
   protected trait ValueTypeApi
       extends super[ArrayExpressions].ValueTypeApi
       with super[DifferentiableValueExpressions].ValueTypeApi { this: ValueType =>

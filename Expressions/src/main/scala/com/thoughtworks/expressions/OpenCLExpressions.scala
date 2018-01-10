@@ -180,8 +180,6 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
     type TypedTerm <: (Term with Any) with TypedTermApi
 
     protected trait IdentifierApi extends TermApi { this: Identifier =>
-      // TODO:
-
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
         OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Packed(fast"$name", context.get(`type`).unpacked.length))
       }
