@@ -20,8 +20,8 @@ trait DifferentiableValueExpressions extends DifferentiableExpressions with Valu
 
     protected trait ZeroGradientApi extends TypedTermApi { this: TypedTerm =>
 
-      def gradient(context: DifferentiableExpressions.Context)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
-        deltaType.zero
+      def gradient(context: DifferentiableExpressions.Context): DeltaTerm = {
+        deltaType.zero(debuggingInformation)
       }
     }
 

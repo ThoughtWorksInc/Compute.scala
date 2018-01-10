@@ -56,7 +56,7 @@ trait Expressions {
   protected trait TermApi extends ExpressionApi {
     val `type`: Type
     type Self = `type`.TypedTerm
-    val debuggingInformation: DebuggingInformation with Anonymous
+    val debuggingInformation: Implicitly[DebuggingInformation]
     override def name: String = debuggingInformation.name.value
 
     def self: Self
