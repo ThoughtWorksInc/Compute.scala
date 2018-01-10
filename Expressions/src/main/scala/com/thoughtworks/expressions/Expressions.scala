@@ -53,7 +53,7 @@ trait Expressions   {
         implicit debuggingInformation: Implicitly[DebuggingInformation]): Out
   }
 
-  protected trait TermApi {
+  protected trait TermApi extends ExpressionApi {
     val `type`: Type
     type Self = `type`.TypedTerm
   }
