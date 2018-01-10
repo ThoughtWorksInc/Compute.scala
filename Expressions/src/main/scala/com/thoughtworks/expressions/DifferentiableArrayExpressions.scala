@@ -9,6 +9,8 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
 
   trait ArrayBufferTermApi extends TermApi with super.ArrayBufferTermApi { outer: ArrayBufferTerm =>
     type DeltaTerm <: ArrayBufferTerm { type ElementTerm = outer.ElementTerm }
+
+    // TODO: `gradient` should be implemented in subtypes, not here
     def gradient(x: Term)(implicit debuggingInformation: Implicitly[DebuggingInformation]): DeltaTerm = {
       ???
     }
