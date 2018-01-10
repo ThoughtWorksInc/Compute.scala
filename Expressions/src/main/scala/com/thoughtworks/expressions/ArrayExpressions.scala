@@ -31,7 +31,7 @@ trait ArrayExpressions extends BooleanExpressions {
     protected trait TypedValueTermApi extends super.TypedTermApi { this: TypedTerm =>
       def filled(implicit debuggingInformation: Implicitly[DebuggingInformation])
         : ArrayFillTerm { type ElementTerm = valueType.TypedTerm } = {
-        val arrayFillType = ArrayFillType[valueType.type](valueType)
+        val arrayFillType = ArrayFillType[valueType.type].newInstance(valueType)
         arrayFillType.Filled.newInstance(debuggingInformation, this)
       }
 
@@ -89,8 +89,10 @@ trait ArrayExpressions extends BooleanExpressions {
 
   /** @template */
   type ArrayFillType <: (ArrayType with Any) with ArrayFillTypeApi
-  @inject def ArrayFillType[ElementType0 <: ValueType]
-    : Operator1[ElementType0, ArrayFillType { type ElementType = ElementType0 }]
+
+  @inject
+  def ArrayFillType[ElementType0 <: ValueType]
+    : Factory1[ElementType0, ArrayFillType { type ElementType = ElementType0 }]
 
   protected trait ArrayBufferTermApi {
     val `type`: ArrayBufferType
@@ -140,7 +142,8 @@ trait ArrayExpressions extends BooleanExpressions {
   /** @template */
   type ArrayViewType <: (ArrayType with Any) with ArrayViewTypeApi
 
-  @inject def ArrayBufferType[ElementType0 <: ValueType]
-    : Operator2[ElementType0, Seq[Int], ArrayBufferType { type ElementType = ElementType0 }]
+  @inject
+  def ArrayBufferType[ElementType0 <: ValueType]
+    : Factory2[ElementType0, Seq[Int], ArrayBufferType { type ElementType = ElementType0 }]
 
 }
