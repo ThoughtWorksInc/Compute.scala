@@ -24,7 +24,7 @@ trait ArrayExpressions extends BooleanExpressions {
 
     type ExtractFromArrayBuffer <: (TypedTerm with Any) with ExtractFromArrayBufferApi
 
-    @inject val ExtractFromArrayBuffer: Factory2[DebuggingInformation,
+    @inject val ExtractFromArrayBuffer: Factory2[Implicitly[DebuggingInformation],
                                                  ArrayBufferTerm { type ElementTerm = TypedTerm },
                                                  ExtractFromArrayBuffer]
 
