@@ -31,7 +31,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     import hyperparameters._
 
-    val floatArray3d = ArrayBufferType(float, Seq(32, 32, 32))
+    val floatArray3d = ArrayBufferType.newInstance(float, Seq(32, 32, 32))
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
     val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), Seq(x.extract)).mkString
@@ -48,7 +48,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     import hyperparameters._
 
-    val floatArray3d = ArrayBufferType(float, Seq(32, 32, 32))
+    val floatArray3d = ArrayBufferType.newInstance(float, Seq(32, 32, 32))
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
     val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), Seq(x.extract)).mkString
