@@ -10,7 +10,7 @@ trait ValueExpressions extends Expressions {
 
   protected trait ValueTypeApi extends TypeApi { this: ValueType =>
     type JvmType
-    type TypedTerm <: ValueTerm with TypedTermApi
+    type TypedTerm <: (ValueTerm with Any) with TypedTermApi
 
     protected trait LiteralApi extends TypedTermApi {
       protected val operand0: JvmType

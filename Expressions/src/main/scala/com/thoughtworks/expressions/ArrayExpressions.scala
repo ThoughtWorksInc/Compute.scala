@@ -36,7 +36,7 @@ trait ArrayExpressions extends BooleanExpressions {
       }
 
     }
-    type TypedTerm <: ValueTerm with TypedValueTermApi
+    type TypedTerm <: (ValueTerm with Any) with TypedValueTermApi
 
   }
 
