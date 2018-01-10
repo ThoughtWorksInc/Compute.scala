@@ -10,9 +10,9 @@ import scala.language.higherKinds
   * @author 杨博 (Yang Bo)
   */
 trait ArrayExpressions extends BooleanExpressions {
-  protected trait ValueTermApi { valueTerm: ValueTerm =>
+  protected trait ValueTermApi extends TermApi { valueTerm: ValueTerm =>
     def filled(implicit debuggingInformation: Implicitly[DebuggingInformation])
-      : ArrayFillTerm { type ElementTerm = valueTerm.`type`.TypedTerm }
+      : ArrayFillTerm { type ElementTerm = valueTerm.Self }
   }
   type ValueTerm <: (Term with Any) with ValueTermApi
 
@@ -30,7 +30,7 @@ trait ArrayExpressions extends BooleanExpressions {
 
     protected trait TypedValueTermApi extends super.TypedTermApi { this: TypedTerm =>
       def filled(implicit debuggingInformation: Implicitly[DebuggingInformation])
-      : ArrayFillTerm { type ElementTerm = valueType.TypedTerm }= {
+        : ArrayFillTerm { type ElementTerm = valueType.TypedTerm } = {
         val arrayFillType = ArrayFillType[valueType.type](valueType)
         arrayFillType.Filled.newInstance(debuggingInformation, this)
       }

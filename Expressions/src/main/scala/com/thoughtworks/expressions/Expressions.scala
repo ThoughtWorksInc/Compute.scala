@@ -55,6 +55,7 @@ trait Expressions extends Debugging {
 
   protected trait TermApi {
     val `type`: Type
+    type Self = `type`.TypedTerm
   }
 
   /** @template */
