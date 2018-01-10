@@ -108,13 +108,13 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
     }
     type Identifier <: (TypedTerm with Any) with IdentifierApi
 
-    trait TypedValueTermApi extends super.TypedValueTermApi with TypedTermApi { this: Filled =>
+    trait FilledApi extends super.FilledApi with TypedTermApi { this: Filled =>
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
         ???
       }
 
     }
-    type Filled <: (TypedTerm with Any) with TypedValueTermApi
+    type Filled <: (TypedTerm with Any) with FilledApi
 
   }
 
