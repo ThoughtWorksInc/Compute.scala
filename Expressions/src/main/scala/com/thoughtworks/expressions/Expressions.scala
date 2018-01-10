@@ -92,7 +92,7 @@ trait Expressions {
   type DebuggingInformation <: Debugging.Name
   protected trait ExpressionApi {
     val debuggingInformation: DebuggingInformation
-    def name: String = debuggingInformation.name.value
+    def name: String 
   }
   type Expression <: ExpressionApi
 

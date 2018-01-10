@@ -174,7 +174,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
   protected trait TypeApi extends super.TypeApi with OpenCLType { this: Type =>
 
-    protected trait TypedTermApi extends TermApi with super.TypedTermApi {}
+    protected trait TypedTermApi extends TermApi with super.TypedTermApi
 
     /** @template */
     type TypedTerm <: (Term with Any) with TypedTermApi
