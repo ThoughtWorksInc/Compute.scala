@@ -12,6 +12,8 @@ trait BooleanExpressions extends ValueExpressions {
   protected trait BooleanTypeApi extends ValueTypeApi { this: BooleanType =>
     type JvmType = Boolean
 
+    def name = "Boolean"
+
     def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): Literal = Literal(false)
   }
 

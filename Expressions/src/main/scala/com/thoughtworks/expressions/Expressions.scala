@@ -65,7 +65,7 @@ trait Expressions {
   type Term <: (Expression with Any) with TermApi
 
   protected trait TypeApi extends ExpressionApi { this: Type =>
-    override def name: String = debuggingInformation.name.value
+    override def name: String
 
     protected trait TypedTermApi extends TermApi {
       val `type`: TypeApi.this.type = TypeApi.this

@@ -12,6 +12,8 @@ trait FloatExpressions extends ValueExpressions {
   protected trait FloatTypeApi extends ValueTypeApi { this: FloatType =>
     type JvmType = Float
 
+    def name = "Float"
+
     def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): Literal = Literal(0.0f)
   }
 
