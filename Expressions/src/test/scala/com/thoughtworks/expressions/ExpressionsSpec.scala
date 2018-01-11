@@ -31,7 +31,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     import hyperparameters._
 
-    val dimentions = Seq(32, 32, 32)
+    val dimentions = Seq(64, 32, 32)
     val floatArray3d = ArrayBufferType.newInstance(float, dimentions)
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
@@ -48,7 +48,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     import hyperparameters._
 
-    val dimensions = Seq(32, 32, 32)
+    val dimensions = Seq(64, 32, 32)
     val floatArray3d = ArrayBufferType.newInstance(float, dimensions)
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
@@ -63,6 +63,31 @@ class ExpressionsSpec extends FreeSpec with Matchers {
       generateOpenCLKernelSourceCode("id_backward", dimensions.length, Seq(x, deltaX), Seq(deltaOfId)).mkString
 
     println(sourceCode) // FIXME: replace println to a scalatest assertion
+
+  }
+
+  "3x3 convolutional" in {
+
+    val hyperparameters =
+      Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
+
+    import hyperparameters._
+
+    val batchSize = 64
+    val width = 32
+    val height = 32
+    val depth = 128
+    // TODO: depth
+    val dimensions = Seq(batchSize, width, height)
+    val floatArray3d = ArrayBufferType.newInstance(float, dimensions)
+    val x: floatArray3d.Identifier = floatArray3d.Identifier()
+    val w = float.Identifier()
+
+//    val f = x.extract * w
+//
+//    val sourceCode = generateOpenCLKernelSourceCode("cnn", dimensions.length, Seq(x, w), Seq(f)).mkString
+//
+//    println(sourceCode)
 
   }
 

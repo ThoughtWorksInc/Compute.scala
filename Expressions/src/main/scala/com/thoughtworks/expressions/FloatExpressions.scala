@@ -15,6 +15,14 @@ trait FloatExpressions extends ValueExpressions {
     def name = "Float"
 
     def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): Literal = Literal(0.0f)
+
+    protected trait FloatTypedTermApi extends super.TypedTermApi { this: TypedTerm =>
+      def +(rightHandSide: FloatTerm)(implicit debuggingInformation: Implicitly[DebuggingInformation]): FloatTerm = ???
+      def *(rightHandSide: FloatTerm)(implicit debuggingInformation: Implicitly[DebuggingInformation]): FloatTerm = ???
+    }
+
+    type TypedTerm <: (ValueTerm with Any) with FloatTypedTermApi
+
   }
 
   /** @template */

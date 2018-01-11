@@ -13,6 +13,11 @@ trait OpenCLFloatExpressions extends FloatExpressions with OpenCLExpressions {
     def toCode(context: OpenCLContext): OpenCLType.Code =
       OpenCLType.Code(accessor = OpenCLType.Accessor.Atom("float"))
 
+    protected trait FloatTypedTermApi extends super.FloatTypedTermApi with TypedTermApi { this: TypedTerm =>
+    }
+
+    type TypedTerm <: (ValueTerm with Any) with FloatTypedTermApi
+
     protected trait LiteralApi extends super[ValueTypeApi].LiteralApi { this: Literal =>
       override def toCode(context: OpenCLContext): OpenCLTerm.Code = {
         OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Atom(fast"${operand0.toString}f"))
