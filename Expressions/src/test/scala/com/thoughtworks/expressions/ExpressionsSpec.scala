@@ -57,10 +57,9 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     //    x.extract.
 
     val f = x.extract
-    val deltaOfId = delta(f, x -> deltaX)
 
     val sourceCode =
-      generateOpenCLKernelSourceCode("id_backward", dimensions.length, Seq(x, deltaX), Seq(deltaOfId)).mkString
+      generateOpenCLKernelSourceCode("id_backward", dimensions.length, Seq(x, deltaX), Seq(delta(f, x -> deltaX))).mkString
 
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 
@@ -79,16 +78,26 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     val depth = 128
     // TODO: depth
     val dimensions = Seq(batchSize, width, height)
-    val floatArray3d = ArrayBufferType.newInstance(float, dimensions)
+    import shapeless.syntax.singleton._
+    val floatArray3d = ArrayBufferType[float.type].newInstance(float, dimensions)
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
-    val w = float.Identifier()
+    val w: FloatTerm = float.Identifier()
+    val b: FloatTerm = float.Identifier()
 
-//    val f = x.extract * w
-//
-//    val sourceCode = generateOpenCLKernelSourceCode("cnn", dimensions.length, Seq(x, w), Seq(f)).mkString
-//
-//    println(sourceCode)
+    val f = x.extract * w + b
+
+    val forwardSourceCode = generateOpenCLKernelSourceCode("cnn_forward", dimensions.length, Seq(x, w, b), Seq(f)).mkString
+    println(forwardSourceCode)
+
+    val deltaX = floatArray3d.Identifier()
+    val backwardSourceCode = generateOpenCLKernelSourceCode("cnn_backward",
+                                                            dimensions.length,
+                                                            Seq(x, w, b, deltaX),
+                                                            Seq(delta(f, x -> deltaX))).mkString
+
+    println(backwardSourceCode)
 
   }
+
 
 }
