@@ -48,7 +48,7 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
     trait FilledApi extends super.FilledApi with super[ArrayFillTypeApi].TypedTermApi with super[TypeApi].TypedTermApi {
       this: Filled =>
       def computeDelta(context: DifferentiableContext): DeltaTerm = {
-        deltaType.Filled.newInstance(debuggingInformation, operand0.computeDelta(context))
+        deltaType.Filled.newInstance(debuggingInformation, context.delta(operand0))
       }
     }
     type Filled <: (TypedTerm with Any) with FilledApi
@@ -65,7 +65,7 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
       this: ExtractFromArrayBuffer =>
 
       def computeDelta(context: DifferentiableContext): deltaType.TypedTerm = {
-        val arrayBufferDelta: operand0.`type`.deltaType.TypedTerm = operand0.computeDelta(context)
+        val arrayBufferDelta: operand0.`type`.deltaType.TypedTerm = context.delta(operand0)
         deltaType.ExtractFromArrayBuffer.newInstance(
           debuggingInformation,
           // I am sure it is correct but I can't prove it in Scala 2

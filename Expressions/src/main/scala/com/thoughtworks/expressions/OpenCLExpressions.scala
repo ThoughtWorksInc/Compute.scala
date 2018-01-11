@@ -9,7 +9,7 @@ import scala.collection.JavaConverters._
 object OpenCLExpressions {
 
   trait OpenCLTerm {
-    def name: String
+    def id: String
     val `type`: OpenCLType
     def toCode(context: OpenCLContext): OpenCLTerm.Code
   }
@@ -74,14 +74,14 @@ object OpenCLExpressions {
     }
 
     object Accessor {
-      final case class Structure(name: String, unpacked: Seq[String]) extends Accessor {
-        def packed: Fastring = fast"struct $name"
+      final case class Structure(id: String, unpacked: Seq[String]) extends Accessor {
+        def packed: Fastring = fast"struct $id"
       }
 
-      final case class Atom(name: String) extends Accessor {
-        def packed: Fastring = fast"$name"
+      final case class Atom(id: String) extends Accessor {
+        def packed: Fastring = fast"$id"
 
-        def unpacked: Seq[String] = Seq(name)
+        def unpacked: Seq[String] = Seq(id)
       }
     }
     import Accessor._
@@ -132,20 +132,20 @@ object OpenCLExpressions {
 
       val parameterDeclarations = for (parameter <- parameters) yield {
         val typeName = functionContext.get(parameter.`type`).packed
-        fast"$typeName ${parameter.name}"
+        fast"const $typeName ${parameter.id}"
       }
 
       val (outputParameters, outputAssignments) = outputs.map { output =>
         val packedOutput = functionContext.get(output).packed
         val packedOutputType = functionContext.get(output.`type`).packed
-        val outputName = output.name
-        val outputParameter = fast"global $packedOutputType *$outputName"
-        val outputAssignment = fast"$outputName[get_global_linear_id()] = packedOutput;\n"
+        val outputId = output.id
+        val outputParameter = fast"global $packedOutputType *$outputId"
+        val outputAssignment = fast"$outputId[get_global_linear_id()] = $packedOutput;\n"
         (outputParameter, outputAssignment)
       }.unzip
 
       fastraw"""
-        kernel void $functionName(const ${parameterDeclarations.mkFastring(", ")}, ${outputParameters.mkFastring(", ")}) {
+        kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, ${outputParameters.mkFastring(", ")}) {
           ${localDefinitions.mkFastring}
 
           // TODO: polyfill for get_global_linear_id
@@ -183,7 +183,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
     protected trait IdentifierApi extends TermApi { this: Identifier =>
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
-        OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Packed(fast"$name", context.get(`type`).unpacked.length))
+        OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Packed(fast"$id", context.get(`type`).unpacked.length))
       }
     }
 

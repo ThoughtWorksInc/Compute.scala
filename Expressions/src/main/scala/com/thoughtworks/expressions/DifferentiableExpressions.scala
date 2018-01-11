@@ -1,7 +1,6 @@
 package com.thoughtworks.expressions
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 import scala.language.existentials
 
 /**
@@ -27,16 +26,22 @@ trait DifferentiableExpressions extends Expressions {
 
   type Type <: (Expression with Any) with TypeApi
 
-  type DifferentiableContext = mutable.Map[Term, Term]
+  final class DifferentiableContext private (deltas: java.util.IdentityHashMap[Term, Term]) {
 
-  def delta(output: Term, knownDeltas: (Term, Term)*): output.DeltaTerm = {
-    val context = new java.util.IdentityHashMap[Term, Term].asScala
-    context ++= knownDeltas
-    val outputDelta = context.getOrElseUpdate(output, output.computeDelta(context))
+    def this(knownDeltas: (Term, Term)*) = this {
+      val deltas = new java.util.IdentityHashMap[Term, Term]
+      deltas.asScala ++= knownDeltas
+      deltas
+    }
 
-    // This cast may be avoided by introducing HMap in the future.
-    // However, current version of shapeless.HMap does not support mutable maps.
-    outputDelta.asInstanceOf[output.DeltaTerm]
+    def delta(term: Term): term.DeltaTerm = {
+      deltas.asScala.getOrElseUpdate(term, term.computeDelta(this)).asInstanceOf[term.DeltaTerm]
+    }
+
+  }
+
+  def delta(root: Term, knownDeltas: (Term, Term)*): root.DeltaTerm = {
+    new DifferentiableContext(knownDeltas: _*).delta(root)
   }
 
 }

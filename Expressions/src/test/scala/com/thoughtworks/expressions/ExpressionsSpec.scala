@@ -19,7 +19,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     import hyperparameters._
 
     val x: float.Identifier = float.Identifier()
-    val sourceCode = generateOpenCLKernelSourceCode("fill", Seq(x), Seq(x)).mkString
+    val sourceCode = generateOpenCLKernelSourceCode("fill", Seq(x), Seq(float.Literal(42.0f))).mkString
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 
   }
@@ -42,8 +42,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "differentiable id" in {
 
-    val hyperparameters
-      : AllDifferentiableExpressions with AllOpenCLExpressions { type DebuggingInformation = Debugging.Name } =
+    val hyperparameters =
       Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
 
     import hyperparameters._
@@ -51,7 +50,14 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     val floatArray3d = ArrayBufferType.newInstance(float, Seq(32, 32, 32))
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
-    val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), Seq(x.extract)).mkString
+    val deltaX: floatArray3d.Identifier = floatArray3d.Identifier()
+
+//    x.extract.
+
+    val f = x.extract
+    val deltaOfId = delta(f, x -> deltaX)
+
+    val sourceCode = generateOpenCLKernelSourceCode("id_backward", Seq(x, deltaX), Seq(deltaOfId)).mkString
 
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 

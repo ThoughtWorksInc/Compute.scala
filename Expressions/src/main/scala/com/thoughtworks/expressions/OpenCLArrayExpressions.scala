@@ -57,7 +57,6 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
       with super[OpenCLBooleanExpressions].ValueTypeApi { elementType: ValueType =>
 
     protected trait ExtractFromArrayBufferApi extends super.ExtractFromArrayBufferApi { this: ExtractFromArrayBuffer =>
-      def name: String
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
         val typeReference = context.get(elementType)
         val packedType = typeReference.packed
@@ -70,9 +69,9 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
         } yield fast"[get_global_id($i)]"
         OpenCLTerm.Code(
           localDefinitions = fastraw"""
-            $packedType $name = (*${context.get(arrayTerm).packed})${globalIndices.mkFastring};
+            $packedType $id = (*${context.get(arrayTerm).packed})${globalIndices.mkFastring};
           """,
-          accessor = OpenCLTerm.Accessor.Packed(fast"$name", context.get(arrayTerm.`type`).unpacked.length)
+          accessor = OpenCLTerm.Accessor.Packed(fast"$id", context.get(arrayTerm.`type`).unpacked.length)
         )
       }
     }
@@ -90,8 +89,8 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
       val element = context.get(operand0)
       val dimensions = for (size <- arrayType.shape) yield fast"[$size]"
       OpenCLType.Code(
-        globalDefinitions = fast"typedef global ${element.packed} (*$name)${dimensions.mkFastring};",
-        accessor = OpenCLType.Accessor.Atom(name)
+        globalDefinitions = fast"typedef global ${element.packed} (*$id)${dimensions.mkFastring};",
+        accessor = OpenCLType.Accessor.Atom(id)
       )
     }
 
