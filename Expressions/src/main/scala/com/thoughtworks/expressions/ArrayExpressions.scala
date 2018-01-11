@@ -24,7 +24,7 @@ trait ArrayExpressions extends BooleanExpressions {
 
     type ExtractFromArrayBuffer <: (TypedTerm with Any) with ExtractFromArrayBufferApi
 
-    @inject val ExtractFromArrayBuffer: Factory2[DebuggingInformation,
+    @inject val ExtractFromArrayBuffer: Factory2[Implicitly[DebuggingInformation],
                                                  ArrayBufferTerm { type ElementTerm = TypedTerm },
                                                  ExtractFromArrayBuffer]
 
@@ -66,7 +66,7 @@ trait ArrayExpressions extends BooleanExpressions {
   type ArrayFillTerm <: (ArrayTerm with Any) with ArrayFillTermApi
 
   protected trait ArrayFillTypeApi extends ArrayTypeApi { arrayFillType: ArrayFillType =>
-    def name = "ArrayFillType"
+    def name = "ArrayFill"
 
     protected val operand0: ElementType
     trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
@@ -79,10 +79,10 @@ trait ArrayExpressions extends BooleanExpressions {
 
     type TypedTerm <: (ArrayFillTerm with Any) with TypedTermApi
 
-    trait TypedValueTermApi extends TypedTermApi { this: Filled =>
+    trait FilledApi extends TypedTermApi { this: Filled =>
       val operand0: ElementTerm
     }
-    type Filled <: (TypedTerm with Any) with TypedValueTermApi
+    type Filled <: (TypedTerm with Any) with FilledApi
 
     @inject protected[ArrayExpressions] def Filled
       : Factory2[Implicitly[DebuggingInformation], operand0.TypedTerm, Filled]
@@ -103,20 +103,19 @@ trait ArrayExpressions extends BooleanExpressions {
   /** @template */
   type ArrayBufferTerm <: (ArrayTerm with Any) with ArrayBufferTermApi
 
-  protected trait ArrayBufferTypeApi extends ArrayTypeApi {
-    arrayType: ArrayBufferType =>
-    def name = "ArrayBufferType"
+  protected trait ArrayBufferTypeApi extends ArrayTypeApi { thisArrayBufferType: ArrayBufferType =>
+    def name = "ArrayBuffer"
 
-    protected val operand0: ElementType
+    val operand0: ElementType
 
     protected val operand1: Seq[Int]
     def shape: Seq[Int] = operand1
 
     trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
-      type ElementTerm = arrayType.operand0.TypedTerm
+      type ElementTerm = thisArrayBufferType.operand0.TypedTerm
 
       def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
-        arrayType.operand0.ExtractFromArrayBuffer.newInstance(debuggingInformation, this)
+        thisArrayBufferType.operand0.ExtractFromArrayBuffer.newInstance(debuggingInformation, this)
       }
     }
 

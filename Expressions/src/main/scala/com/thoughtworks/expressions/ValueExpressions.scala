@@ -12,7 +12,7 @@ trait ValueExpressions extends Expressions {
     type JvmType
     type TypedTerm <: (ValueTerm with Any) with TypedTermApi
 
-    protected trait LiteralApi extends TypedTermApi {
+    protected trait LiteralApi extends TypedTermApi { this: Literal =>
       protected val operand0: JvmType
     }
     type Literal <: (TypedTerm with Any) with LiteralApi

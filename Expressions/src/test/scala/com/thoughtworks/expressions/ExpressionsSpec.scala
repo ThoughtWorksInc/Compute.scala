@@ -19,7 +19,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     import hyperparameters._
 
     val x: float.Identifier = float.Identifier()
-    val sourceCode = generateOpenCLKernelSourceCode("fill", Seq(x), Seq(x)).mkString
+    val sourceCode = generateOpenCLKernelSourceCode("fill", 3, Seq(x), Seq(float.Literal(42.0f))).mkString
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 
   }
@@ -31,10 +31,11 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
     import hyperparameters._
 
-    val floatArray3d = ArrayBufferType.newInstance(float, Seq(32, 32, 32))
+    val dimentions = Seq(64, 32, 32)
+    val floatArray3d = ArrayBufferType.newInstance(float, dimentions)
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
-    val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), Seq(x.extract)).mkString
+    val sourceCode = generateOpenCLKernelSourceCode("id", dimentions.length, Seq(x), Seq(x.extract)).mkString
 
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 
@@ -42,19 +43,61 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "differentiable id" in {
 
-    val hyperparameters
-      : AllDifferentiableExpressions with AllOpenCLExpressions { type DebuggingInformation = Debugging.Name } =
+    val hyperparameters =
       Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
 
     import hyperparameters._
 
-    val floatArray3d = ArrayBufferType.newInstance(float, Seq(32, 32, 32))
+    val dimensions = Seq(64, 32, 32)
+    val floatArray3d = ArrayBufferType.newInstance(float, dimensions)
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
-    val sourceCode = generateOpenCLKernelSourceCode("id", Seq(x), Seq(x.extract)).mkString
+    val deltaX: floatArray3d.Identifier = floatArray3d.Identifier()
+
+    //    x.extract.
+
+    val f = x.extract
+
+    val sourceCode =
+      generateOpenCLKernelSourceCode("id_backward", dimensions.length, Seq(x, deltaX), Seq(delta(f, x -> deltaX))).mkString
 
     println(sourceCode) // FIXME: replace println to a scalatest assertion
 
   }
+
+  "3x3 convolutional" in {
+
+    val hyperparameters =
+      Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
+
+    import hyperparameters._
+
+    val batchSize = 64
+    val width = 32
+    val height = 32
+    val depth = 128
+    // TODO: depth
+    val dimensions = Seq(batchSize, width, height)
+    import shapeless.syntax.singleton._
+    val floatArray3d = ArrayBufferType[float.type].newInstance(float, dimensions)
+    val x: floatArray3d.Identifier = floatArray3d.Identifier()
+    val w: FloatTerm = float.Identifier()
+    val b: FloatTerm = float.Identifier()
+
+    val f = x.extract * w + b
+
+    val forwardSourceCode = generateOpenCLKernelSourceCode("cnn_forward", dimensions.length, Seq(x, w, b), Seq(f)).mkString
+    println(forwardSourceCode)
+
+    val deltaX = floatArray3d.Identifier()
+    val backwardSourceCode = generateOpenCLKernelSourceCode("cnn_backward",
+                                                            dimensions.length,
+                                                            Seq(x, w, b, deltaX),
+                                                            Seq(delta(f, x -> deltaX))).mkString
+
+    println(backwardSourceCode)
+
+  }
+
 
 }

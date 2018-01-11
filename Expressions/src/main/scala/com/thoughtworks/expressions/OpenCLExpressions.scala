@@ -9,7 +9,7 @@ import scala.collection.JavaConverters._
 object OpenCLExpressions {
 
   trait OpenCLTerm {
-    def name: String
+    def id: String
     val `type`: OpenCLType
     def toCode(context: OpenCLContext): OpenCLTerm.Code
   }
@@ -74,14 +74,14 @@ object OpenCLExpressions {
     }
 
     object Accessor {
-      final case class Structure(name: String, unpacked: Seq[String]) extends Accessor {
-        def packed: Fastring = fast"struct $name"
+      final case class Structure(id: String, unpacked: Seq[String]) extends Accessor {
+        def packed: Fastring = fast"struct $id"
       }
 
-      final case class Atom(name: String) extends Accessor {
-        def packed: Fastring = fast"$name"
+      final case class Atom(id: String) extends Accessor {
+        def packed: Fastring = fast"$id"
 
-        def unpacked: Seq[String] = Seq(name)
+        def unpacked: Seq[String] = Seq(id)
       }
     }
     import Accessor._
@@ -93,6 +93,7 @@ object OpenCLExpressions {
   }
 
   def generateOpenCLKernelSourceCode(functionName: String,
+                                     numberOfDimensions: Int,
                                      parameters: Seq[OpenCLTerm],
                                      outputs: Seq[OpenCLTerm]): Fastring = {
 
@@ -132,23 +133,30 @@ object OpenCLExpressions {
 
       val parameterDeclarations = for (parameter <- parameters) yield {
         val typeName = functionContext.get(parameter.`type`).packed
-        fast"$typeName ${parameter.name}"
+        fast"const $typeName ${parameter.id}"
       }
 
       val (outputParameters, outputAssignments) = outputs.map { output =>
         val packedOutput = functionContext.get(output).packed
         val packedOutputType = functionContext.get(output.`type`).packed
-        val outputName = output.name
-        val outputParameter = fast"global $packedOutputType *$outputName"
-        val outputAssignment = fast"$outputName[get_global_linear_id()] = packedOutput;\n"
+        val outputId = output.id
+        val outputParameter = fast"global $packedOutputType *output_$outputId"
+        def outputIndex(dimension: Int): Fastring = {
+          if (dimension == 0) {
+            fast"get_global_id(0)"
+          } else {
+            fast"(${outputIndex(dimension - 1)} * get_global_size($dimension) + get_global_id($dimension))"
+          }
+        }
+
+        val index = outputIndex(numberOfDimensions - 1)
+        val outputAssignment = fast"output_$outputId[$index] = $packedOutput;\n"
         (outputParameter, outputAssignment)
       }.unzip
 
       fastraw"""
-        kernel void $functionName(const ${parameterDeclarations.mkFastring(", ")}, ${outputParameters.mkFastring(", ")}) {
+        kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, ${outputParameters.mkFastring(", ")}) {
           ${localDefinitions.mkFastring}
-
-          // TODO: polyfill for get_global_linear_id
           ${outputAssignments.mkFastring}
         }
       """
@@ -174,14 +182,16 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
   protected trait TypeApi extends super.TypeApi with OpenCLType { this: Type =>
 
-    protected trait TypedTermApi extends TermApi with super.TypedTermApi
+    protected trait TypedTermApi extends TermApi with super.TypedTermApi { this: TypedTerm =>
+
+    }
 
     /** @template */
     type TypedTerm <: (Term with Any) with TypedTermApi
 
     protected trait IdentifierApi extends TermApi { this: Identifier =>
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
-        OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Packed(fast"$name", context.get(`type`).unpacked.length))
+        OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Packed(fast"$id", context.get(`type`).unpacked.length))
       }
     }
 
@@ -193,7 +203,7 @@ trait OpenCLExpressions extends ValueExpressions with FreshNames {
 
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
 
-    protected trait LiteralApi extends super.LiteralApi {
+    protected trait LiteralApi extends super.LiteralApi { this: Literal =>
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
         OpenCLTerm.Code(accessor = OpenCLTerm.Accessor.Atom(fast"${operand0.toString}"))
       }

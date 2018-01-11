@@ -19,7 +19,7 @@ trait Expressions {
   }
 
   trait Operator0[Out] {
-    def apply()(implicit debugging: Implicitly[DebuggingInformation]): Out
+    def apply()(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out
   }
 
   object Operator1 {
@@ -56,9 +56,10 @@ trait Expressions {
   protected trait TermApi extends ExpressionApi {
     val `type`: Type
     type Self = `type`.TypedTerm
-    val debuggingInformation: DebuggingInformation
+    val debuggingInformation: Implicitly[DebuggingInformation]
     override def name: String = debuggingInformation.name.value
 
+    def self: Self
   }
 
   /** @template */
@@ -67,8 +68,9 @@ trait Expressions {
   protected trait TypeApi extends ExpressionApi { this: Type =>
     override def name: String
 
-    protected trait TypedTermApi extends TermApi {
+    protected trait TypedTermApi extends TermApi { this: TypedTerm =>
       val `type`: TypeApi.this.type = TypeApi.this
+      def self: Self = this
     }
 
     type TypedTerm <: (Term with Any) with TypedTermApi
