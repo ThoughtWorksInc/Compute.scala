@@ -141,15 +141,16 @@ object OpenCLExpressions {
         val packedOutputType = functionContext.get(output.`type`).packed
         val outputId = output.id
         val outputParameter = fast"global $packedOutputType *output_$outputId"
-        def index(dimension: Int): Fastring = {
+        def outputIndex(dimension: Int): Fastring = {
           if (dimension == 0) {
             fast"get_global_id(0)"
           } else {
-            fast"(${index(dimension - 1)} * get_global_size($dimension) + get_global_id($dimension))"
+            fast"(${outputIndex(dimension - 1)} * get_global_size($dimension) + get_global_id($dimension))"
           }
         }
-//        val index = (0 until numberOfDimensions)
-        val outputAssignment = fast"output_$outputId[${index(numberOfDimensions)}] = $packedOutput;\n"
+
+        val index = outputIndex(numberOfDimensions - 1)
+        val outputAssignment = fast"output_$outputId[$index] = $packedOutput;\n"
         (outputParameter, outputAssignment)
       }.unzip
 
