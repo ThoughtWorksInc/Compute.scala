@@ -93,6 +93,7 @@ object OpenCLExpressions {
   }
 
   def generateOpenCLKernelSourceCode(functionName: String,
+                                     numberOfDimensions: Int,
                                      parameters: Seq[OpenCLTerm],
                                      outputs: Seq[OpenCLTerm]): Fastring = {
 
@@ -140,15 +141,21 @@ object OpenCLExpressions {
         val packedOutputType = functionContext.get(output.`type`).packed
         val outputId = output.id
         val outputParameter = fast"global $packedOutputType *output_$outputId"
-        val outputAssignment = fast"output_$outputId[get_global_linear_id()] = $packedOutput;\n"
+        def index(dimension: Int): Fastring = {
+          if (dimension == 0) {
+            fast"get_global_id(0)"
+          } else {
+            fast"(${index(dimension - 1)} * get_global_size($dimension) + get_global_id($dimension))"
+          }
+        }
+//        val index = (0 until numberOfDimensions)
+        val outputAssignment = fast"output_$outputId[${index(numberOfDimensions)}] = $packedOutput;\n"
         (outputParameter, outputAssignment)
       }.unzip
 
       fastraw"""
         kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, ${outputParameters.mkFastring(", ")}) {
           ${localDefinitions.mkFastring}
-
-          // TODO: polyfill for get_global_linear_id
           ${outputAssignments.mkFastring}
         }
       """
