@@ -139,8 +139,8 @@ object OpenCLExpressions {
         val packedOutput = functionContext.get(output).packed
         val packedOutputType = functionContext.get(output.`type`).packed
         val outputId = output.id
-        val outputParameter = fast"global $packedOutputType *$outputId"
-        val outputAssignment = fast"$outputId[get_global_linear_id()] = $packedOutput;\n"
+        val outputParameter = fast"global $packedOutputType *output_$outputId"
+        val outputAssignment = fast"output_$outputId[get_global_linear_id()] = $packedOutput;\n"
         (outputParameter, outputAssignment)
       }.unzip
 
