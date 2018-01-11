@@ -11,3 +11,5 @@ crossScalaVersions in ThisBuild := {
       .??(defaultCrossTypeLevelScalaVersions)
       .value
 }
+
+organization in ThisBuild := "com.thoughtworks.expression"
