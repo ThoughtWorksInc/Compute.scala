@@ -66,7 +66,7 @@ trait ArrayExpressions extends BooleanExpressions {
   type ArrayFillTerm <: (ArrayTerm with Any) with ArrayFillTermApi
 
   protected trait ArrayFillTypeApi extends ArrayTypeApi { arrayFillType: ArrayFillType =>
-    def name = "ArrayFillType"
+    def name = "ArrayFill"
 
     protected val operand0: ElementType
     trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
@@ -104,7 +104,7 @@ trait ArrayExpressions extends BooleanExpressions {
   type ArrayBufferTerm <: (ArrayTerm with Any) with ArrayBufferTermApi
 
   protected trait ArrayBufferTypeApi extends ArrayTypeApi { thisArrayBufferType: ArrayBufferType =>
-    def name = "ArrayBufferType"
+    def name = "ArrayBuffer"
 
     val operand0: ElementType
 
