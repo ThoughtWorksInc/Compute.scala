@@ -78,6 +78,10 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     val dimensions = Seq(batchSize, width, height)
     import shapeless.syntax.singleton._
     val floatArray3d = ArrayBufferType[float.type].newInstance(float, dimensions)
+
+//    val floatArrayOffset3d = ArrayOffsetType[float.type].newInstance(floatArray3d, Seq(1, 2, 3))
+
+
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
     val w: FloatTerm = float.Identifier()
     val b: FloatTerm = float.Identifier()

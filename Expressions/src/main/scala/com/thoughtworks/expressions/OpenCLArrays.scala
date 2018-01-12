@@ -52,9 +52,8 @@ trait OpenCLArrays extends OpenCLBooleans with ArrayOperators {
 
   type Type <: (Expression with Any) with TypeApi
 
-  protected trait ValueTypeApi
-      extends super[ArrayOperators].ValueTypeApi
-      with super[OpenCLBooleans].ValueTypeApi { elementType: ValueType =>
+  protected trait ValueTypeApi extends super[ArrayOperators].ValueTypeApi with super[OpenCLBooleans].ValueTypeApi {
+    elementType: ValueType =>
 
     protected trait ExtractFromArrayBufferApi extends super.ExtractFromArrayBufferApi { this: ExtractFromArrayBuffer =>
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
@@ -118,5 +117,24 @@ trait OpenCLArrays extends OpenCLBooleans with ArrayOperators {
   }
 
   type ArrayFillType <: (ArrayType with Any) with ArrayFillTypeApi
+
+  protected trait ArrayOffsetTypeApi extends super.ArrayOffsetTypeApi with TypeApi with ArrayTypeApi {
+    this: ArrayOffsetType =>
+    def toCode(context: OpenCLContext): OpenCLType.Code = {
+      operand0.toCode(context)
+    }
+    type Identifier <: (TypedTerm with Any) with IdentifierApi
+
+//    trait OffsetedApi extends super.OffsetedApi with TypedTermApi { this: Offseted =>
+//      def toCode(context: OpenCLContext): OpenCLTerm.Code = {
+//        ???
+//      }
+//
+//    }
+//    type Offseted <: (TypedTerm with Any) with OffsetedApi
+
+  }
+
+  type ArrayOffsetType <: (ArrayType with Any) with ArrayOffsetTypeApi
 
 }
