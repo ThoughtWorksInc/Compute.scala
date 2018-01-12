@@ -11,7 +11,6 @@ trait DifferentiableExpressions extends Expressions {
   protected trait TermApi extends super.TermApi {
     type DeltaTerm = `type`.deltaType.TypedTerm
 
-    // FIXME: `x` should be narrow to FloatTerm or change to Context
     /** Returns the symbolic difference `∂this/∂x` */
     def computeDelta(context: DifferentiableContext): DeltaTerm
   }

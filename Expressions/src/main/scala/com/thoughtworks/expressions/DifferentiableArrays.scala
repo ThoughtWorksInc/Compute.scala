@@ -5,7 +5,7 @@ import com.thoughtworks.expressions.Anonymous.Implicitly
 /**
   * @author 杨博 (Yang Bo)
   */
-trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with ArrayExpressions {
+trait DifferentiableArrays extends DifferentiableValues with ArrayOperators {
 
   trait ArrayBufferTermApi extends TermApi with super.ArrayBufferTermApi { outer: ArrayBufferTerm =>
 
@@ -29,7 +29,7 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
 
   type ArrayBufferType <: (ArrayType with Any) with ArrayBufferTypeApi
 
-  protected trait ArrayFillTypeApi extends super.ArrayFillTypeApi with super[DifferentiableValueExpressions].TypeApi {
+  protected trait ArrayFillTypeApi extends super.ArrayFillTypeApi with super[DifferentiableValues].TypeApi {
     arrayFillType: ArrayFillType =>
 
     val deltaType = ArrayFillType[operand0.deltaType.type].newInstance(operand0.deltaType)
@@ -58,8 +58,8 @@ trait DifferentiableArrayExpressions extends DifferentiableValueExpressions with
   type ArrayFillType <: (ArrayType with Any) with ArrayFillTypeApi
 
   protected trait ValueTypeApi
-      extends super[ArrayExpressions].ValueTypeApi
-      with super[DifferentiableValueExpressions].ValueTypeApi { thisValueType: ValueType =>
+      extends super[ArrayOperators].ValueTypeApi
+      with super[DifferentiableValues].ValueTypeApi { thisValueType: ValueType =>
 
     protected trait ExtractFromArrayBufferApi extends TermApi with super.ExtractFromArrayBufferApi with TypedTermApi {
       this: ExtractFromArrayBuffer =>

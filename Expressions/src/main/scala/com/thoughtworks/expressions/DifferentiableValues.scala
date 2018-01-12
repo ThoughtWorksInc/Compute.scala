@@ -5,7 +5,7 @@ import com.thoughtworks.expressions.Anonymous.Implicitly
 /**
   * @author 杨博 (Yang Bo)
   */
-trait DifferentiableValueExpressions extends DifferentiableExpressions with ValueExpressions {
+trait DifferentiableValues extends DifferentiableExpressions with Values {
 
   protected trait ValueTypeApi extends super.ValueTypeApi { this: ValueType =>
 

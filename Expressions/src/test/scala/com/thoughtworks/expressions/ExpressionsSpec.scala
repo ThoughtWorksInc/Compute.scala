@@ -1,9 +1,9 @@
 package com.thoughtworks.expressions
 
 import org.scalatest._
-import com.thoughtworks.expressions.Builtins.{AllDifferentiableExpressions, AllOpenCLExpressions}
+import com.thoughtworks.expressions.Builtins.{AllDifferentiableExpressions, AllOpenCLValues}
 import com.thoughtworks.feature.Factory
-import OpenCLExpressions.generateOpenCLKernelSourceCode
+import OpenCLValues.generateOpenCLKernelSourceCode
 
 /**
   * @author 杨博 (Yang Bo)
@@ -12,8 +12,8 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "fill" in {
 
-    val expressions: AllOpenCLExpressions { type DebuggingInformation = Debugging.Name } = {
-      Factory[AllOpenCLExpressions].newInstance()
+    val expressions: AllOpenCLValues { type DebuggingInformation = Debugging.Name } = {
+      Factory[AllOpenCLValues].newInstance()
     }
 
     import expressions._
@@ -26,8 +26,8 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "id" in {
 
-    val expressions: AllOpenCLExpressions { type DebuggingInformation = Debugging.Name } =
-      Factory[AllOpenCLExpressions].newInstance()
+    val expressions: AllOpenCLValues { type DebuggingInformation = Debugging.Name } =
+      Factory[AllOpenCLValues].newInstance()
 
     import expressions._
 
@@ -44,7 +44,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
   "differentiable id" in {
 
     val expressions =
-      Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
+      Factory[AllOpenCLValues with AllDifferentiableExpressions].newInstance()
 
     import expressions._
 
@@ -53,8 +53,6 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
 
     val deltaX: floatArray3d.Identifier = floatArray3d.Identifier()
-
-    //    x.extract.
 
     val f = x.extract
 
@@ -68,7 +66,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
   "3x3 convolutional" in {
 
     val expressions =
-      Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
+      Factory[AllOpenCLValues with AllDifferentiableExpressions].newInstance()
 
     import expressions._
 

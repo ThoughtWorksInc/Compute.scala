@@ -6,7 +6,7 @@ import com.dongxiguo.fastring.Fastring.Implicits._
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
-object OpenCLExpressions {
+object OpenCLValues {
 
   trait OpenCLTerm {
     def id: String
@@ -173,8 +173,8 @@ ${exportedFunction}
 /**
   * @author 杨博 (Yang Bo)
   */
-trait OpenCLExpressions extends ValueExpressions with FreshNames {
-  import OpenCLExpressions._
+trait OpenCLValues extends Values with FreshNames {
+  import OpenCLValues._
 
   protected trait TermApi extends OpenCLTerm with super[FreshNames].ExpressionApi with super.TermApi
 

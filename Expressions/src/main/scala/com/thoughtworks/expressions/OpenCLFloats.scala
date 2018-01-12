@@ -2,14 +2,14 @@ package com.thoughtworks.expressions
 
 import com.dongxiguo.fastring.Fastring
 import com.dongxiguo.fastring.Fastring.Implicits._
-import com.thoughtworks.expressions.OpenCLExpressions._
+import com.thoughtworks.expressions.OpenCLValues._
 
 /**
   * @author 杨博 (Yang Bo)
   */
-trait OpenCLFloatExpressions extends FloatExpressions with OpenCLExpressions {
+trait OpenCLFloats extends Floats with OpenCLValues {
 
-  protected trait FloatTypeApi extends super.FloatTypeApi with super[OpenCLExpressions].ValueTypeApi {
+  protected trait FloatTypeApi extends super.FloatTypeApi with super[OpenCLValues].ValueTypeApi {
     this: FloatType =>
     def toCode(context: OpenCLContext): OpenCLType.Code =
       OpenCLType.Code(accessor = OpenCLType.Accessor.Atom("float"))
