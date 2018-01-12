@@ -5,11 +5,11 @@ object Builtins {
   /**
     * @author 杨博 (Yang Bo)
     */
-  trait AllOpenCLExpressions extends OpenCLArrayExpressions with OpenCLFloatExpressions with FreshNames
+  trait AllOpenCLValues extends OpenCLArrays with OpenCLFloats with FreshNames
 
   trait AllDifferentiableExpressions
-      extends DifferentiableArrayExpressions
-      with DifferentiableFloatExpressions
-      with DifferentiableBooleanExpressions
+      extends DifferentiableArrays
+      with DifferentiableFloats
+      with DifferentiableBooleans
 
 }

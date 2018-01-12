@@ -7,7 +7,7 @@ import com.thoughtworks.feature.Factory.{Factory0, Factory1, inject}
 /**
   * @author 杨博 (Yang Bo)
   */
-trait BooleanExpressions extends ValueExpressions {
+trait Booleans extends Values {
 
   protected trait BooleanTypeApi extends ValueTypeApi { this: BooleanType =>
     type JvmType = Boolean

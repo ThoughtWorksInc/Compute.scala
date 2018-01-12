@@ -6,7 +6,7 @@ import com.thoughtworks.feature.Factory.inject
 /**
   * @author 杨博 (Yang Bo)
   */
-trait ValueExpressions extends Expressions {
+trait Values extends Expressions {
 
   protected trait ValueTypeApi extends TypeApi { this: ValueType =>
     type JvmType

@@ -7,7 +7,7 @@ import shapeless.{Nat, Sized, Succ}
 
 import scala.collection.{AbstractSeq, IndexedSeqOptimized}
 import scala.language.higherKinds
-import OpenCLExpressions._
+import OpenCLValues._
 //object OpenCLArrayExpressions {
 //
 //
@@ -43,9 +43,9 @@ import OpenCLExpressions._
 /**
   * @author 杨博 (Yang Bo)
   */
-trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressions {
+trait OpenCLArrays extends OpenCLBooleans with ArrayOperators {
 
-  protected trait TypeApi extends super[ArrayExpressions].TypeApi with super[OpenCLBooleanExpressions].TypeApi {
+  protected trait TypeApi extends super[ArrayOperators].TypeApi with super[OpenCLBooleans].TypeApi {
     this: Type =>
 
   }
@@ -53,8 +53,8 @@ trait OpenCLArrayExpressions extends OpenCLBooleanExpressions with ArrayExpressi
   type Type <: (Expression with Any) with TypeApi
 
   protected trait ValueTypeApi
-      extends super[ArrayExpressions].ValueTypeApi
-      with super[OpenCLBooleanExpressions].ValueTypeApi { elementType: ValueType =>
+      extends super[ArrayOperators].ValueTypeApi
+      with super[OpenCLBooleans].ValueTypeApi { elementType: ValueType =>
 
     protected trait ExtractFromArrayBufferApi extends super.ExtractFromArrayBufferApi { this: ExtractFromArrayBuffer =>
       def toCode(context: OpenCLContext): OpenCLTerm.Code = {
