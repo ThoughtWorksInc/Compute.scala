@@ -92,7 +92,7 @@ trait ArrayOperators extends Booleans with Arrays {
   protected trait ArrayBufferTypeApi extends ArrayTypeApi { thisArrayBufferType: ArrayBufferType =>
     def name = "ArrayBuffer"
 
-    val operand0: ElementType
+    protected val operand0: ElementType
     val elementType: operand0.type = operand0
 
     protected val operand1: Seq[Int]
@@ -120,11 +120,15 @@ trait ArrayOperators extends Booleans with Arrays {
   type ArrayOffsetTerm <: ArrayTerm
 
   protected trait ArrayOffsetTypeApi extends ArrayTypeApi { thisArrayOffsetType: ArrayOffsetType =>
-    val operand0: ArrayType { type ElementType = thisArrayOffsetType.ElementType }
-    val elementType: operand0.elementType.type = operand0.elementType
+
+    def name = "ArrayOffset"
+
+    protected val operand0: ArrayType { type ElementType = thisArrayOffsetType.ElementType }
 
     /** The offset */
-    val operand1: Seq[Int]
+    protected val operand1: Seq[Int]
+
+    val elementType: operand0.elementType.type = operand0.elementType
     trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
       type ElementTerm = thisArrayOffsetType.elementType.TypedTerm
 
@@ -133,15 +137,14 @@ trait ArrayOperators extends Booleans with Arrays {
       }
     }
 
-    type TypedTerm <: (ArrayFillTerm with Any) with TypedTermApi
+    type TypedTerm <: (ArrayOffsetTerm with Any) with TypedTermApi
 
   }
 
   /** @template */
   type ArrayOffsetType <: (ArrayType with Any) with ArrayOffsetTypeApi
-
-//  @inject def ArrayOffsetType[ElementType0 <: ValueType]: Factory2[ArrayType { type ElementType = ElementType0 },
-//                                                                   Seq[Int],
-//                                                                   ArrayOffsetType { type ElementType = ElementType0 }]
+  @inject def ArrayOffsetType[ElementType0 <: ValueType]: Factory2[ArrayType { type ElementType = ElementType0 },
+                                                                   Seq[Int],
+                                                                   ArrayOffsetType { type ElementType = ElementType0 }]
 
 }
