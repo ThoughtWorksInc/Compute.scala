@@ -19,7 +19,7 @@ trait ArrayOperators extends Booleans with Arrays {
 
     type ExtractFromArrayBuffer <: (TypedTerm with Any) with ExtractFromArrayBufferApi
 
-    @inject val ExtractFromArrayBuffer: Factory2[Implicitly[DebuggingInformation],
+    @inject def ExtractFromArrayBuffer: Factory2[Implicitly[DebuggingInformation],
                                                  ArrayBufferTerm { type ElementTerm = TypedTerm },
                                                  ExtractFromArrayBuffer]
 
