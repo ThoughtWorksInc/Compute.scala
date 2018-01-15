@@ -20,13 +20,13 @@ libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M7"
 
 libraryDependencies += "com.thoughtworks.raii" %% "asynchronouspool" % "3.0.0-M7"
 
-libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.1.0-M0"
+libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.3.0-M4"
 
-libraryDependencies += "com.thoughtworks.feature" %% "implicitapply" % "2.1.0-M0"
+libraryDependencies += "com.thoughtworks.feature" %% "implicitapply" % "2.3.0-M4"
 
-libraryDependencies += "com.thoughtworks.feature" %% "mixins-implicitssingleton" % "2.1.0-M0"
+libraryDependencies += "com.thoughtworks.feature" %% "mixins-implicitssingleton" % "2.3.0-M4"
 
-libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.1.0-M0"
+libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.3.0-M4"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.3" % Test
 
