@@ -1,12 +1,13 @@
 val lwjglNatives: String = {
-  if (util.Properties.isMac) {
+  import scala.util.Properties._
+  if (isMac) {
     "natives-macos"
-  } else if (util.Properties.osName.startsWith("Linux")) {
+  } else if (isLinux) {
     "natives-linux"
-  } else if (util.Properties.isWin) {
+  } else if (isWin) {
     "natives-windows"
   } else {
-    throw new MessageOnlyException(s"lwjgl does not support ${util.Properties.osName}")
+    throw new MessageOnlyException(s"lwjgl does not support $osName")
   }
 }
 
