@@ -13,9 +13,9 @@ val lwjglNatives: String = {
   }
 }
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.2" classifier lwjglNatives
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5" classifier lwjglNatives
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.2"
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5"
 
 libraryDependencies += "com.dongxiguo" %% "fastring" % "0.3.1"
 

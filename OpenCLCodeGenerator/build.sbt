@@ -4,7 +4,7 @@ addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.pa
 
 libraryDependencies += "com.dongxiguo" %% "fastring" % "0.3.1"
 
-libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.2"
+libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.3"
 
 val lwjglNatives: String = {
   import scala.util.Properties._
@@ -19,10 +19,10 @@ val lwjglNatives: String = {
   }
 }
 
-libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.2" % Test
+libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.5" % Test
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.2" % Test
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5" % Test
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.2" % Runtime classifier lwjglNatives
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5" % Runtime classifier lwjglNatives
 
 fork := true

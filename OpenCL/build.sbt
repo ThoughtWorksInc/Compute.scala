@@ -11,11 +11,11 @@ val lwjglNatives: String = {
   }
 }
 
-libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.2"
+libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.5"
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.2"
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5"
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.2" % Test classifier lwjglNatives
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5" % Test classifier lwjglNatives
 
 libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M7"
 
@@ -29,7 +29,7 @@ libraryDependencies += "com.thoughtworks.feature" %% "mixins-implicitssingleton"
 
 libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.3.0-M4"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.3" % Test
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % Test
 
 fork := true
 
