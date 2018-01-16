@@ -473,7 +473,7 @@ object OpenCL {
   /** A [[https://www.khronos.org/registry/OpenCL/sdk/2.1/docs/man/xhtml/abstractDataTypes.html cl_mem]]
     * whose [[org.lwjgl.opencl.CL10.CL_MEM_TYPE CL_MEM_TYPE]] is buffer [[org.lwjgl.opencl.CL10.CL_MEM_OBJECT_BUFFER CL_MEM_OBJECT_BUFFER]].
     * @param handle The underlying `cl_mem`.
-    * @note comment out extends AnyVal in case of https://github.com/scala/bug/issues/10647
+    * @note comment out `extends AnyVal` in case of https://github.com/scala/bug/issues/10647
     */
   final case class DeviceBuffer[Owner <: OpenCL with Singleton, Element](handle: Long) /* extends AnyVal */
       extends MonadicCloseable[UnitContinuation] {
