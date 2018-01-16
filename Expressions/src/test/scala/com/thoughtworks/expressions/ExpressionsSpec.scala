@@ -79,7 +79,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     import shapeless.syntax.singleton._
     val floatArray3d = ArrayBufferType[float.type].newInstance(float, dimensions)
 
-//    def floatArrayOffset3d = ArrayOffsetType[float.type].newInstance(floatArray3d, Seq(1, 2, 3))
+    def floatArrayOffset3d = ArrayOffsetType[float.type].newInstance(floatArray3d, Seq(1, 2, 3))
 
     val x: floatArray3d.Identifier = floatArray3d.Identifier()
     val w: FloatTerm = float.Identifier()

@@ -6,10 +6,12 @@ import com.thoughtworks.expressions.Anonymous.Implicitly
   * @author 杨博 (Yang Bo)
   */
 trait Arrays extends Values {
-  protected trait ArrayTermApi {
+  protected trait ArrayTermApi { thisArrayTerm =>
     type ElementTerm <: ValueTerm
 
     def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm
+
+    def translate(offset: Int*): ArrayTerm { type ElementTerm = thisArrayTerm.ElementTerm } = ???
 
   }
 
