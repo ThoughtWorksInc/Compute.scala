@@ -1,7 +1,7 @@
 package com.thoughtworks.expressions
 
 import org.scalatest._
-import com.thoughtworks.expressions.Builtins.{AllDifferentiableExpressions, AllOpenCLValues}
+import com.thoughtworks.expressions.Builtins.{AllDifferentiableExpressions, AllOpenCLExpressions}
 import com.thoughtworks.feature.Factory
 import OpenCLValues.generateOpenCLKernelSourceCode
 
@@ -12,8 +12,8 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "fill" in {
 
-    val expressions: AllOpenCLValues { type DebuggingInformation = Debugging.Name } = {
-      Factory[AllOpenCLValues].newInstance()
+    val expressions: AllOpenCLExpressions { type DebuggingInformation = Debugging.Name } = {
+      Factory[AllOpenCLExpressions].newInstance()
     }
 
     import expressions._
@@ -26,8 +26,8 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   "id" in {
 
-    val expressions: AllOpenCLValues { type DebuggingInformation = Debugging.Name } =
-      Factory[AllOpenCLValues].newInstance()
+    val expressions: AllOpenCLExpressions { type DebuggingInformation = Debugging.Name } =
+      Factory[AllOpenCLExpressions].newInstance()
 
     import expressions._
 
@@ -44,7 +44,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
   "differentiable id" in {
 
     val expressions =
-      Factory[AllOpenCLValues with AllDifferentiableExpressions].newInstance()
+      Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
 
     import expressions._
 
@@ -66,7 +66,7 @@ class ExpressionsSpec extends FreeSpec with Matchers {
   "3x3 convolutional" in {
 
     val expressions =
-      Factory[AllOpenCLValues with AllDifferentiableExpressions].newInstance()
+      Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
 
     import expressions._
 
