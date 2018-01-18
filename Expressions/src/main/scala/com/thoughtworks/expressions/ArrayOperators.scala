@@ -1,6 +1,6 @@
 package com.thoughtworks.expressions
 
-import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.feature.Factory.Factory0
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 
@@ -19,15 +19,14 @@ trait ArrayOperators extends Booleans with Arrays {
 
     type ExtractFromArrayBuffer <: (TypedTerm with Any) with ExtractFromArrayBufferApi
 
-    @inject def ExtractFromArrayBuffer: Factory2[Implicitly[DebuggingInformation],
-                                                 ArrayBufferTerm { type ElementTerm = TypedTerm },
-                                                 ExtractFromArrayBuffer]
+    @inject
+    def ExtractFromArrayBuffer: Operator1[ArrayBufferTerm { type ElementTerm = TypedTerm }, ExtractFromArrayBuffer]
 
     protected trait TypedValueTermApi extends super.TypedTermApi { this: TypedTerm =>
-      def filled(implicit debuggingInformation: Implicitly[DebuggingInformation])
+      def filled(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation])
         : ArrayFillTerm { type ElementTerm = valueType.TypedTerm } = {
         val arrayFillType = ArrayFillType[valueType.type].newInstance(valueType)
-        arrayFillType.Filled.newInstance(debuggingInformation, this)
+        arrayFillType.Filled(this)
       }
 
     }
@@ -59,7 +58,7 @@ trait ArrayOperators extends Booleans with Arrays {
     trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
       type ElementTerm = arrayFillType.operand0.TypedTerm
 
-      def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
+      def extract(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): ElementTerm = {
         ???
       }
     }
@@ -71,7 +70,8 @@ trait ArrayOperators extends Booleans with Arrays {
     }
     type Filled <: (TypedTerm with Any) with FilledApi
 
-    @inject protected[ArrayOperators] def Filled: Factory2[Implicitly[DebuggingInformation], operand0.TypedTerm, Filled]
+    @inject
+    protected[ArrayOperators] def Filled: Operator1[operand0.TypedTerm, Filled]
 
   }
 
@@ -80,7 +80,8 @@ trait ArrayOperators extends Booleans with Arrays {
 
   @inject
   def ArrayFillType[ElementType0 <: ValueType]
-    : Factory1[ElementType0, ArrayFillType { type ElementType = ElementType0 }]
+    : Factory.Lt[ArrayFillType { type ElementType = ElementType0 },
+                 ElementType0 => ArrayFillType { type ElementType = ElementType0 }]
 
   protected trait ArrayBufferTermApi {
     val `type`: ArrayBufferType
@@ -101,8 +102,8 @@ trait ArrayOperators extends Booleans with Arrays {
     trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
       type ElementTerm = thisArrayBufferType.operand0.TypedTerm
 
-      def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
-        thisArrayBufferType.operand0.ExtractFromArrayBuffer.newInstance(debuggingInformation, this)
+      def extract(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): ElementTerm = {
+        thisArrayBufferType.operand0.ExtractFromArrayBuffer(this)
       }
     }
 
@@ -114,7 +115,8 @@ trait ArrayOperators extends Booleans with Arrays {
   type ArrayBufferType <: (ArrayType with Any) with ArrayBufferTypeApi
 
   @inject def ArrayBufferType[ElementType0 <: ValueType]
-    : Factory2[ElementType0, Seq[Int], ArrayBufferType { type ElementType = ElementType0 }]
+    : Factory.Lt[ArrayBufferType { type ElementType = ElementType0 },
+                 (ElementType0, Seq[Int]) => ArrayBufferType { type ElementType = ElementType0 }]
 
   /** @template */
   type ArrayOffsetTerm <: ArrayTerm
@@ -132,7 +134,7 @@ trait ArrayOperators extends Booleans with Arrays {
     trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
       type ElementTerm = thisArrayOffsetType.elementType.TypedTerm
 
-      def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
+      def extract(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): ElementTerm = {
         ???
       }
     }
@@ -143,8 +145,9 @@ trait ArrayOperators extends Booleans with Arrays {
 
   /** @template */
   type ArrayOffsetType <: (ArrayType with Any) with ArrayOffsetTypeApi
-  @inject def ArrayOffsetType[ElementType0 <: ValueType]: Factory2[ArrayType { type ElementType = ElementType0 },
-                                                                   Seq[Int],
-                                                                   ArrayOffsetType { type ElementType = ElementType0 }]
+  @inject def ArrayOffsetType[ElementType0 <: ValueType]
+    : Factory.Lt[ArrayOffsetType { type ElementType = ElementType0 },
+                 (ArrayType { type ElementType = ElementType0 },
+                  Seq[Int]) => ArrayOffsetType { type ElementType = ElementType0 }]
 
 }

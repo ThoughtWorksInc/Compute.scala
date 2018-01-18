@@ -1,6 +1,6 @@
 package com.thoughtworks.expressions
 
-import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.feature.Factory.Factory0
 
 /**
   * @author 杨博 (Yang Bo)
@@ -11,7 +11,7 @@ trait DifferentiableValues extends DifferentiableExpressions with Values {
 
     val deltaType: ValueType
 
-    def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): TypedTerm
+    def zero(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): TypedTerm
 
 //    protected trait TypedTermApi extends TermApi with super.TypedTermApi {
 //      type DeltaTerm <: TypedTerm
@@ -21,7 +21,7 @@ trait DifferentiableValues extends DifferentiableExpressions with Values {
     protected trait ZeroDeltaApi extends TypedTermApi { this: TypedTerm =>
 
       def computeDelta(context: DifferentiableContext): DeltaTerm = {
-        deltaType.zero(debuggingInformation)
+        deltaType.zero(ImplicitlyAppliedFactory.make(debuggingInformation))
       }
     }
 

@@ -1,5 +1,5 @@
 package com.thoughtworks.expressions
-import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.feature.Factory.Factory0
 import com.thoughtworks.feature.Factory.inject
 
 import scala.language.higherKinds
