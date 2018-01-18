@@ -1,6 +1,6 @@
 package com.thoughtworks.expressions
 
-import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.feature.Factory.Factory0
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.{Factory0, inject}
 
@@ -14,13 +14,13 @@ trait Floats extends Values {
 
     def name = "Float"
 
-    def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): Literal = Literal(0.0f)
+    def zero(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): Literal = Literal(0.0f)
 
     protected trait FloatTypedTermApi extends super.TypedTermApi { this: TypedTerm =>
-      def +(that: TypedTerm)(implicit debuggingInformation: Implicitly[DebuggingInformation]): TypedTerm = {
+      def +(that: TypedTerm)(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): TypedTerm = {
         Plus(this, that)
       }
-      def *(that: TypedTerm)(implicit debuggingInformation: Implicitly[DebuggingInformation]): TypedTerm = {
+      def *(that: TypedTerm)(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): TypedTerm = {
         Times(this, that)
       }
     }

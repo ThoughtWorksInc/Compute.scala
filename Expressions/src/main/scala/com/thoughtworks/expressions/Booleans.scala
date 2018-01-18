@@ -1,6 +1,6 @@
 package com.thoughtworks.expressions
 
-import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.feature.Factory.Factory0
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.{Factory0, Factory1, inject}
 
@@ -14,7 +14,7 @@ trait Booleans extends Values {
 
     def name = "Boolean"
 
-    def zero(implicit debuggingInformation: Implicitly[DebuggingInformation]): Literal = Literal(false)
+    def zero(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): Literal = Literal(false)
   }
 
   /** @template */

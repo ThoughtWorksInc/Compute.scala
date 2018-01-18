@@ -1,6 +1,6 @@
 package com.thoughtworks.expressions
 
-import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.feature.Factory.Factory0
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 import shapeless.Lazy
 
@@ -10,39 +10,43 @@ import shapeless.Lazy
 trait Expressions {
 
   object Operator0 {
-    implicit def operator0[Out](implicit factory: Factory1[Implicitly[DebuggingInformation], Out]): Operator0[Out] =
+    implicit def operator0[Out](implicit factory: Factory1[DebuggingInformation, Out]): Operator0[Out] =
       new Operator0[Out] {
-        def apply()(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out = {
+        def apply()(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): Out = {
           factory.newInstance(debuggingInformation)
         }
       }
   }
 
   trait Operator0[Out] {
-    def apply()(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out
+    def apply()(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): Out
   }
 
   object Operator1 {
     implicit def operator1[Operand0, Out](
-        implicit factory: Factory2[Implicitly[DebuggingInformation], Operand0, Out]): Operator1[Operand0, Out] =
+        implicit factory: Factory2[DebuggingInformation, Operand0, Out]): Operator1[Operand0, Out] =
       new Operator1[Operand0, Out] {
-        def apply(operand0: Operand0)(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out = {
+        def apply(operand0: Operand0)(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): Out = {
           factory.newInstance(debuggingInformation, operand0)
         }
       }
   }
 
+  /**
+    * @note The scalac compiler will report a `diverging implicit expansion` error
+    *       if using [[com.thoughtworks.feature.Factory.Factory2 Factory2]] instead of this [[Operator1]].
+    *       I don't know why.
+    */
   trait Operator1[Operand0, Out] {
-    def apply(operand0: Operand0)(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out
+    def apply(operand0: Operand0)(implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): Out
   }
 
   object Operator2 {
     implicit def operator2[Operand0, Operand1, Out](
-        implicit factory: Factory3[Implicitly[DebuggingInformation], Operand0, Operand1, Out])
-      : Operator2[Operand0, Operand1, Out] =
+        implicit factory: Factory3[DebuggingInformation, Operand0, Operand1, Out]): Operator2[Operand0, Operand1, Out] =
       new Operator2[Operand0, Operand1, Out] {
         def apply(operand0: Operand0, operand1: Operand1)(
-            implicit debuggingInformation: Implicitly[DebuggingInformation]): Out = {
+            implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): Out = {
           factory.newInstance(debuggingInformation, operand0, operand1)
         }
       }
@@ -50,13 +54,13 @@ trait Expressions {
 
   trait Operator2[Operand0, Operand1, Out] {
     def apply(operand0: Operand0, operand1: Operand1)(
-        implicit debuggingInformation: Implicitly[DebuggingInformation]): Out
+        implicit debuggingInformationFacotry: ImplicitlyAppliedFactory[DebuggingInformation]): Out
   }
 
   protected trait TermApi extends ExpressionApi {
     val `type`: Type
     type Self = `type`.TypedTerm
-    val debuggingInformation: Implicitly[DebuggingInformation]
+    val debuggingInformation: DebuggingInformation
     override def name: String = debuggingInformation.name.value
 
     def self: Self
@@ -88,7 +92,9 @@ trait Expressions {
   /** @template */
   type Type <: (Expression with Any) with TypeApi
 
-  @inject val debuggingInformation: Implicitly[DebuggingInformation]
+  @inject def debuggingInformationFactory: ImplicitlyAppliedFactory[DebuggingInformation]
+
+  val debuggingInformation: DebuggingInformation = debuggingInformationFactory.newInstance()
 
   type DebuggingInformation <: Debugging.Name
   protected trait ExpressionApi {

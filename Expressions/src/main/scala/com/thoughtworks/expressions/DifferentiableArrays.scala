@@ -1,6 +1,7 @@
 package com.thoughtworks.expressions
 
-import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.feature.Factory
+import com.thoughtworks.feature.Factory.Factory0
 
 /**
   * @author 杨博 (Yang Bo)
@@ -38,7 +39,8 @@ trait DifferentiableArrays extends DifferentiableValues with ArrayOperators {
       outer: TypedTerm =>
 
       def computeDelta(context: DifferentiableContext): DeltaTerm = {
-        deltaType.Filled.newInstance(debuggingInformation, arrayFillType.operand0.deltaType.zero(debuggingInformation))
+        implicit val debuggingInformationFactory = ImplicitlyAppliedFactory.make(debuggingInformation)
+        deltaType.Filled(arrayFillType.operand0.deltaType.zero)
       }
 
     }
@@ -48,7 +50,8 @@ trait DifferentiableArrays extends DifferentiableValues with ArrayOperators {
     trait FilledApi extends super.FilledApi with super[ArrayFillTypeApi].TypedTermApi with super[TypeApi].TypedTermApi {
       this: Filled =>
       def computeDelta(context: DifferentiableContext): DeltaTerm = {
-        deltaType.Filled.newInstance(debuggingInformation, context.delta(operand0))
+        implicit val debuggingInformationFactory = ImplicitlyAppliedFactory.make(debuggingInformation)
+        deltaType.Filled(context.delta(operand0))
       }
     }
     type Filled <: (TypedTerm with Any) with FilledApi
@@ -85,9 +88,9 @@ trait DifferentiableArrays extends DifferentiableValues with ArrayOperators {
       this: ExtractFromArrayBuffer =>
 
       def computeDelta(context: DifferentiableContext): deltaType.TypedTerm = {
+        implicit val debuggingInformationFactory = ImplicitlyAppliedFactory.make(debuggingInformation)
         val arrayBufferDelta: operand0.`type`.deltaType.TypedTerm = context.delta(operand0)
-        deltaType.ExtractFromArrayBuffer.newInstance(
-          debuggingInformation,
+        deltaType.ExtractFromArrayBuffer(
           // I am sure it is correct but I can't prove it in Scala 2
           arrayBufferDelta.asInstanceOf[ArrayBufferTerm { type ElementTerm = deltaType.TypedTerm }]
         )
