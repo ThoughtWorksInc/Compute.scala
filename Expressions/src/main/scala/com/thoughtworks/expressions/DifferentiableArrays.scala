@@ -57,6 +57,26 @@ trait DifferentiableArrays extends DifferentiableValues with ArrayOperators {
 
   type ArrayFillType <: (ArrayType with Any) with ArrayFillTypeApi
 
+  protected trait ArrayOffsetTypeApi extends super.ArrayOffsetTypeApi with super[DifferentiableValues].TypeApi {
+    arrayOffsetType: ArrayOffsetType =>
+
+    val deltaType = ??? // ArrayOffsetType[operand0.deltaType.type].newInstance(operand0.deltaType)
+
+    trait IdentifierApi extends super[ArrayOffsetTypeApi].TypedTermApi with super[TypeApi].TypedTermApi {
+      outer: TypedTerm =>
+
+      def computeDelta(context: DifferentiableContext): DeltaTerm = {
+        ???
+      }
+
+    }
+
+    type Identifier <: (TypedTerm with Any) with IdentifierApi
+
+  }
+
+  type ArrayOffsetType <: (ArrayType with Any) with ArrayOffsetTypeApi
+
   protected trait ValueTypeApi
       extends super[ArrayOperators].ValueTypeApi
       with super[DifferentiableValues].ValueTypeApi { thisValueType: ValueType =>

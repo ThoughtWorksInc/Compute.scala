@@ -19,7 +19,7 @@ trait ArrayOperators extends Booleans with Arrays {
 
     type ExtractFromArrayBuffer <: (TypedTerm with Any) with ExtractFromArrayBufferApi
 
-    @inject val ExtractFromArrayBuffer: Factory2[Implicitly[DebuggingInformation],
+    @inject def ExtractFromArrayBuffer: Factory2[Implicitly[DebuggingInformation],
                                                  ArrayBufferTerm { type ElementTerm = TypedTerm },
                                                  ExtractFromArrayBuffer]
 
@@ -39,6 +39,7 @@ trait ArrayOperators extends Booleans with Arrays {
 
   protected trait ArrayTypeApi extends TypeApi { this: ArrayType =>
     type ElementType <: ValueType
+    val elementType: ElementType
   }
 
   /** @template */
@@ -52,6 +53,7 @@ trait ArrayOperators extends Booleans with Arrays {
 
   protected trait ArrayFillTypeApi extends ArrayTypeApi { arrayFillType: ArrayFillType =>
     def name = "ArrayFill"
+    val elementType: operand0.type = operand0
 
     protected val operand0: ElementType
     trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
@@ -90,7 +92,8 @@ trait ArrayOperators extends Booleans with Arrays {
   protected trait ArrayBufferTypeApi extends ArrayTypeApi { thisArrayBufferType: ArrayBufferType =>
     def name = "ArrayBuffer"
 
-    val operand0: ElementType
+    protected val operand0: ElementType
+    val elementType: operand0.type = operand0
 
     protected val operand1: Seq[Int]
     def shape: Seq[Int] = operand1
@@ -110,26 +113,38 @@ trait ArrayOperators extends Booleans with Arrays {
   /** @template */
   type ArrayBufferType <: (ArrayType with Any) with ArrayBufferTypeApi
 
-  /** @template */
-  type ArrayViewTerm <: ArrayTerm
+  @inject def ArrayBufferType[ElementType0 <: ValueType]
+    : Factory2[ElementType0, Seq[Int], ArrayBufferType { type ElementType = ElementType0 }]
 
-  protected trait ArrayViewTypeApi {
-    //      FIXME: Transform 的类型应该怎么定义
-    //      trait TransformApi { this: Transform =>
-    //        val operand0: ArrayBufferTerm
-    //        val operand1: Array[Array[Int]]
-    //      }
-    //
-    //      type Transform <: TypedTerm with TransformApi
-    //      @inject //      def Transform: Operator2[ArrayBufferTerm, Array[Array[Int]], Transform]
+  /** @template */
+  type ArrayOffsetTerm <: ArrayTerm
+
+  protected trait ArrayOffsetTypeApi extends ArrayTypeApi { thisArrayOffsetType: ArrayOffsetType =>
+
+    def name = "ArrayOffset"
+
+    protected val operand0: ArrayType { type ElementType = thisArrayOffsetType.ElementType }
+
+    /** The offset */
+    protected val operand1: Seq[Int]
+
+    val elementType: operand0.elementType.type = operand0.elementType
+    trait TypedTermApi extends super.TypedTermApi { this: TypedTerm =>
+      type ElementTerm = thisArrayOffsetType.elementType.TypedTerm
+
+      def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
+        ???
+      }
+    }
+
+    type TypedTerm <: (ArrayOffsetTerm with Any) with TypedTermApi
 
   }
 
   /** @template */
-  type ArrayViewType <: (ArrayType with Any) with ArrayViewTypeApi
-
-  @inject
-  def ArrayBufferType[ElementType0 <: ValueType]
-    : Factory2[ElementType0, Seq[Int], ArrayBufferType { type ElementType = ElementType0 }]
+  type ArrayOffsetType <: (ArrayType with Any) with ArrayOffsetTypeApi
+  @inject def ArrayOffsetType[ElementType0 <: ValueType]: Factory2[ArrayType { type ElementType = ElementType0 },
+                                                                   Seq[Int],
+                                                                   ArrayOffsetType { type ElementType = ElementType0 }]
 
 }
