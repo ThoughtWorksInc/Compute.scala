@@ -590,7 +590,7 @@ object OpenCL {
     }
   }
 
-  private[compute] final case class Kernel[Owner <: OpenCL with Singleton](handle: Long)
+   final case class Kernel[Owner <: OpenCL with Singleton](handle: Long)
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
 
@@ -781,6 +781,7 @@ object OpenCL {
 trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton {
   type Program = OpenCL.Program[this.type]
   type Event = OpenCL.Event[this.type]
+  type Kernel = OpenCL.Kernel[this.type]
   protected def createProgramWithSource(sourceCode: TraversableOnce[CharSequence]): Program = {
     val stack = stackPush()
     try {
