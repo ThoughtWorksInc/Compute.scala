@@ -16,7 +16,6 @@ trait FreshNames extends Expressions {
   }
 
 // Disable for now due to a Scala bug   // TODO: Remove this plugin, use Context.freshName instead
-//
   protected trait ExpressionApi extends super.ExpressionApi {
     lazy val id: String = freshName(name)
   }
