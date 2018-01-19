@@ -32,6 +32,11 @@ trait Expressions {
       }
   }
 
+  /**
+    * @note The scalac compiler will report a `diverging implicit expansion` error
+    *       if using [[com.thoughtworks.feature.Factory.Factory2 Factory2]] instead of this [[Operator1]].
+    *       I don't know why.
+    */
   trait Operator1[Operand0, Out] {
     def apply(operand0: Operand0)(implicit debuggingInformation: Implicitly[DebuggingInformation]): Out
   }

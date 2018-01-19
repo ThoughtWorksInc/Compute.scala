@@ -19,15 +19,14 @@ trait ArrayOperators extends Booleans with Arrays {
 
     type ExtractFromArrayBuffer <: (TypedTerm with Any) with ExtractFromArrayBufferApi
 
-    @inject def ExtractFromArrayBuffer: Factory2[Implicitly[DebuggingInformation],
-                                                 ArrayBufferTerm { type ElementTerm = TypedTerm },
-                                                 ExtractFromArrayBuffer]
+    @inject
+    def ExtractFromArrayBuffer: Operator1[ArrayBufferTerm { type ElementTerm = TypedTerm }, ExtractFromArrayBuffer]
 
     protected trait TypedValueTermApi extends super.TypedTermApi { this: TypedTerm =>
       def filled(implicit debuggingInformation: Implicitly[DebuggingInformation])
         : ArrayFillTerm { type ElementTerm = valueType.TypedTerm } = {
         val arrayFillType = ArrayFillType[valueType.type].newInstance(valueType)
-        arrayFillType.Filled.newInstance(debuggingInformation, this)
+        arrayFillType.Filled(this)
       }
 
     }
@@ -71,7 +70,8 @@ trait ArrayOperators extends Booleans with Arrays {
     }
     type Filled <: (TypedTerm with Any) with FilledApi
 
-    @inject protected[ArrayOperators] def Filled: Factory2[Implicitly[DebuggingInformation], operand0.TypedTerm, Filled]
+    @inject
+    protected[ArrayOperators] def Filled: Operator1[operand0.TypedTerm, Filled]
 
   }
 
@@ -80,7 +80,8 @@ trait ArrayOperators extends Booleans with Arrays {
 
   @inject
   def ArrayFillType[ElementType0 <: ValueType]
-    : Factory1[ElementType0, ArrayFillType { type ElementType = ElementType0 }]
+    : Factory.Lt[ArrayFillType { type ElementType = ElementType0 },
+                 ElementType0 => ArrayFillType { type ElementType = ElementType0 }]
 
   protected trait ArrayBufferTermApi {
     val `type`: ArrayBufferType
@@ -102,7 +103,7 @@ trait ArrayOperators extends Booleans with Arrays {
       type ElementTerm = thisArrayBufferType.operand0.TypedTerm
 
       def extract(implicit debuggingInformation: Implicitly[DebuggingInformation]): ElementTerm = {
-        thisArrayBufferType.operand0.ExtractFromArrayBuffer.newInstance(debuggingInformation, this)
+        thisArrayBufferType.operand0.ExtractFromArrayBuffer(this)
       }
     }
 

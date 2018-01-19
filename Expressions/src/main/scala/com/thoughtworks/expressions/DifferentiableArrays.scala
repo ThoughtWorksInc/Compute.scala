@@ -38,7 +38,7 @@ trait DifferentiableArrays extends DifferentiableValues with ArrayOperators {
       outer: TypedTerm =>
 
       def computeDelta(context: DifferentiableContext): DeltaTerm = {
-        deltaType.Filled.newInstance(debuggingInformation, arrayFillType.operand0.deltaType.zero(debuggingInformation))
+        deltaType.Filled(arrayFillType.operand0.deltaType.zero(debuggingInformation))(debuggingInformation)
       }
 
     }
@@ -48,7 +48,7 @@ trait DifferentiableArrays extends DifferentiableValues with ArrayOperators {
     trait FilledApi extends super.FilledApi with super[ArrayFillTypeApi].TypedTermApi with super[TypeApi].TypedTermApi {
       this: Filled =>
       def computeDelta(context: DifferentiableContext): DeltaTerm = {
-        deltaType.Filled.newInstance(debuggingInformation, context.delta(operand0))
+        deltaType.Filled(context.delta(operand0))(debuggingInformation)
       }
     }
     type Filled <: (TypedTerm with Any) with FilledApi
@@ -86,11 +86,10 @@ trait DifferentiableArrays extends DifferentiableValues with ArrayOperators {
 
       def computeDelta(context: DifferentiableContext): deltaType.TypedTerm = {
         val arrayBufferDelta: operand0.`type`.deltaType.TypedTerm = context.delta(operand0)
-        deltaType.ExtractFromArrayBuffer.newInstance(
-          debuggingInformation,
+        deltaType.ExtractFromArrayBuffer(
           // I am sure it is correct but I can't prove it in Scala 2
           arrayBufferDelta.asInstanceOf[ArrayBufferTerm { type ElementTerm = deltaType.TypedTerm }]
-        )
+        )(debuggingInformation)
       }
 
     }

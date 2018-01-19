@@ -102,4 +102,13 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   }
 
+  "custom term" in {
+    trait MyPlugin extends AllOpenCLExpressions {
+      protected trait TermApi extends super.TermApi
+      type Term <: (Expression with Any) with TermApi
+    }
+
+    Factory[MyPlugin].newInstance()
+  }
+
 }
