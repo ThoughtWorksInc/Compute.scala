@@ -1,7 +1,7 @@
 package com.thoughtworks.expressions
 
 import org.scalatest._
-import com.thoughtworks.expressions.Builtins.{AllDifferentiableExpressions, AllOpenCLExpressions}
+import com.thoughtworks.expressions.Builtins.{AllOpenCLExpressions}
 import com.thoughtworks.feature.Factory
 import OpenCLValues.generateOpenCLKernelSourceCode
 
@@ -41,32 +41,10 @@ class ExpressionsSpec extends FreeSpec with Matchers {
 
   }
 
-  "differentiable id" in {
-
-    val expressions =
-      Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
-
-    import expressions._
-
-    val dimensions = Seq(64, 32, 32)
-    val floatArray3d = ArrayBufferType.newInstance(float, dimensions)
-    val x: floatArray3d.Identifier = floatArray3d.Identifier()
-
-    val deltaX: floatArray3d.Identifier = floatArray3d.Identifier()
-
-    val f = x.extract
-
-    val sourceCode =
-      generateOpenCLKernelSourceCode("id_backward", dimensions.length, Seq(x, deltaX), Seq(delta(f, x -> deltaX))).mkString
-
-    println(sourceCode) // FIXME: replace println to a scalatest assertion
-
-  }
-
   "3x3 convolutional" in {
 
     val expressions =
-      Factory[AllOpenCLExpressions with AllDifferentiableExpressions].newInstance()
+      Factory[AllOpenCLExpressions].newInstance()
 
     import expressions._
 
@@ -90,15 +68,6 @@ class ExpressionsSpec extends FreeSpec with Matchers {
     val forwardSourceCode =
       generateOpenCLKernelSourceCode("cnn_forward", dimensions.length, Seq(x, w, b), Seq(f)).mkString
     println(forwardSourceCode)
-
-    val deltaX = floatArray3d.Identifier()
-    // TODO: checkpoint
-    val backwardSourceCode = generateOpenCLKernelSourceCode("cnn_backward",
-                                                            dimensions.length,
-                                                            Seq(x, w, b, deltaX),
-                                                            Seq(delta(f, x -> deltaX))).mkString
-
-    println(backwardSourceCode)
 
   }
 
