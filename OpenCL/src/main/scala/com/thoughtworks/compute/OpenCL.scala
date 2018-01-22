@@ -40,6 +40,7 @@ import com.thoughtworks.tryt.covariant._
 import shapeless.Witness
 import simulacrum.typeclass
 
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.language.higherKinds
 
 /**
@@ -349,6 +350,31 @@ object OpenCL {
     }
   }
 
+  /**
+    * @note [[HandleEventInExecutionContext]] __should__ be unnecessary because
+    *       only OpenCL calls to create contexts or command-queues, or blocking OpenCL operations are undefined behavior,
+    *       according to https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetEventCallback.html
+    *       and we don't use those forbidden functions.
+    *       Our usage should be fine according to the OpenCL specification.
+    *       However, AMD SDK always crashes for any reentry calls
+    *       (e.g. https://travis-ci.org/Atry/DeepLearning.scala/jobs/318466522),
+    *       no matter if they are blocking or not.
+    *
+    *       As a workaround, always enable this [[HandleEventInExecutionContext]] for AMD's OpenCL implementation.
+    */
+  trait HandleEventInExecutionContext extends OpenCL {
+    val executionContext: ExecutionContext
+
+    override protected def waitForStatus(event: Event, callbackType: Status): UnitContinuation[Status] =
+      super.waitForStatus(event, callbackType).flatMap { status =>
+        UnitContinuation.execute(status)(executionContext)
+      }
+  }
+
+  trait GlobalExecutionContext extends HandleEventInExecutionContext {
+    val executionContext: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
+  }
+
   object CommandQueuePool {
     sealed trait State
   }
@@ -386,12 +412,14 @@ object OpenCL {
     }
 
     override def monadicClose: UnitContinuation[Unit] = {
-      shutdownCommandQueues >> {
-        for (commandQueue <- commandQueues) {
-          checkErrorCode(clReleaseCommandQueue(commandQueue))
-        }
-        super.monadicClose
+      shutdownCommandQueues >> super.monadicClose
+    }
+
+    override protected def finalize(): Unit = {
+      for (commandQueue <- commandQueues) {
+        checkErrorCode(clReleaseCommandQueue(commandQueue))
       }
+      super.finalize()
     }
   }
   object Event {
@@ -405,49 +433,31 @@ object OpenCL {
     })
   }
 
+  type Status = Int
+
   final case class Event[Owner <: Singleton with OpenCL](handle: Long)
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
-    type Status = Int
-    def waitForStatus(callbackType: Status): UnitContinuation[Status] = UnitContinuation.async { (continue: Status => Unit) =>
-      val userData = JNINativeInterface.NewGlobalRef(continue)
-      try {
-        checkErrorCode(
-          clSetEventCallback(
-            handle,
-            callbackType,
-            Event.eventCallback,
-            userData
-          )
-        )
-      } catch {
-        case NonFatal(e) =>
-          //JNINativeInterface.DeleteGlobalRef(userData)
-          throw e
-      }
-    }
 
-    def waitFor(callbackType: Status): Future[Unit] = {
-      // Workaround for AMD OpenCL bug shown at https://travis-ci.org/Atry/DeepLearning.scala/jobs/318466522
-      import scala.concurrent.ExecutionContext.Implicits._
-      val continuation = waitForStatus(callbackType).flatMap[Try[Unit]] {
+    def waitFor(callbackType: Status)(implicit
+                                      witnessOwner: Witness.Aux[Owner]): Future[Unit] = {
+      // The cast is a workaround for https://github.com/milessabin/shapeless/issues/753
+      val self = this.asInstanceOf[witnessOwner.value.Event]
+
+      val continuation = witnessOwner.value.waitForStatus(self, callbackType).flatMap[Try[Unit]] {
         case `callbackType` =>
-          // This `execute` call should be unnecessary because
-          // only OpenCL calls to create contexts or command-queues, or blocking OpenCL operations are undefined behavior,
-          // according to https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetEventCallback.html
-          // 
-          // However, AMD SDK always crashes for any reentry calls.
-          // I have to switch thread by `execute`, unfortunately.
-          UnitContinuation.execute(Success(()))
+          UnitContinuation.now(Success(()))
         case errorCode if errorCode < 0 =>
-          UnitContinuation.execute(Failure(Exceptions.fromErrorCode(errorCode)))
+          UnitContinuation.now(Failure(Exceptions.fromErrorCode(errorCode)))
         case status =>
           throw new IllegalStateException(raw"""Invalid event status $status""")
       }
       Future(TryT(continuation))
     }
 
-    def waitForComplete(): Future[Unit] = waitFor(CL_COMPLETE)
+    def waitForComplete()(
+        implicit
+        witnessOwner: Witness.Aux[Owner]): Future[Unit] = waitFor(CL_COMPLETE)
 
     override def monadicClose: UnitContinuation[Unit] = {
       UnitContinuation.delay {
@@ -590,7 +600,7 @@ object OpenCL {
     }
   }
 
-   final case class Kernel[Owner <: OpenCL with Singleton](handle: Long)
+  final case class Kernel[Owner <: OpenCL with Singleton](handle: Long)
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
 
@@ -779,8 +789,30 @@ object OpenCL {
 }
 
 trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton {
+  import OpenCL._
+
   type Program = OpenCL.Program[this.type]
   type Event = OpenCL.Event[this.type]
+
+  protected def waitForStatus(event: Event, callbackType: Status): UnitContinuation[Status] = UnitContinuation.async {
+    (continue: Status => Unit) =>
+      val userData = JNINativeInterface.NewGlobalRef(continue)
+      try {
+        checkErrorCode(
+          clSetEventCallback(
+            event.handle,
+            callbackType,
+            Event.eventCallback,
+            userData
+          )
+        )
+      } catch {
+        case NonFatal(e) =>
+          //JNINativeInterface.DeleteGlobalRef(userData)
+          throw e
+      }
+  }
+
   type Kernel = OpenCL.Kernel[this.type]
   protected def createProgramWithSource(sourceCode: TraversableOnce[CharSequence]): Program = {
     val stack = stackPush()
@@ -814,8 +846,12 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
 
   protected def acquireCommandQueue: Do[Long]
 
-  def monadicClose: UnitContinuation[Unit] = UnitContinuation.delay {
+  def monadicClose: UnitContinuation[Unit] =
+    UnitContinuation.now(()) // FIXME: Use com.thoughtworks.raii.asynchronous.DefaultCloseable instead
+
+  override protected def finalize(): Unit = {
     checkErrorCode(clReleaseContext(context))
+    super.finalize()
   }
 
   protected def handleOpenCLNotification(errorInfo: String, privateInfo: ByteBuffer): Unit

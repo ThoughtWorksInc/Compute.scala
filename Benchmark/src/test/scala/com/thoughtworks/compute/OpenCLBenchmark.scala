@@ -133,8 +133,7 @@ class OpenCLBenchmark {
       numberOfConcurrentLayers
     }
     val doOpenCL = Do.monadicCloseable {
-      Factory[
-        TestKernels with OpenCL with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with ImplicitsSingleton with OpenCL.CommandQueuePool]
+      Factory[TestKernels with OpenCL with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with ImplicitsSingleton with OpenCL.CommandQueuePool]
         .newInstance(
           handleOpenCLNotification = handleOpenCLNotification,
           numberOfCommandQueuesForDevice = numberOfCommandQueuesForDevice
