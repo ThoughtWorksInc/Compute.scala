@@ -17,9 +17,9 @@ libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5"
 
 libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5" % Test classifier lwjglNatives
 
-libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M7"
+libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M8"
 
-libraryDependencies += "com.thoughtworks.raii" %% "asynchronouspool" % "3.0.0-M7"
+libraryDependencies += "com.thoughtworks.raii" %% "asynchronouspool" % "3.0.0-M8"
 
 libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.3.0-M4"
 

@@ -74,7 +74,7 @@ object OpenCL {
   }
 
   private val contextCallback: CLContextCallback = CLContextCallback.create(new CLContextCallbackI {
-    override def invoke(errInfo: Long, privateInfo: Long, size: Long, userData: Long): Unit = {
+    def invoke(errInfo: Long, privateInfo: Long, size: Long, userData: Long): Unit = {
       val errorInfo = decodeString(errInfo)
       val data = memByteBuffer(privateInfo, size.toInt)
       memGlobalRefToObject[OpenCL](userData) match {
@@ -418,15 +418,13 @@ object OpenCL {
     }
 
     override def monadicClose: UnitContinuation[Unit] = {
-      shutdownCommandQueues >> super.monadicClose
+      shutdownCommandQueues >> UnitContinuation.delay {
+        for (commandQueue <- commandQueues) {
+          checkErrorCode(clReleaseCommandQueue(commandQueue))
+        }
+      } >> super.monadicClose
     }
 
-    override protected def finalize(): Unit = {
-      for (commandQueue <- commandQueues) {
-        checkErrorCode(clReleaseCommandQueue(commandQueue))
-      }
-      super.finalize()
-    }
   }
   object Event {
     private[OpenCL] val eventCallback: CLEventCallback = CLEventCallback.create(new CLEventCallbackI {
@@ -465,7 +463,7 @@ object OpenCL {
         implicit
         witnessOwner: Witness.Aux[Owner]): Future[Unit] = waitFor(CL_COMPLETE)
 
-    override def monadicClose: UnitContinuation[Unit] = {
+    def monadicClose: UnitContinuation[Unit] = {
       UnitContinuation.delay {
         checkErrorCode(clReleaseEvent(handle))
       }
@@ -500,6 +498,7 @@ object OpenCL {
         checkErrorCode(clReleaseMemObject(handle))
       }
     }
+
     def slice(offset: Int, size: Int)(implicit
                                       memory: Memory[Element]): Do[DeviceBuffer[Owner, Element]] = {
 
@@ -671,7 +670,7 @@ object OpenCL {
       }
     }
 
-    override def monadicClose: UnitContinuation[Unit] = {
+    def monadicClose: UnitContinuation[Unit] = {
       UnitContinuation.delay {
         checkErrorCode(clReleaseKernel(handle))
       }
@@ -775,12 +774,13 @@ object OpenCL {
 
   object Program {
 
-    override def finalize(): Unit = {
+    override protected def finalize(): Unit = {
       programCallback.close()
+      super.finalize()
     }
 
     val programCallback = CLProgramCallback.create(new CLProgramCallbackI {
-      override def invoke(program: Long, userData: Long): Unit = {
+      def invoke(program: Long, userData: Long): Unit = {
         val scalaCallback = try {
           memGlobalRefToObject[Unit => Unit](userData)
         } finally {
@@ -794,7 +794,7 @@ object OpenCL {
 
 }
 
-trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton {
+trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton with DefaultCloseable {
   import OpenCL._
 
   type Program = OpenCL.Program[this.type]
@@ -852,12 +852,12 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
 
   protected def acquireCommandQueue: Do[Long]
 
-  def monadicClose: UnitContinuation[Unit] =
-    UnitContinuation.now(()) // FIXME: Use com.thoughtworks.raii.asynchronous.DefaultCloseable instead
-
-  override protected def finalize(): Unit = {
+  protected def releaseContext: UnitContinuation[Unit] = UnitContinuation.delay {
     checkErrorCode(clReleaseContext(context))
-    super.finalize()
+  }
+
+  override def monadicClose: UnitContinuation[Unit] = {
+    releaseContext >> super.monadicClose
   }
 
   protected def handleOpenCLNotification(errorInfo: String, privateInfo: ByteBuffer): Unit
