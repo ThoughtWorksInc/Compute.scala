@@ -67,6 +67,12 @@ object OpenCL {
   message: $errorInfo
   data: $data""")
   }
+
+  override protected def finalize(): Unit = {
+    contextCallback.close()
+    super.finalize()
+  }
+
   private val contextCallback: CLContextCallback = CLContextCallback.create(new CLContextCallbackI {
     override def invoke(errInfo: Long, privateInfo: Long, size: Long, userData: Long): Unit = {
       val errorInfo = decodeString(errInfo)
