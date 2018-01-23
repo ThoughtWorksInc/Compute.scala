@@ -13,7 +13,7 @@ trait Arrays extends Values {
 
   override type ValueTerm <: (Term with Any) with ValueApi
 
-  protected trait ArrayApi { thisArray =>
+  protected trait ArrayApi extends TermApi { thisArray: ArrayTerm =>
     type Element <: ValueTerm
 
     def shape: Array[Int]

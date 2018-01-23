@@ -29,15 +29,17 @@ trait FloatTrees extends Floats with ValueTrees {
                              },
                              FloatTerm]
 
+  final case class FloatLiteral(value: Float) extends TreeApi {
+    type ForeignTerm[C <: Category] = C#FloatTerm
+
+    def export(foreignCategory: Category): foreignCategory.FloatTerm = {
+      foreignCategory.FloatTerm.literal(value)
+    }
+  }
+
   protected trait FloatCompanionApi extends super.FloatCompanionApi {
     def literal(value: Float): FloatTerm =
-      floatFactory.newInstance(new TreeApi {
-        type ForeignTerm[C <: Category] = C#FloatTerm
-
-        def export(foreignCategory: Category): foreignCategory.FloatTerm = {
-          foreignCategory.FloatTerm.literal(value)
-        }
-      })
+      floatFactory.newInstance(FloatLiteral(value))
   }
 
   type FloatCompanion <: FloatCompanionApi

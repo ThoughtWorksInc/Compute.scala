@@ -1,5 +1,4 @@
 package com.thoughtworks.expressions.api
-import com.thoughtworks.feature.Factory.inject
 
 import scala.language.higherKinds
 
@@ -13,6 +12,7 @@ trait Terms {
     type ForeignTerm[C <: Category] <: C#Term
 
     type Self = ForeignTerm[Terms.this.type]
+
   }
 
   type Term <: TermApi
