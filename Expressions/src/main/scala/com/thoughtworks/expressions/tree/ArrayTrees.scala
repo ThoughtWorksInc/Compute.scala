@@ -1,7 +1,6 @@
 package com.thoughtworks.expressions.tree
 
 import com.thoughtworks.expressions.api.Arrays
-import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 
 /**
@@ -33,6 +32,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
       array.export(foreignCategory).extract
     }
     type ForeignTerm[C <: Category] = LocalElement#ForeignTerm[C]
+
   }
 
   protected trait ArrayApi extends super.ArrayApi with TermApi { thisArray: ArrayTerm =>
