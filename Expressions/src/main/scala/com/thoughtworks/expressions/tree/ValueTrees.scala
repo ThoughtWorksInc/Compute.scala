@@ -10,14 +10,14 @@ import scala.language.higherKinds
   */
 trait ValueTrees extends Values with Trees {
 
-  protected trait ValueTree extends Tree with ValueApi { thisValue: ValueTerm =>
+  protected trait ValueApi extends TermApi with super.ValueApi { thisValue: ValueTerm =>
 
-    def factory: Factory1[ExporterApi {
+    def factory: Factory1[TreeApi {
                             type ForeignTerm[C <: Category] = thisValue.ForeignTerm[C]
                           },
                           Self]
   }
 
-  override type ValueTerm <: (Term with Any) with ValueTree
+  override type ValueTerm <: (Term with Any) with ValueApi
 
 }
