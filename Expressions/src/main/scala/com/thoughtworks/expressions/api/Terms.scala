@@ -8,13 +8,21 @@ import scala.language.higherKinds
 trait Terms {
   type Category >: this.type <: Terms
 
-  protected trait TermApi { this: Term =>
+  protected trait ExpressionApi {
     type ForeignTerm[C <: Category] <: C#Term
 
-    type Self = ForeignTerm[Terms.this.type]
+    type TypedTerm = ForeignTerm[Terms.this.type]
+
+  }
+
+  protected trait TermApi extends ExpressionApi { this: Term =>
 
   }
 
   type Term <: TermApi
+
+  protected trait TypeApi extends ExpressionApi {}
+
+  type Type <: TypeApi
 
 }

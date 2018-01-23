@@ -10,24 +10,24 @@ import scala.language.higherKinds
 trait Floats extends Values {
   type Category >: this.type <: Floats
 
-  protected trait FloatApi extends ValueApi { this: FloatTerm =>
+  protected trait FloatExpressionApi extends ExpressionApi {
     type ForeignTerm[C <: Category] <: C#FloatTerm
 
-    @inject
-    def xxx[C <: Category]: ForeignTerm[C] =:= Self#ForeignTerm[C]
+  }
+
+  protected trait FloatApi extends ValueApi with FloatExpressionApi { this: FloatTerm =>
 
   }
 
   type FloatTerm <: (ValueTerm with Any) with FloatApi
 
-  protected trait FloatCompanionApi extends ValueCompanionApi {
+  protected trait FloatTypeApi extends ValueTypeApi {
     type JvmValue = Float
-    type CompanionTerm = FloatTerm
   }
 
-  type FloatCompanion <: FloatCompanionApi
+  type FloatType <: (ValueType with Any) with FloatTypeApi
 
   @inject
-  val FloatTerm: Implicitly[FloatCompanion]
+  val FloatTerm: Implicitly[FloatType]
 
 }

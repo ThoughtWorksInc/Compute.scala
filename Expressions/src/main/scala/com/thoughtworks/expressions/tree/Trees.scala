@@ -14,7 +14,11 @@ trait Trees extends Terms {
   protected trait TreeApi extends Product {
     type ForeignTerm[C <: Category]
 
-    def export(foreignCategory: Category): ForeignTerm[foreignCategory.type]
+    def export(foreignCategory: Category,
+               map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any])
+      : ForeignTerm[foreignCategory.type]
+
+    // TODO: alphaConversion
 
     // TODO: parameter should have special implementation of `isSameStructure`
     def isSameStructure(that: TreeApi,
