@@ -34,4 +34,17 @@ trait FloatTrees extends Floats with ValueTrees {
                              },
                              FloatTerm]
 
+  protected trait FloatCompanionApi extends super.FloatCompanionApi {
+    def literal(value: Float): FloatTerm =
+      floatFactory.newInstance(new ExporterApi {
+        type ForeignTerm[C <: Category] = C#FloatTerm
+
+        def in(foreignCategory: Category): foreignCategory.FloatTerm = {
+          foreignCategory.FloatTerm.literal(value)
+        }
+      })
+  }
+
+  type FloatCompanion <: FloatCompanionApi
+
 }

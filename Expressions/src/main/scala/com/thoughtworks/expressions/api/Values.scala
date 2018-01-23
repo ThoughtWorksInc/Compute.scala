@@ -20,7 +20,7 @@ trait Values extends Terms {
 
     type CompanionTerm <: ValueTerm
 
-    def literal(value: JvmValue): CompanionTerm = ???
+    def literal(value: JvmValue): CompanionTerm
 
   }
 
