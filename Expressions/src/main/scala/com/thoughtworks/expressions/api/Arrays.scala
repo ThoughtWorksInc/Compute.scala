@@ -32,10 +32,12 @@ trait Arrays extends Values {
 
   protected trait ArrayCompanionApi {
 
-    def parameter[Element0 <: ValueTerm](id: Any, elementType: ValueType { type ThisTerm = Element0 }, shape: Int*)
-      : ArrayTerm {
-        type Element = Element0
-      }
+    def parameter[Element0 <: ValueTerm](id: Any, elementType: ValueType {
+      // FIXME: refinement on ThisTerm does not make sense
+      type ThisTerm = Element0
+    }, shape: Int*): ArrayTerm {
+      type Element = Element0
+    }
 
   }
 
