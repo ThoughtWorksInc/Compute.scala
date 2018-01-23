@@ -41,16 +41,13 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
     def extract: Element = {
       valueFactory.newInstance(new TreeApi {
-        def in(foreignCategory: Category): ForeignTerm[foreignCategory.type] = {
+        def export(foreignCategory: Category): ForeignTerm[foreignCategory.type] = {
           thisArray.in(foreignCategory).extract
         }
         type ForeignTerm[C <: Category] = thisArray.Element#ForeignTerm[C]
       })
     }
 
-    def in(foreignCategory: Category): ForeignTerm[foreignCategory.type] = {
-      tree.in(foreignCategory)
-    }
   }
 
   type ArrayTerm <: (Term with Any) with ArrayApi
@@ -62,7 +59,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
       arrayFactory.newInstance(
         shape.toArray,
         new TreeApi {
-          def in(foreignCategory: Category): ForeignTerm[foreignCategory.type] = {
+          def export(foreignCategory: Category): ForeignTerm[foreignCategory.type] = {
             val foreignValue: thisValue.ForeignTerm[foreignCategory.type] = thisValue.in(foreignCategory)
             foreignValue.fill(shape: _*).asInstanceOf[ForeignTerm[foreignCategory.type]]
           }

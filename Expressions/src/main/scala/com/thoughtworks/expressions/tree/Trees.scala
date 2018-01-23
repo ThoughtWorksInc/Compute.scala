@@ -11,11 +11,13 @@ trait Trees extends Terms {
   protected trait TreeApi {
     type ForeignTerm[C <: Category]
 
-    def in(foreignCategory: Category): ForeignTerm[foreignCategory.type]
+    def export(foreignCategory: Category): ForeignTerm[foreignCategory.type]
   }
 
   protected trait TermApi extends super.TermApi { thisTree: Term =>
-    def in(foreignCategory: Category): ForeignTerm[foreignCategory.type]
+    def in(foreignCategory: Category): ForeignTerm[foreignCategory.type] = {
+      tree.export(foreignCategory)
+    }
 
     type Tree = TreeApi {
       type ForeignTerm[C <: Category] = thisTree.ForeignTerm[C]

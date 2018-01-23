@@ -13,10 +13,6 @@ trait FloatTrees extends Floats with ValueTrees {
   protected trait FloatApi extends super.FloatApi with ValueApi { thisFloat: FloatTerm =>
     type ForeignTerm[C <: Category] = C#FloatTerm
 
-    def in(foreignCategory: Category): ForeignTerm[foreignCategory.type] = {
-      tree.in(foreignCategory)
-    }
-
     def factory: Factory1[TreeApi {
                             type ForeignTerm[C <: Category] = C#FloatTerm
                           },
@@ -38,7 +34,7 @@ trait FloatTrees extends Floats with ValueTrees {
       floatFactory.newInstance(new TreeApi {
         type ForeignTerm[C <: Category] = C#FloatTerm
 
-        def in(foreignCategory: Category): foreignCategory.FloatTerm = {
+        def export(foreignCategory: Category): foreignCategory.FloatTerm = {
           foreignCategory.FloatTerm.literal(value)
         }
       })
