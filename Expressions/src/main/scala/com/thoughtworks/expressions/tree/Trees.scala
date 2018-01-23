@@ -12,11 +12,11 @@ import scala.language.higherKinds
 trait Trees extends Terms {
 
   protected trait TreeApi extends Product {
-    type ForeignTerm[C <: Category]
+    type TermIn[C <: Category]
 
     def export(foreignCategory: Category,
                map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any])
-      : ForeignTerm[foreignCategory.type]
+      : TermIn[foreignCategory.type]
 
     // TODO: alphaConversion
 
@@ -42,12 +42,12 @@ trait Trees extends Terms {
   }
 
   protected trait TermApi extends super.TermApi { thisTree: Term =>
-    def in(foreignCategory: Category): ForeignTerm[foreignCategory.type] = {
+    def in(foreignCategory: Category): TermIn[foreignCategory.type] = {
       tree.export(foreignCategory)
     }
 
     type Tree = TreeApi {
-      type ForeignTerm[C <: Category] = thisTree.ForeignTerm[C]
+      type TermIn[C <: Category] = thisTree.TermIn[C]
     }
     val tree: Tree
 

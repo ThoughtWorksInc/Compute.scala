@@ -8,7 +8,8 @@ trait Values extends Terms {
   type Category >: this.type <: Values
 
   protected trait ValueExpressionApi extends ExpressionApi {
-    type ForeignTerm[C <: Category] <: C#ValueTerm
+    type TermIn[C <: Category] <: C#ValueTerm
+    type TypeIn[C <: Category] <: C#ValueType
   }
 
   protected trait ValueApi extends TermApi with ValueExpressionApi { this: ValueTerm =>
@@ -17,7 +18,7 @@ trait Values extends Terms {
   /** @template */
   type ValueTerm <: (Term with Any) with ValueApi
 
-  protected trait ValueTypeApi extends ValueExpressionApi{
+  protected trait ValueTypeApi extends ValueExpressionApi {
 
     type JvmValue
 

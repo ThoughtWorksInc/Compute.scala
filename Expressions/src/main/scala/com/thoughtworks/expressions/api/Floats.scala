@@ -11,7 +11,7 @@ trait Floats extends Values {
   type Category >: this.type <: Floats
 
   protected trait FloatExpressionApi extends ExpressionApi {
-    type ForeignTerm[C <: Category] <: C#FloatTerm
+    type TermIn[C <: Category] <: C#FloatTerm
 
   }
 

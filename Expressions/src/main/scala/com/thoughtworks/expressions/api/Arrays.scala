@@ -28,9 +28,9 @@ trait Arrays extends Values {
   type ArrayTerm <: (Term with Any) with ArrayApi
 
   @inject
-  val ArrayTerm: Implicitly[ArrayType]
+  val ArrayTerm: Implicitly[ArrayCompanion]
 
-  protected trait ArrayTypeApi {
+  protected trait ArrayCompanionApi {
 
     def parameter[Element0 <: ValueTerm](id: Any, elementType: ValueType { type TypedTerm = Element0 }, shape: Int*)
       : ArrayTerm {
@@ -39,6 +39,6 @@ trait Arrays extends Values {
 
   }
 
-  type ArrayType <: ArrayTypeApi
+  type ArrayCompanion <: ArrayCompanionApi
 
 }

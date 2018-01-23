@@ -13,13 +13,14 @@ import scala.language.higherKinds
 trait FloatTrees extends Floats with ValueTrees {
 
   protected trait FloatExpressionApi extends ValueExpressionApi {
-    type ForeignTerm[C <: Category] = C#FloatTerm
+    type TermIn[C <: Category] = C#FloatTerm
+    type TypeIn[C <: Category] = C#FloatType
   }
 
   protected trait FloatApi extends super.FloatApi with ValueApi with FloatExpressionApi { thisFloat: FloatTerm =>
 
     def factory: Factory1[TreeApi {
-                            type ForeignTerm[C <: Category] = C#FloatTerm
+                            type TermIn[C <: Category] = C#FloatTerm
                           },
                           TypedTerm] = {
       floatFactory
@@ -30,12 +31,12 @@ trait FloatTrees extends Floats with ValueTrees {
 
   @inject
   def floatFactory: Factory1[TreeApi {
-                               type ForeignTerm[C <: Category] = C#FloatTerm
+                               type TermIn[C <: Category] = C#FloatTerm
                              },
                              FloatTerm]
 
   final case class FloatParameter(id: Any) extends TreeApi {
-    type ForeignTerm[C <: Category] = C#FloatTerm
+    type TermIn[C <: Category] = C#FloatTerm
 
     def export(foreignCategory: Category,
                map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
@@ -47,7 +48,7 @@ trait FloatTrees extends Floats with ValueTrees {
   }
 
   final case class FloatLiteral(value: Float) extends TreeApi {
-    type ForeignTerm[C <: Category] = C#FloatTerm
+    type TermIn[C <: Category] = C#FloatTerm
 
     def export(foreignCategory: Category,
                map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
@@ -67,7 +68,7 @@ trait FloatTrees extends Floats with ValueTrees {
     }
 
     def factory: Factory1[TreeApi {
-                            type ForeignTerm[C <: Category] = TypedTerm#ForeignTerm[C]
+                            type TermIn[C <: Category] = TypedTerm#TermIn[C]
                           },
                           TypedTerm] = floatFactory
   }

@@ -9,9 +9,9 @@ trait Terms {
   type Category >: this.type <: Terms
 
   protected trait ExpressionApi {
-    type ForeignTerm[C <: Category] <: C#Term
+    type TermIn[C <: Category] <: C#Term
 
-    type TypedTerm = ForeignTerm[Terms.this.type]
+    type TypedTerm = TermIn[Terms.this.type]
 
   }
 

@@ -13,7 +13,7 @@ trait ValueTrees extends Values with Trees {
   protected trait ValueTypeApi extends super.ValueTypeApi {
 
     def factory: Factory1[TreeApi {
-      type ForeignTerm[C <: Category] = TypedTerm#ForeignTerm[C]
+      type TermIn[C <: Category] = TypedTerm#TermIn[C]
     },
       TypedTerm]
 
@@ -24,7 +24,7 @@ trait ValueTrees extends Values with Trees {
   protected trait ValueApi extends TermApi with super.ValueApi { thisValue: ValueTerm =>
 
     def factory: Factory1[TreeApi {
-                            type ForeignTerm[C <: Category] = thisValue.ForeignTerm[C]
+                            type TermIn[C <: Category] = thisValue.TermIn[C]
                           },
                           TypedTerm]
   }

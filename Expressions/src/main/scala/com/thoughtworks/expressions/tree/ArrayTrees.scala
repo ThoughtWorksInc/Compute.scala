@@ -13,8 +13,8 @@ trait ArrayTrees extends Arrays with ValueTrees {
   type Category >: this.type <: Arrays
 
   type ArrayTree[LocalElement <: ValueTerm] = TreeApi {
-    type ForeignTerm[C <: Category] = C#ArrayTerm {
-      type Element = LocalElement#ForeignTerm[C]
+    type TermIn[C <: Category] = C#ArrayTerm {
+      type Element = LocalElement#TermIn[C]
     }
   }
 
@@ -22,7 +22,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
     : Factory3[Array[Int],
                ArrayTree[LocalElement],
                Factory1[TreeApi {
-                          type ForeignTerm[C <: Category] = LocalElement#ForeignTerm[C]
+                          type TermIn[C <: Category] = LocalElement#TermIn[C]
                         },
                         LocalElement],
                ArrayTerm {
@@ -32,24 +32,24 @@ trait ArrayTrees extends Arrays with ValueTrees {
   final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends TreeApi {
     def export(
         foreignCategory: Category,
-        map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): ForeignTerm[foreignCategory.type] = {
+        map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, array.export(foreignCategory, map).extract)
-        .asInstanceOf[ForeignTerm[foreignCategory.type]]
+        .asInstanceOf[TermIn[foreignCategory.type]]
     }
-    type ForeignTerm[C <: Category] = LocalElement#ForeignTerm[C]
+    type TermIn[C <: Category] = LocalElement#TermIn[C]
 
   }
 
   protected trait ArrayApi extends super.ArrayApi with TermApi { thisArray: ArrayTerm =>
-    type ForeignTerm[C <: Category] = C#ArrayTerm {
-      type Element = thisArray.Element#ForeignTerm[C]
+    type TermIn[C <: Category] = C#ArrayTerm {
+      type Element = thisArray.Element#TermIn[C]
     }
 
     val shape: Array[Int]
 
     val valueFactory: Factory1[TreeApi {
-                                 type ForeignTerm[C <: Category] = thisArray.Element#ForeignTerm[C]
+                                 type TermIn[C <: Category] = thisArray.Element#TermIn[C]
                                },
                                Element]
 
@@ -62,19 +62,19 @@ trait ArrayTrees extends Arrays with ValueTrees {
   type ArrayTerm <: (Term with Any) with ArrayApi
 
   final case class Fill[LocalElement <: ValueTerm](element: TreeApi {
-    type ForeignTerm[C <: Category] = LocalElement#ForeignTerm[C]
+    type TermIn[C <: Category] = LocalElement#TermIn[C]
   }, shape: Int*)
       extends TreeApi {
-    type ForeignTerm[C <: Category] = C#ArrayTerm {
-      type Element = LocalElement#ForeignTerm[C]
+    type TermIn[C <: Category] = C#ArrayTerm {
+      type Element = LocalElement#TermIn[C]
     }
 
     def export(
         foreignCategory: Category,
-        map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): ForeignTerm[foreignCategory.type] = {
+        map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, element.export(foreignCategory, map).fill(shape: _*))
-        .asInstanceOf[ForeignTerm[foreignCategory.type]]
+        .asInstanceOf[TermIn[foreignCategory.type]]
     }
   }
 
@@ -85,14 +85,14 @@ trait ArrayTrees extends Arrays with ValueTrees {
       type Element = thisValue.TypedTerm
     } = {
       val fillTree = Fill[thisValue.TypedTerm](
-        tree.asInstanceOf[TreeApi { type ForeignTerm[C <: Category] = thisValue.TypedTerm#ForeignTerm[C] }],
+        tree.asInstanceOf[TreeApi { type TermIn[C <: Category] = thisValue.TypedTerm#TermIn[C] }],
         shape: _*)
       arrayFactory[TypedTerm].newInstance(
         shape.toArray,
         fillTree,
         thisValue.factory
           .asInstanceOf[Factory1[TreeApi {
-                                   type ForeignTerm[C <: Category] = thisValue.TypedTerm#ForeignTerm[C]
+                                   type TermIn[C <: Category] = thisValue.TypedTerm#TermIn[C]
                                  },
                                  thisValue.TypedTerm]]
       )
@@ -106,21 +106,21 @@ trait ArrayTrees extends Arrays with ValueTrees {
     type TypedTerm = LocalElement
   }, shape: Int*)
       extends TreeApi {
-    type ForeignTerm[C <: Category] = C#ArrayTerm {
-      type Element = LocalElement#ForeignTerm[C]
+    type TermIn[C <: Category] = C#ArrayTerm {
+      type Element = LocalElement#TermIn[C]
     }
 
     def export(
         foreignCategory: Category,
-        map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): ForeignTerm[foreignCategory.type] = {
+        map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, foreignCategory.ArrayTerm.parameter(id, ???, shape: _*))
-        .asInstanceOf[ForeignTerm[foreignCategory.type]]
+        .asInstanceOf[TermIn[foreignCategory.type]]
 
     }
   }
 
-  protected trait ArrayTypeApi extends super.ArrayTypeApi {
+  protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
     def parameter[LocalElement <: ValueTerm](id: Any, elementType: ValueType {
       type TypedTerm = LocalElement
@@ -138,5 +138,5 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
   }
 
-  type ArrayType <: ArrayTypeApi
+  type ArrayCompanion <: ArrayCompanionApi
 }
