@@ -22,7 +22,7 @@ trait FloatTrees extends Floats with ValueTrees {
     def factory: Factory1[TreeApi {
                             type TermIn[C <: Category] = C#FloatTerm
                           },
-                          TypedTerm] = {
+                          ThisTerm] = {
       floatFactory
     }
   }
@@ -68,9 +68,9 @@ trait FloatTrees extends Floats with ValueTrees {
     }
 
     def factory: Factory1[TreeApi {
-                            type TermIn[C <: Category] = TypedTerm#TermIn[C]
+                            type TermIn[C <: Category] = ThisTerm#TermIn[C]
                           },
-                          TypedTerm] = floatFactory
+                          ThisTerm] = floatFactory
   }
 
   type FloatType <: (ValueType with Any) with FloatTypeApi

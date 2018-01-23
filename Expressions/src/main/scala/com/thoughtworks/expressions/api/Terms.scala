@@ -11,7 +11,7 @@ trait Terms {
   protected trait ExpressionApi {
     type TermIn[C <: Category] <: C#Term
 
-    type TypedTerm = TermIn[Terms.this.type]
+    type ThisTerm = TermIn[Terms.this.type]
 
   }
 

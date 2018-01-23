@@ -13,9 +13,9 @@ trait ValueTrees extends Values with Trees {
   protected trait ValueTypeApi extends super.ValueTypeApi {
 
     def factory: Factory1[TreeApi {
-      type TermIn[C <: Category] = TypedTerm#TermIn[C]
+      type TermIn[C <: Category] = ThisTerm#TermIn[C]
     },
-      TypedTerm]
+      ThisTerm]
 
   }
 
@@ -26,7 +26,7 @@ trait ValueTrees extends Values with Trees {
     def factory: Factory1[TreeApi {
                             type TermIn[C <: Category] = thisValue.TermIn[C]
                           },
-                          TypedTerm]
+                          ThisTerm]
   }
 
   override type ValueTerm <: (Term with Any) with ValueApi

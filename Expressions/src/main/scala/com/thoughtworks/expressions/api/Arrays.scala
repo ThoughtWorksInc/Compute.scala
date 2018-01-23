@@ -10,7 +10,7 @@ trait Arrays extends Values {
 
   protected trait ValueApi extends super.ValueApi { thisValue: ValueTerm =>
     def fill(shape: Int*): ArrayTerm {
-      type Element = thisValue.TypedTerm
+      type Element = thisValue.ThisTerm
     }
   }
 
@@ -32,7 +32,7 @@ trait Arrays extends Values {
 
   protected trait ArrayCompanionApi {
 
-    def parameter[Element0 <: ValueTerm](id: Any, elementType: ValueType { type TypedTerm = Element0 }, shape: Int*)
+    def parameter[Element0 <: ValueTerm](id: Any, elementType: ValueType { type ThisTerm = Element0 }, shape: Int*)
       : ArrayTerm {
         type Element = Element0
       }

@@ -10,6 +10,7 @@ trait Values extends Terms {
   protected trait ValueExpressionApi extends ExpressionApi {
     type TermIn[C <: Category] <: C#ValueTerm
     type TypeIn[C <: Category] <: C#ValueType
+    type ThisType = TypeIn[Values.this.type]
   }
 
   protected trait ValueApi extends TermApi with ValueExpressionApi { this: ValueTerm =>
@@ -22,11 +23,9 @@ trait Values extends Terms {
 
     type JvmValue
 
-//    type TypedTerm <: ValueTerm
+    def literal(value: JvmValue): ThisTerm
 
-    def literal(value: JvmValue): TypedTerm
-
-    def parameter(id: Any): TypedTerm
+    def parameter(id: Any): ThisTerm
 
   }
 

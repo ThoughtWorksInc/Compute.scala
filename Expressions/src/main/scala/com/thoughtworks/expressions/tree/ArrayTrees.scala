@@ -82,19 +82,19 @@ trait ArrayTrees extends Arrays with ValueTrees {
     thisValue: ValueTerm =>
 
     def fill(shape: Int*): ArrayTerm {
-      type Element = thisValue.TypedTerm
+      type Element = thisValue.ThisTerm
     } = {
-      val fillTree = Fill[thisValue.TypedTerm](
-        tree.asInstanceOf[TreeApi { type TermIn[C <: Category] = thisValue.TypedTerm#TermIn[C] }],
+      val fillTree = Fill[thisValue.ThisTerm](
+        tree.asInstanceOf[TreeApi { type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C] }],
         shape: _*)
-      arrayFactory[TypedTerm].newInstance(
+      arrayFactory[ThisTerm].newInstance(
         shape.toArray,
         fillTree,
         thisValue.factory
           .asInstanceOf[Factory1[TreeApi {
-                                   type TermIn[C <: Category] = thisValue.TypedTerm#TermIn[C]
+                                   type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C]
                                  },
-                                 thisValue.TypedTerm]]
+                                 thisValue.ThisTerm]]
       )
     }
 
@@ -103,7 +103,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
   type ValueTerm <: (Term with Any) with ValueApi
 
   final case class ArrayParameter[LocalElement <: ValueTerm](id: Any, elementType: ValueType {
-    type TypedTerm = LocalElement
+    type ThisTerm = LocalElement
   }, shape: Int*)
       extends TreeApi {
     type TermIn[C <: Category] = C#ArrayTerm {
@@ -123,7 +123,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
     def parameter[LocalElement <: ValueTerm](id: Any, elementType: ValueType {
-      type TypedTerm = LocalElement
+      type ThisTerm = LocalElement
     }, shape: Int*): ArrayTerm {
       type Element = LocalElement
     } = {
