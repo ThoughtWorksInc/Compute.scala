@@ -22,7 +22,7 @@ trait Trees extends Terms {
     type Tree = TreeApi {
       type ForeignTerm[C <: Category] = thisTree.ForeignTerm[C]
     }
-    protected val tree: Tree
+    val tree: Tree
 
   }
 
