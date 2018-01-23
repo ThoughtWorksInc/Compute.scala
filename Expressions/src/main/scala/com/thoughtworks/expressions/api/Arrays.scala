@@ -6,7 +6,7 @@ package com.thoughtworks.expressions.api
 trait Arrays extends Values {
 
   protected trait ValueApi extends super.ValueApi { thisValue: ValueTerm =>
-    def filled(shape: Int*): ArrayTerm {
+    def fill(shape: Int*): ArrayTerm {
       type Element = thisValue.Self
     }
   }

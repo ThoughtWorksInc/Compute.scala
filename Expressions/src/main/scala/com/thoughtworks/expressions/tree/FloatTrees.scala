@@ -10,15 +10,14 @@ import scala.language.higherKinds
   */
 trait FloatTrees extends Floats with ValueTrees {
 
-  protected trait FloatTree extends FloatApi with ValueTree { thisFloat: FloatTerm =>
+  protected trait FloatApi extends super.FloatApi with ValueApi { thisFloat: FloatTerm =>
     type ForeignTerm[C <: Category] = C#FloatTerm
 
-    protected val exporter: Exporter
     def in(foreignCategory: Category): ForeignTerm[foreignCategory.type] = {
-      exporter.in(foreignCategory)
+      tree.in(foreignCategory)
     }
 
-    def factory: Factory1[ExporterApi {
+    def factory: Factory1[TreeApi {
                             type ForeignTerm[C <: Category] = C#FloatTerm
                           },
                           Self] = {
@@ -26,17 +25,17 @@ trait FloatTrees extends Floats with ValueTrees {
     }
   }
 
-  override type FloatTerm <: (ValueTerm with Any) with FloatTree
+  override type FloatTerm <: (ValueTerm with Any) with FloatApi
 
   @inject
-  def floatFactory: Factory1[ExporterApi {
+  def floatFactory: Factory1[TreeApi {
                                type ForeignTerm[C <: Category] = C#FloatTerm
                              },
                              FloatTerm]
 
   protected trait FloatCompanionApi extends super.FloatCompanionApi {
     def literal(value: Float): FloatTerm =
-      floatFactory.newInstance(new ExporterApi {
+      floatFactory.newInstance(new TreeApi {
         type ForeignTerm[C <: Category] = C#FloatTerm
 
         def in(foreignCategory: Category): foreignCategory.FloatTerm = {

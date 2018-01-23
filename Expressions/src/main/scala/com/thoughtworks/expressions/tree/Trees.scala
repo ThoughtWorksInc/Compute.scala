@@ -8,22 +8,22 @@ import scala.language.higherKinds
   */
 trait Trees extends Terms {
 
-  protected trait ExporterApi {
+  protected trait TreeApi {
     type ForeignTerm[C <: Category]
 
     def in(foreignCategory: Category): ForeignTerm[foreignCategory.type]
   }
 
-  protected trait Tree extends TermApi { thisTree: Term =>
+  protected trait TermApi extends super.TermApi { thisTree: Term =>
     def in(foreignCategory: Category): ForeignTerm[foreignCategory.type]
 
-    type Exporter = ExporterApi {
+    type Tree = TreeApi {
       type ForeignTerm[C <: Category] = thisTree.ForeignTerm[C]
     }
-    protected val exporter: Exporter
+    protected val tree: Tree
 
   }
 
-  type Term <: TermApi with Tree
+  type Term <: TermApi
 
 }
