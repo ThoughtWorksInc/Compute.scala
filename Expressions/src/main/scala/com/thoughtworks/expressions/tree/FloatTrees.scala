@@ -41,7 +41,7 @@ trait FloatTrees extends Floats with ValueTrees {
     def export(foreignCategory: Category,
                map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
       map.asScala
-        .getOrElseUpdate(this, foreignCategory.FloatTerm.parameter(id))
+        .getOrElseUpdate(this, foreignCategory.float.parameter(id))
         .asInstanceOf[foreignCategory.FloatTerm]
     }
 
@@ -53,7 +53,7 @@ trait FloatTrees extends Floats with ValueTrees {
     def export(foreignCategory: Category,
                map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
       map.asScala
-        .getOrElseUpdate(this, foreignCategory.FloatTerm.literal(value))
+        .getOrElseUpdate(this, foreignCategory.float.literal(value))
         .asInstanceOf[foreignCategory.FloatTerm]
     }
   }

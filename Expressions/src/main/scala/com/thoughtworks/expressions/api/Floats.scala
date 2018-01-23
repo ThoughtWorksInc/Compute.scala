@@ -28,6 +28,6 @@ trait Floats extends Values {
   type FloatType <: (ValueType with Any) with FloatTypeApi
 
   @inject
-  val FloatTerm: Implicitly[FloatType]
+  val float: Implicitly[FloatType]
 
 }

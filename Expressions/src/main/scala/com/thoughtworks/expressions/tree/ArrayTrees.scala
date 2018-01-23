@@ -114,7 +114,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
         foreignCategory: Category,
         map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
-        .getOrElseUpdate(this, foreignCategory.ArrayTerm.parameter(id, ???, shape: _*))
+        .getOrElseUpdate(this, foreignCategory.array.parameter(id, ???, shape: _*))
         .asInstanceOf[TermIn[foreignCategory.type]]
 
     }

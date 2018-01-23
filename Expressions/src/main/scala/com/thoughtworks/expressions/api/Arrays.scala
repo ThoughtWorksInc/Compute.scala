@@ -28,7 +28,7 @@ trait Arrays extends Values {
   type ArrayTerm <: (Term with Any) with ArrayApi
 
   @inject
-  val ArrayTerm: Implicitly[ArrayCompanion]
+  val array: Implicitly[ArrayCompanion]
 
   protected trait ArrayCompanionApi {
 
