@@ -1,5 +1,8 @@
 package com.thoughtworks.expressions.api
 
+import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.feature.Factory.inject
+
 /**
   * @author 杨博 (Yang Bo)
   */
@@ -7,7 +10,7 @@ trait Arrays extends Values {
 
   protected trait ValueApi extends super.ValueApi { thisValue: ValueTerm =>
     def fill(shape: Int*): ArrayTerm {
-      type Element = thisValue.Self
+      type Element = thisValue.ThisTerm
     }
   }
 
@@ -23,5 +26,21 @@ trait Arrays extends Values {
   }
 
   type ArrayTerm <: (Term with Any) with ArrayApi
+
+  @inject
+  val array: Implicitly[ArrayCompanion]
+
+  protected trait ArrayCompanionApi {
+
+    def parameter[Element0 <: ValueTerm](id: Any, elementType: ValueType {
+      // FIXME: refinement on ThisTerm does not make sense
+      type ThisTerm = Element0
+    }, shape: Int*): ArrayTerm {
+      type Element = Element0
+    }
+
+  }
+
+  type ArrayCompanion <: ArrayCompanionApi
 
 }
