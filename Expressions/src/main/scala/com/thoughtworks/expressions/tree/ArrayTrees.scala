@@ -3,7 +3,6 @@ package com.thoughtworks.expressions.tree
 import com.thoughtworks.expressions.api.Arrays
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
-import shapeless.syntax.inject
 
 /**
   * @author 杨博 (Yang Bo)
