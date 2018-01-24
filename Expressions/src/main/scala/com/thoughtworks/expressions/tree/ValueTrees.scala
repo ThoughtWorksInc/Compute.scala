@@ -11,11 +11,9 @@ import scala.language.higherKinds
 trait ValueTrees extends Values with Trees {
 
   protected trait ValueTypeApi extends super.ValueTypeApi {
+    def in(foreignCategory: Category): TypeIn[foreignCategory.type]
 
-    def factory: Factory1[TreeApi {
-      type TermIn[C <: Category] = ThisTerm#TermIn[C]
-    },
-      ThisTerm]
+    def factory: Factory1[TreeApi { type TermIn[C <: Category] = ThisTerm#TermIn[C] }, ThisTerm]
 
   }
 
@@ -23,12 +21,9 @@ trait ValueTrees extends Values with Trees {
 
   protected trait ValueApi extends TermApi with super.ValueApi { thisValue: ValueTerm =>
 
-    def factory: Factory1[TreeApi {
-                            type TermIn[C <: Category] = thisValue.TermIn[C]
-                          },
-                          ThisTerm]
+    def factory: Factory1[TreeApi { type TermIn[C <: Category] = thisValue.TermIn[C] }, ThisTerm]
   }
 
-  override type ValueTerm <: (Term with Any) with ValueApi
+  type ValueTerm <: (Term with Any) with ValueApi
 
 }

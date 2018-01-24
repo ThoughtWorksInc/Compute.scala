@@ -10,8 +10,6 @@ import java.util.IdentityHashMap
   */
 trait ArrayTrees extends Arrays with ValueTrees {
 
-  type Category >: this.type <: Arrays
-
   type ArrayTree[LocalElement <: ValueTerm] = TreeApi {
     type TermIn[C <: Category] = C#ArrayTerm {
       type Element = LocalElement#TermIn[C]
@@ -100,7 +98,8 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
   type ValueTerm <: (Term with Any) with ValueApi
 
-  final case class ArrayParameter(id: Any, elementType: ValueType, shape: Int*) extends TreeApi {
+  final case class ArrayParameter[ElementType <: ValueType](id: Any, elementType: ValueType, shape: Int*)
+      extends TreeApi {
     type TermIn[C <: Category] = C#ArrayTerm {
       type Element = elementType.TermIn[C]
     }
@@ -108,7 +107,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
     def export(foreignCategory: Category,
                map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
-        .getOrElseUpdate(this, foreignCategory.array.parameter(id, ???, shape: _*))
+        .getOrElseUpdate(this, foreignCategory.array.parameter(id, elementType.in(foreignCategory), shape: _*))
         .asInstanceOf[TermIn[foreignCategory.type]]
 
     }
@@ -119,13 +118,12 @@ trait ArrayTrees extends Arrays with ValueTrees {
     def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm {
       type Element = elementType.ThisTerm
     } = {
-//      val parameterTree = ArrayParameter(id, elementType, shape: _*)
-//      arrayFactory[elementType.ThisTerm].newInstance(
-//        shape.toArray,
-//        parameterTree,
-//        elementType.factory
-//      )
-      ???
+      val parameterTree = ArrayParameter[elementType.type](id, elementType, shape: _*)
+      arrayFactory[elementType.ThisTerm].newInstance(
+        shape.toArray,
+        parameterTree.asInstanceOf[ArrayTree[elementType.ThisTerm]],
+        elementType.factory
+      )
     }
 
   }

@@ -7,6 +7,7 @@ import com.thoughtworks.feature.Factory.inject
   * @author 杨博 (Yang Bo)
   */
 trait Arrays extends Values {
+  type Category >: this.type <: Arrays
 
   protected trait ValueApi extends super.ValueApi { thisValue: ValueTerm =>
     def fill(shape: Int*): ArrayTerm {

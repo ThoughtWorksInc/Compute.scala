@@ -59,6 +59,10 @@ trait FloatTrees extends Floats with ValueTrees {
   }
 
   protected trait FloatTypeApi extends super.FloatTypeApi with FloatExpressionApi {
+    def in(foreignCategory: Category): TypeIn[foreignCategory.type] = {
+      foreignCategory.float
+    }
+
     def literal(value: Float): FloatTerm = {
       floatFactory.newInstance(FloatLiteral(value))
     }
