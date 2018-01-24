@@ -30,9 +30,8 @@ trait ArrayTrees extends Arrays with ValueTrees {
                }]
 
   final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends TreeApi {
-    def export(
-        foreignCategory: Category,
-        map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category,
+               map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, array.export(foreignCategory, map).extract)
         .asInstanceOf[TermIn[foreignCategory.type]]
@@ -69,9 +68,8 @@ trait ArrayTrees extends Arrays with ValueTrees {
       type Element = LocalElement#TermIn[C]
     }
 
-    def export(
-        foreignCategory: Category,
-        map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category,
+               map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, element.export(foreignCategory, map).fill(shape: _*))
         .asInstanceOf[TermIn[foreignCategory.type]]
@@ -102,17 +100,13 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
   type ValueTerm <: (Term with Any) with ValueApi
 
-  final case class ArrayParameter[LocalElement <: ValueTerm](id: Any, elementType: ValueType {
-    type ThisTerm = LocalElement
-  }, shape: Int*)
-      extends TreeApi {
+  final case class ArrayParameter(id: Any, elementType: ValueType, shape: Int*) extends TreeApi {
     type TermIn[C <: Category] = C#ArrayTerm {
-      type Element = LocalElement#TermIn[C]
+      type Element = elementType.TermIn[C]
     }
 
-    def export(
-        foreignCategory: Category,
-        map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category,
+               map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, foreignCategory.array.parameter(id, ???, shape: _*))
         .asInstanceOf[TermIn[foreignCategory.type]]
@@ -122,13 +116,11 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
-    def parameter[LocalElement <: ValueTerm](id: Any, elementType: ValueType {
-      type ThisTerm = LocalElement
-    }, shape: Int*): ArrayTerm {
-      type Element = LocalElement
+    def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm {
+      type Element = elementType.ThisTerm
     } = {
-//      val parameterTree = ArrayParameter[LocalElement](id, elementType, shape: _*)
-//      arrayFactory[LocalElement].newInstance(
+//      val parameterTree = ArrayParameter(id, elementType, shape: _*)
+//      arrayFactory[elementType.ThisTerm].newInstance(
 //        shape.toArray,
 //        parameterTree,
 //        elementType.factory
