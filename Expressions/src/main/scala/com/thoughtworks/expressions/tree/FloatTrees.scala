@@ -19,27 +19,17 @@ trait FloatTrees extends Floats with ValueTrees {
 
   protected trait FloatApi extends super.FloatApi with ValueApi with FloatExpressionApi { thisFloat: FloatTerm =>
 
-    def factory: Factory1[TreeApi {
-                            type TermIn[C <: Category] = C#FloatTerm
-                          },
-                          ThisTerm] = {
-      floatFactory
+    def factory: Factory1[TreeApi { type TermIn[C <: Category] = C#FloatTerm }, ThisTerm] = {
+      float.factory
     }
   }
 
   override type FloatTerm <: (ValueTerm with Any) with FloatApi
 
-  @inject
-  def floatFactory: Factory1[TreeApi {
-                               type TermIn[C <: Category] = C#FloatTerm
-                             },
-                             FloatTerm]
-
-  final case class FloatParameter(id: Any) extends TreeApi {
+  final case class FloatParameter(id: Any) extends TreeApi with Parameter {
     type TermIn[C <: Category] = C#FloatTerm
 
-    def export(foreignCategory: Category,
-               map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
+    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
       map.asScala
         .getOrElseUpdate(this, foreignCategory.float.parameter(id))
         .asInstanceOf[foreignCategory.FloatTerm]
@@ -47,11 +37,10 @@ trait FloatTrees extends Floats with ValueTrees {
 
   }
 
-  final case class FloatLiteral(value: Float) extends TreeApi {
+  final case class FloatLiteral(value: Float) extends TreeApi with Operator {
     type TermIn[C <: Category] = C#FloatTerm
 
-    def export(foreignCategory: Category,
-               map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
+    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
       map.asScala
         .getOrElseUpdate(this, foreignCategory.float.literal(value))
         .asInstanceOf[foreignCategory.FloatTerm]
@@ -64,17 +53,15 @@ trait FloatTrees extends Floats with ValueTrees {
     }
 
     def literal(value: Float): FloatTerm = {
-      floatFactory.newInstance(FloatLiteral(value))
+      factory.newInstance(FloatLiteral(value))
     }
 
     def parameter(id: Any): FloatTerm = {
-      floatFactory.newInstance(FloatParameter(id))
+      factory.newInstance(FloatParameter(id))
     }
 
-    def factory: Factory1[TreeApi {
-                            type TermIn[C <: Category] = ThisTerm#TermIn[C]
-                          },
-                          ThisTerm] = floatFactory
+    @inject
+    def factory: Factory1[TreeApi { type TermIn[C <: Category] = ThisTerm#TermIn[C] }, ThisTerm] //= floatFactory
   }
 
   type FloatType <: (ValueType with Any) with FloatTypeApi
