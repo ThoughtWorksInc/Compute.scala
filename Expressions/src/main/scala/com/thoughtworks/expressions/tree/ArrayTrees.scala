@@ -32,7 +32,6 @@ trait ArrayTrees extends Arrays with ValueTrees {
       type Element = thisArray.Element#TermIn[C]
     }
 
-    val shape: Array[Int]
 
     val valueFactory: Factory1[TreeApi {
                                  type TermIn[C <: Category] = thisArray.Element#TermIn[C]

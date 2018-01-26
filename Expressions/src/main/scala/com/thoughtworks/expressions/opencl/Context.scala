@@ -3,7 +3,7 @@ package com.thoughtworks.expressions.opencl
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.expressions.api.{Arrays, FloatArrays, Floats, Terms}
 import com.thoughtworks.expressions.opencl.Context.TypeDefinition.FloatDefinition
-import com.thoughtworks.feature.Factory.{Factory2, inject}
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 
 import scala.collection.mutable
 object Context {
@@ -169,7 +169,16 @@ trait Context extends Terms with FloatArrays {
 
   type FloatType <: (ValueType with Any) with FloatTypeApi
 
+  protected trait ArrayApi extends super.ArrayApi with TermApi { this: ArrayTerm =>
+    def extract: Element = ???
+  }
+
+  type ArrayTerm <: (Term with Any) with ArrayApi
+
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
+
+    @inject def factory[LocalElement <: ValueTerm]
+      : Factory3[Array[Int], TermSymbol, TypeSymbol, ArrayTerm { type Element = LocalElement }]
 
     def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm { type Element = elementType.ThisTerm } = {
       ???

@@ -20,7 +20,7 @@ trait Arrays extends Values {
   protected trait ArrayApi extends TermApi { thisArray: ArrayTerm =>
     type Element <: ValueTerm
 
-    def shape: Array[Int]
+    val shape: Array[Int]
 
     def extract: Element
 
