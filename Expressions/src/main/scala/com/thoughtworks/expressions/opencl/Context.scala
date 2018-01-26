@@ -3,7 +3,7 @@ package com.thoughtworks.expressions.opencl
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.expressions.api.{Arrays, FloatArrays, Floats, Terms}
 import com.thoughtworks.expressions.opencl.Context.ClTypeDefinition.{ArrayDefinition, FloatDefinition}
-import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Lt, inject}
 
 import scala.collection.mutable
 object Context {
@@ -62,9 +62,13 @@ object Context {
     val floatSymbol = cachedSymbol(FloatDefinition)
 
     def cachedSymbol(typeDefinition: ClTypeDefinition): ClTypeSymbol = {
-      val (name, define) = typeDefinition.define(this)
-      val typeSymbol = typeSymbolCache.getOrElseUpdate(typeDefinition, ClTypeSymbol(typeDefinition, name))
-      define(typeSymbol)
+      val (name, defined) = typeDefinition.define(this)
+      val typeSymbol = typeSymbolCache.getOrElseUpdate(typeDefinition, {
+        ClTypeSymbol(typeDefinition, name)
+      })
+      if (typeSymbol.firstDefinition eq typeDefinition) {
+        defined(typeSymbol)
+      }
       typeSymbol
     }
 
@@ -76,7 +80,7 @@ import com.thoughtworks.expressions.opencl.Context._
 /**
   * @author 杨博 (Yang Bo)
   */
-trait Context extends Terms with FloatArrays {
+trait Context extends FloatArrays {
   protected val globalContext: GlobalContext
   import globalContext._
 
@@ -115,29 +119,33 @@ trait Context extends Terms with FloatArrays {
   }
 
   protected trait TermApi extends super.TermApi { this: Term =>
-    val termCode: ClTermCode
-    val typeCode: ClTypeCode
+    def termCode: ClTermCode
+    def typeCode: ClTypeCode
   }
 
   type Term <: TermApi
+
+  protected trait CodeValues extends TermApi { this: Term =>
+    val termCode: ClTermCode
+    val typeCode: ClTypeCode
+  }
 
   protected trait ValueTypeApi extends super.ValueTypeApi {
 
     def typeSymbol: ClTypeSymbol
 
+    @inject def factory: Factory2[ClTermCode, ClTypeCode, ThisTerm with CodeValues]
+
   }
 
   type ValueType <: (Type with Any) with ValueTypeApi
 
-  protected trait FloatExpressionApi extends super.FloatExpressionApi with ValueExpressionApi {
+  protected trait FloatExpressionApi extends super.FloatExpressionApi with ValueExpressionApi with ValueTypeApi {
     type TermIn[C <: Category] = C#FloatTerm
     type TypeIn[C <: Category] = C#FloatType
   }
   protected trait FloatTypeApi extends super.FloatTypeApi with FloatExpressionApi {
     def typeSymbol: ClTypeSymbol = floatSymbol
-
-    @inject
-    def factory: Factory2[ClTermCode, ClTypeCode, ThisTerm]
 
     def literal(value: Float): ThisTerm = {
       val floatString = if (value.isNaN) {
@@ -162,32 +170,69 @@ trait Context extends Terms with FloatArrays {
 
   type FloatType <: (ValueType with Any) with FloatTypeApi
 
-  protected trait ArrayTermApi extends super.ArrayTermApi with TermApi { this: ArrayTerm =>
+  protected trait ArrayParameter[LocalElement <: ValueTerm] extends super.ArrayTermApi with CodeValues {
+    this: ArrayTerm =>
+    val elementType: LocalElement#ThisType
+
     def extract: Element = {
-      ???
+      // TODO: check boundary
+      val globalIndices = for {
+        i <- shape.indices
+      } yield fast"[get_global_id($i)]"
+
+      val termId = freshName("")
+      localDefinitions += fastraw"""
+        const ${elementType.typeSymbol.code} $termId = (*${termCode})${globalIndices.mkFastring};
+      """
+
+      elementType.factory.newInstance(termId, elementType.typeSymbol.code).asInstanceOf[Element]
     }
   }
 
-  type ArrayTerm <: (Term with Any) with ArrayTermApi
+  // FIXME: Upgrade feature.scala
+  type Factory4[-Parameter0, -Parameter1, -Parameter2, -Parameter3, Output] =
+    Lt[Output, (Parameter0, Parameter1, Parameter2, Parameter3) => Output]
+
+  @inject
+  def arrayParameterFactory[LocalElement <: ValueTerm]
+    : Factory4[LocalElement#ThisType,
+               Seq[Int],
+               ClTermCode,
+               ClTypeCode,
+               ArrayTerm with ArrayParameter[LocalElement] { type Element = LocalElement }]
 
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
-    @inject def factory[LocalElement <: ValueTerm]
-      : Factory3[Array[Int], ClTermCode, ClTypeCode, ArrayTerm { type Element = LocalElement }]
-
-    def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm { type Element = elementType.ThisTerm } = {
+    def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, shape: Int*): ArrayTerm {
+      type Element = elementType.ThisTerm
+    } = {
       val arrayDefinition = ArrayDefinition(elementType.typeSymbol.firstDefinition, shape: _*)
       val arrayTypeSymbol = cachedSymbol(arrayDefinition)
       val termCode = freshName(id.toString)
-      factory[elementType.ThisTerm].newInstance(shape.toArray, termCode, arrayTypeSymbol.code)
+      arrayParameterFactory[elementType.ThisTerm].newInstance(elementType.asInstanceOf[elementType.ThisTerm#ThisType],
+                                                              shape,
+                                                              termCode,
+                                                              arrayTypeSymbol.code)
     }
   }
 
   type ArrayCompanion <: ArrayCompanionApi
 
+  protected trait ArrayFill extends super.ArrayTermApi with TermApi { this: ArrayTerm =>
+
+    def termCode: ClTermCode = extract.termCode
+    def typeCode: ClTypeCode = extract.typeCode
+
+    val extract: Element
+  }
+
+  @inject
+  def arrayFillFactory[LocalElement <: ValueTerm]
+    : Factory2[LocalElement, Seq[Int], ArrayTerm with ArrayFill { type Element = LocalElement }]
+
   protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
     def fill(shape: Int*): ArrayTerm { type Element = thisValue.ThisTerm } = {
-      array.factory[thisValue.ThisTerm].newInstance(shape.toArray, termCode, typeCode)
+      arrayFillFactory[thisValue.ThisTerm].newInstance(this.asInstanceOf[ThisTerm], shape)
     }
   }
   type ValueTerm <: (Term with Any) with ValueTermApi

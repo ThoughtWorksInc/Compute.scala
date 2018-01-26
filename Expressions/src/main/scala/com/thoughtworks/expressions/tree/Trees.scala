@@ -47,7 +47,7 @@ trait Trees extends Terms {
   protected trait TreeApi extends Product {
     type TermIn[C <: Category]
 
-    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type]
+    def export(foreignCategory: Category, map: ExportMap): TermIn[foreignCategory.type]
 
     // TODO: alphaConversion
 
@@ -55,9 +55,11 @@ trait Trees extends Terms {
     def isSameStructure(that: TreeApi, map: IdentityHashMap[TreeApi, TreeApi]): Boolean
   }
 
+  type ExportMap = IdentityHashMap[TreeApi, Any]
+
   protected trait TermApi extends super.TermApi { thisTree: Term =>
     def in(foreignCategory: Category): TermIn[foreignCategory.type] = {
-      tree.export(foreignCategory, new IdentityHashMap[TreeApi, Any])
+      tree.export(foreignCategory, new ExportMap)
     }
 
     type Tree = TreeApi {

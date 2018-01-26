@@ -16,7 +16,6 @@ trait ArrayTrees extends Arrays with ValueTrees {
     }
   }
 
-
   final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends TreeApi with Operator {
     def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
@@ -31,7 +30,6 @@ trait ArrayTrees extends Arrays with ValueTrees {
     type TermIn[C <: Category] = C#ArrayTerm {
       type Element = thisArray.Element#TermIn[C]
     }
-
 
     val valueFactory: Factory1[TreeApi {
                                  type TermIn[C <: Category] = thisArray.Element#TermIn[C]
@@ -71,15 +69,17 @@ trait ArrayTrees extends Arrays with ValueTrees {
       val fillTree = Fill[thisValue.ThisTerm](
         tree.asInstanceOf[TreeApi { type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C] }],
         shape: _*)
-      array.factory[ThisTerm].newInstance(
-        shape.toArray,
-        fillTree,
-        thisValue.factory
-          .asInstanceOf[Factory1[TreeApi {
-                                   type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C]
-                                 },
-                                 thisValue.ThisTerm]]
-      )
+      array
+        .factory[ThisTerm]
+        .newInstance(
+          shape,
+          fillTree,
+          thisValue.factory
+            .asInstanceOf[Factory1[TreeApi {
+                                     type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C]
+                                   },
+                                   thisValue.ThisTerm]]
+        )
     }
 
   }
@@ -104,25 +104,27 @@ trait ArrayTrees extends Arrays with ValueTrees {
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
     @inject def factory[LocalElement <: ValueTerm]
-    : Factory3[Array[Int],
-      ArrayTree[LocalElement],
-      Factory1[TreeApi {
-        type TermIn[C <: Category] = LocalElement#TermIn[C]
-      },
-        LocalElement],
-      ArrayTerm {
-        type Element = LocalElement
-      }]
+      : Factory3[Seq[Int],
+                 ArrayTree[LocalElement],
+                 Factory1[TreeApi {
+                            type TermIn[C <: Category] = LocalElement#TermIn[C]
+                          },
+                          LocalElement],
+                 ArrayTerm {
+                   type Element = LocalElement
+                 }]
 
-    def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm {
+    def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, shape: Int*): ArrayTerm {
       type Element = elementType.ThisTerm
     } = {
       val parameterTree = ArrayParameter[elementType.type](id, elementType, shape: _*)
-      array.factory[elementType.ThisTerm].newInstance(
-        shape.toArray,
-        parameterTree.asInstanceOf[ArrayTree[elementType.ThisTerm]],
-        elementType.factory
-      )
+      array
+        .factory[elementType.ThisTerm]
+        .newInstance(
+          shape,
+          parameterTree.asInstanceOf[ArrayTree[elementType.ThisTerm]],
+          elementType.factory
+        )
     }
 
   }

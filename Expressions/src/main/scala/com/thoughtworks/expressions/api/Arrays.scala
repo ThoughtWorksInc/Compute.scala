@@ -20,7 +20,7 @@ trait Arrays extends Values {
   protected trait ArrayTermApi extends TermApi { thisArray: ArrayTerm =>
     type Element <: ValueTerm
 
-    val shape: Array[Int]
+    val shape: Seq[Int]
 
     def extract: Element
 
@@ -33,7 +33,7 @@ trait Arrays extends Values {
 
   protected trait ArrayCompanionApi {
 
-    def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm {
+    def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, shape: Int*): ArrayTerm {
       type Element = elementType.ThisTerm
     }
 
