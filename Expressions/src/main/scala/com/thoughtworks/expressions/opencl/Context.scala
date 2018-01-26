@@ -2,26 +2,29 @@ package com.thoughtworks.expressions.opencl
 
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.expressions.api.{Arrays, FloatArrays, Floats, Terms}
-import com.thoughtworks.expressions.opencl.Context.TypeDefinition.{ArrayDefinition, FloatDefinition}
+import com.thoughtworks.expressions.opencl.Context.ClTypeDefinition.{ArrayDefinition, FloatDefinition}
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 
 import scala.collection.mutable
 object Context {
-  type TermName = String
-  type TypeName = String
 
-  type TypeDefineHandler = TypeSymbol => Unit
+  type ClTermName = String
+  type ClTypeName = String
 
-  trait TypeDefinition extends Product {
-    def makeTypeName(globalContext: GlobalContext): (TypeName, TypeDefineHandler)
+  type ClTypeDefineHandler = ClTypeSymbol => Unit
+
+  trait ClTypeDefinition extends Product {
+    def define(globalContext: GlobalContext): (ClTypeName, ClTypeDefineHandler)
   }
 
-  object TypeDefinition {
-    final case class ArrayDefinition(element: TypeDefinition, shape: Int*) extends TypeDefinition {
-      def makeTypeName(globalContext: GlobalContext): (TypeName, TypeDefineHandler) = {
-        val elementName = globalContext.typeSymbol(element).name
+  object ClTypeDefinition {
+    private val Noop: ClTypeDefineHandler = Function.const(())
+
+    final case class ArrayDefinition(element: ClTypeDefinition, shape: Int*) extends ClTypeDefinition {
+      def define(globalContext: GlobalContext): (ClTypeName, ClTypeDefineHandler) = {
+        val elementName = globalContext.cachedSymbol(element).name
         val arrayName = globalContext.freshName(raw"""${elementName}_array""")
-        val typeDefineHandler: TypeDefineHandler = { typeSymbol =>
+        val typeDefineHandler: ClTypeDefineHandler = { typeSymbol =>
           val dimensions = for (size <- shape) yield fast"[$size]"
           globalContext.globalDefinitions += fast"typedef global ${elementName} (* ${typeSymbol.name})${dimensions.mkFastring};"
         }
@@ -29,17 +32,14 @@ object Context {
       }
     }
 
-    final case object FloatDefinition extends TypeDefinition {
-      def makeTypeName(globalContext: GlobalContext) = {
-        val dummy = { typeSymbol: TypeSymbol =>
-          ()
-        }
-        "float" -> dummy
+    final case object FloatDefinition extends ClTypeDefinition {
+      def define(globalContext: GlobalContext): (ClTypeName, ClTypeDefineHandler) = {
+        "float" -> Noop
       }
     }
   }
 
-  final case class TypeSymbol(definition: TypeDefinition, name: TypeName)
+  final case class ClTypeSymbol(firstDefinition: ClTypeDefinition, name: ClTypeName)
 
   final class GlobalContext {
 
@@ -57,13 +57,13 @@ object Context {
 
     val globalDeclarations = mutable.Buffer.empty[Fastring]
     val globalDefinitions = mutable.Buffer.empty[Fastring]
-    private val typeCache = mutable.HashMap.empty[TypeDefinition, TypeSymbol]
+    private val typeSymbolCache = mutable.HashMap.empty[ClTypeDefinition, ClTypeSymbol]
 
-    val floatSymbol = typeSymbol(FloatDefinition)
+    val floatSymbol = cachedSymbol(FloatDefinition)
 
-    def typeSymbol(typeDefinition: TypeDefinition): TypeSymbol = {
-      val (name, define) = typeDefinition.makeTypeName(this)
-      val typeSymbol = typeCache.getOrElseUpdate(typeDefinition, TypeSymbol(typeDefinition, name))
+    def cachedSymbol(typeDefinition: ClTypeDefinition): ClTypeSymbol = {
+      val (name, define) = typeDefinition.define(this)
+      val typeSymbol = typeSymbolCache.getOrElseUpdate(typeDefinition, ClTypeSymbol(typeDefinition, name))
       define(typeSymbol)
       typeSymbol
     }
@@ -82,27 +82,17 @@ trait Context extends Terms with FloatArrays {
 
   val localDefinitions = mutable.Buffer.empty[Fastring]
 
-  trait TermSymbol {
-    protected def makeTermName(): TermName
-    val name: TermName = makeTermName()
-  }
-  //  def resolve(id: Any): DslExpression.Accessor
-  //
-  //  def get(dslFunction: DslExpression): DslExpression.Accessor
-  //  def get(dslType: DslType): DslType.Accessor
-  //  def get(effect: DslEffect): DslEffect.Statement
-
   def generateKernelSourceCode(functionName: String,
                                numberOfDimensions: Int,
                                parameters: Seq[Term],
                                outputs: Seq[Term]): Fastring = {
     val parameterDeclarations = for (parameter <- parameters) yield {
-      fast"const ${parameter.typeSymbol.name} ${parameter.termSymbol.name}"
+      fast"const ${parameter.typeName} ${parameter.termName}"
     }
 
     val (outputParameters, outputAssignments) = outputs.map { output =>
-      val outputTermName = output.termSymbol.name
-      val outputTypeName = output.typeSymbol.name
+      val outputTermName = output.termName
+      val outputTypeName = output.typeName
       val outputParameter = fast"global $outputTypeName *output_$outputTermName"
       def outputIndex(dimension: Int): Fastring = {
         if (dimension == 0) {
@@ -125,15 +115,15 @@ trait Context extends Terms with FloatArrays {
   }
 
   protected trait TermApi extends super.TermApi { this: Term =>
-    val termSymbol: TermSymbol
-    val typeSymbol: TypeSymbol
+    val termName: ClTermName
+    val typeName: ClTypeName
   }
 
   type Term <: TermApi
 
   protected trait ValueTypeApi extends super.ValueTypeApi {
 
-    def typeSymbol: TypeSymbol
+    def typeSymbol: ClTypeSymbol
 
   }
 
@@ -144,35 +134,29 @@ trait Context extends Terms with FloatArrays {
     type TypeIn[C <: Category] = C#FloatType
   }
   protected trait FloatTypeApi extends super.FloatTypeApi with FloatExpressionApi {
-    def typeSymbol: TypeSymbol = floatSymbol
+    def typeSymbol: ClTypeSymbol = floatSymbol
 
     @inject
-    def factory: Factory2[TermSymbol, TypeSymbol, ThisTerm]
+    def factory: Factory2[ClTermName, ClTypeName, ThisTerm]
 
     def literal(value: Float): ThisTerm = {
-      val termSymbol = new TermSymbol {
-        protected def makeTermName(): TermName = {
-          if (value.isNaN) {
-            "NAN"
-          } else if (value.isInfinite) {
-            if (value > 0) {
-              "INFINITE"
-            } else {
-              "(-INFINITE)"
-            }
-          } else {
-            value.toString
-          }
+      val floatString = if (value.isNaN) {
+        "NAN"
+      } else if (value.isInfinite) {
+        if (value > 0) {
+          "INFINITE"
+        } else {
+          "(-INFINITE)"
         }
+      } else {
+        value.toString
       }
-      factory.newInstance(termSymbol, floatSymbol)
+      factory.newInstance(floatString, float.typeSymbol.name)
     }
 
     def parameter(id: Any): ThisTerm = {
-      val termSymbol = new TermSymbol {
-        protected def makeTermName(): TermName = freshName(id.toString)
-      }
-      factory.newInstance(termSymbol, floatSymbol)
+      val termSymbol = freshName(id.toString)
+      factory.newInstance(termSymbol, float.typeSymbol.name)
     }
   }
 
@@ -187,18 +171,14 @@ trait Context extends Terms with FloatArrays {
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
     @inject def factory[LocalElement <: ValueTerm]
-      : Factory3[Array[Int], TermSymbol, TypeSymbol, ArrayTerm { type Element = LocalElement }]
+      : Factory3[Array[Int], ClTermName, ClTypeName, ArrayTerm { type Element = LocalElement }]
 
     def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm { type Element = elementType.ThisTerm } = {
-      val arrayDefinition = ArrayDefinition(elementType.typeSymbol.definition, shape: _*)
-      val arrayTypeSymbol = typeSymbol(arrayDefinition)
-      factory[elementType.ThisTerm].newInstance(shape.toArray, new TermSymbol {
-        protected def makeTermName(): TermName = {
-          freshName(id.toString)
-        }
-      }, arrayTypeSymbol)
+      val arrayDefinition = ArrayDefinition(elementType.typeSymbol.firstDefinition, shape: _*)
+      val arrayTypeSymbol = cachedSymbol(arrayDefinition)
+      val termName = freshName(id.toString)
+      factory[elementType.ThisTerm].newInstance(shape.toArray, termName, arrayTypeSymbol.name)
     }
-
   }
 
   type ArrayCompanion <: ArrayCompanionApi
