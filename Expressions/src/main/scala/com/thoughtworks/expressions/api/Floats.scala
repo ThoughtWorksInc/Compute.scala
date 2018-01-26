@@ -15,11 +15,11 @@ trait Floats extends Values {
     type TypeIn[C <: Category] <: C#FloatType
   }
 
-  protected trait FloatApi extends ValueApi with FloatExpressionApi { this: FloatTerm =>
+  protected trait FloatTermApi extends ValueTermApi with FloatExpressionApi { this: FloatTerm =>
 
   }
 
-  type FloatTerm <: (ValueTerm with Any) with FloatApi
+  type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
   protected trait FloatTypeApi extends ValueTypeApi with FloatExpressionApi {
     type JvmValue = Float

@@ -9,15 +9,15 @@ import com.thoughtworks.feature.Factory.inject
 trait Arrays extends Values {
   type Category >: this.type <: Arrays
 
-  protected trait ValueApi extends super.ValueApi { thisValue: ValueTerm =>
+  protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
     def fill(shape: Int*): ArrayTerm {
       type Element = thisValue.ThisTerm
     }
   }
 
-  override type ValueTerm <: (Term with Any) with ValueApi
+  override type ValueTerm <: (Term with Any) with ValueTermApi
 
-  protected trait ArrayApi extends TermApi { thisArray: ArrayTerm =>
+  protected trait ArrayTermApi extends TermApi { thisArray: ArrayTerm =>
     type Element <: ValueTerm
 
     val shape: Array[Int]
@@ -26,7 +26,7 @@ trait Arrays extends Values {
 
   }
 
-  type ArrayTerm <: (Term with Any) with ArrayApi
+  type ArrayTerm <: (Term with Any) with ArrayTermApi
 
   @inject
   val array: Implicitly[ArrayCompanion]

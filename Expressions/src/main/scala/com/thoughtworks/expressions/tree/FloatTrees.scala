@@ -17,14 +17,14 @@ trait FloatTrees extends Floats with ValueTrees {
     type TypeIn[C <: Category] = C#FloatType
   }
 
-  protected trait FloatApi extends super.FloatApi with ValueApi with FloatExpressionApi { thisFloat: FloatTerm =>
+  protected trait FloatTermApi extends super.FloatTermApi with ValueTermApi with FloatExpressionApi { thisFloat: FloatTerm =>
 
     def factory: Factory1[TreeApi { type TermIn[C <: Category] = C#FloatTerm }, ThisTerm] = {
       float.factory
     }
   }
 
-  override type FloatTerm <: (ValueTerm with Any) with FloatApi
+  override type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
   final case class FloatParameter(id: Any) extends TreeApi with Parameter {
     type TermIn[C <: Category] = C#FloatTerm

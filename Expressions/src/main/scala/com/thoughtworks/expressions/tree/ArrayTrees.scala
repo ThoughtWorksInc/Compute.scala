@@ -27,7 +27,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
   }
 
-  protected trait ArrayApi extends super.ArrayApi with TermApi { thisArray: ArrayTerm =>
+  protected trait ArrayTermApi extends super.ArrayTermApi with TermApi { thisArray: ArrayTerm =>
     type TermIn[C <: Category] = C#ArrayTerm {
       type Element = thisArray.Element#TermIn[C]
     }
@@ -44,7 +44,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
   }
 
-  type ArrayTerm <: (Term with Any) with ArrayApi
+  type ArrayTerm <: (Term with Any) with ArrayTermApi
 
   final case class Fill[LocalElement <: ValueTerm](element: TreeApi {
     type TermIn[C <: Category] = LocalElement#TermIn[C]
@@ -62,7 +62,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
     }
   }
 
-  protected trait ValueApi extends super[Arrays].ValueApi with super[ValueTrees].ValueApi with TermApi {
+  protected trait ValueTermApi extends super[Arrays].ValueTermApi with super[ValueTrees].ValueTermApi with TermApi {
     thisValue: ValueTerm =>
 
     def fill(shape: Int*): ArrayTerm {
@@ -84,7 +84,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
   }
 
-  type ValueTerm <: (Term with Any) with ValueApi
+  type ValueTerm <: (Term with Any) with ValueTermApi
 
   final case class ArrayParameter[ElementType <: ValueType](id: Any, elementType: ValueType, shape: Int*)
       extends TreeApi

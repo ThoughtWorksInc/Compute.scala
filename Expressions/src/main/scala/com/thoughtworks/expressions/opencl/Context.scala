@@ -162,11 +162,13 @@ trait Context extends Terms with FloatArrays {
 
   type FloatType <: (ValueType with Any) with FloatTypeApi
 
-  protected trait ArrayApi extends super.ArrayApi with TermApi { this: ArrayTerm =>
-    def extract: Element = ???
+  protected trait ArrayTermApi extends super.ArrayTermApi with TermApi { this: ArrayTerm =>
+    def extract: Element = {
+      ???
+    }
   }
 
-  type ArrayTerm <: (Term with Any) with ArrayApi
+  type ArrayTerm <: (Term with Any) with ArrayTermApi
 
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
@@ -183,11 +185,11 @@ trait Context extends Terms with FloatArrays {
 
   type ArrayCompanion <: ArrayCompanionApi
 
-  protected trait ValueApi extends super.ValueApi { thisValue: ValueTerm =>
+  protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
     def fill(shape: Int*): ArrayTerm { type Element = thisValue.ThisTerm } = {
-      ???
+      array.factory[thisValue.ThisTerm].newInstance(shape.toArray, termCode, typeCode)
     }
   }
-  type ValueTerm <: (Term with Any) with ValueApi
+  type ValueTerm <: (Term with Any) with ValueTermApi
 
 }

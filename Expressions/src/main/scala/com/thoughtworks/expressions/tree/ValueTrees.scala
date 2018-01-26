@@ -17,13 +17,13 @@ trait ValueTrees extends Values with Trees {
 
   }
 
-  type ValueType <: ValueTypeApi
+  type ValueType <: (Type with Any) with ValueTypeApi
 
-  protected trait ValueApi extends TermApi with super.ValueApi { thisValue: ValueTerm =>
+  protected trait ValueTermApi extends TermApi with super.ValueTermApi { thisValue: ValueTerm =>
 
     def factory: Factory1[TreeApi { type TermIn[C <: Category] = thisValue.TermIn[C] }, ThisTerm]
   }
 
-  type ValueTerm <: (Term with Any) with ValueApi
+  type ValueTerm <: (Term with Any) with ValueTermApi
 
 }
