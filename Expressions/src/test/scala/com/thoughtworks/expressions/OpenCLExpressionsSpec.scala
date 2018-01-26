@@ -1,6 +1,8 @@
 package com.thoughtworks.expressions
 
-import com.thoughtworks.expressions.tree.AllTrees
+import com.thoughtworks.expressions.opencl.Context.GlobalContext
+import com.thoughtworks.expressions.opencl.Context
+import com.thoughtworks.expressions.tree.FloatArrayTrees
 import com.thoughtworks.feature.Factory
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -11,11 +13,11 @@ class OpenCLExpressionsSpec extends FreeSpec with Matchers {
 
   "id" in {
     val category1 = {
-      Factory[AllTrees].newInstance()
+      Factory[FloatArrayTrees].newInstance()
     }
 
     val category2 = {
-      Factory[AllTrees].newInstance()
+      Factory[FloatArrayTrees].newInstance()
     }
 
     def foo(e1: category1.FloatTerm): category2.FloatTerm = {
@@ -27,5 +29,9 @@ class OpenCLExpressionsSpec extends FreeSpec with Matchers {
       e1.in(category2)
     }
 
+  }
+
+  "opencl" in {
+    Factory[Context].newInstance(new GlobalContext)
   }
 }
