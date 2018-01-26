@@ -29,5 +29,5 @@ trait Values extends Terms {
 
   }
 
-  type ValueType <: ValueTypeApi
+  type ValueType <: (Type with Any) with ValueTypeApi
 }

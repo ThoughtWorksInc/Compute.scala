@@ -2,7 +2,7 @@ package com.thoughtworks.expressions.opencl
 
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.expressions.api.{Arrays, FloatArrays, Floats, Terms}
-import com.thoughtworks.expressions.opencl.Context.TypeDefinition.FloatDefinition
+import com.thoughtworks.expressions.opencl.Context.TypeDefinition.{ArrayDefinition, FloatDefinition}
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 
 import scala.collection.mutable
@@ -39,7 +39,7 @@ object Context {
     }
   }
 
-  final case class TypeSymbol(internedTree: TypeDefinition, name: TypeName)
+  final case class TypeSymbol(definition: TypeDefinition, name: TypeName)
 
   final class GlobalContext {
 
@@ -131,11 +131,20 @@ trait Context extends Terms with FloatArrays {
 
   type Term <: TermApi
 
+  protected trait ValueTypeApi extends super.ValueTypeApi {
+
+    def typeSymbol: TypeSymbol
+
+  }
+
+  type ValueType <: (Type with Any) with ValueTypeApi
+
   protected trait FloatExpressionApi extends super.FloatExpressionApi with ValueExpressionApi {
     type TermIn[C <: Category] = C#FloatTerm
     type TypeIn[C <: Category] = C#FloatType
   }
   protected trait FloatTypeApi extends super.FloatTypeApi with FloatExpressionApi {
+    def typeSymbol: TypeSymbol = floatSymbol
 
     @inject
     def factory: Factory2[TermSymbol, TypeSymbol, ThisTerm]
@@ -181,7 +190,13 @@ trait Context extends Terms with FloatArrays {
       : Factory3[Array[Int], TermSymbol, TypeSymbol, ArrayTerm { type Element = LocalElement }]
 
     def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm { type Element = elementType.ThisTerm } = {
-      ???
+      val arrayDefinition = ArrayDefinition(elementType.typeSymbol.definition, shape: _*)
+      val arrayTypeSymbol = typeSymbol(arrayDefinition)
+      factory[elementType.ThisTerm].newInstance(shape.toArray, new TermSymbol {
+        protected def makeTermName(): TermName = {
+          freshName(id.toString)
+        }
+      }, arrayTypeSymbol)
     }
 
   }
