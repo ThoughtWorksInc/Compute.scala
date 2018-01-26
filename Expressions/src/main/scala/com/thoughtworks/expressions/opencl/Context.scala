@@ -8,38 +8,38 @@ import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 import scala.collection.mutable
 object Context {
 
-  type ClTermName = String
-  type ClTypeName = String
+  type ClTermCode = String
+  type ClTypeCode = String
 
   type ClTypeDefineHandler = ClTypeSymbol => Unit
 
   trait ClTypeDefinition extends Product {
-    def define(globalContext: GlobalContext): (ClTypeName, ClTypeDefineHandler)
+    def define(globalContext: GlobalContext): (ClTypeCode, ClTypeDefineHandler)
   }
 
   object ClTypeDefinition {
     private val Noop: ClTypeDefineHandler = Function.const(())
 
     final case class ArrayDefinition(element: ClTypeDefinition, shape: Int*) extends ClTypeDefinition {
-      def define(globalContext: GlobalContext): (ClTypeName, ClTypeDefineHandler) = {
-        val elementName = globalContext.cachedSymbol(element).name
-        val arrayName = globalContext.freshName(raw"""${elementName}_array""")
+      def define(globalContext: GlobalContext): (ClTypeCode, ClTypeDefineHandler) = {
+        val elementTypeCode = globalContext.cachedSymbol(element).code
+        val arrayTypeCode = globalContext.freshName(raw"""${elementTypeCode}_array""")
         val typeDefineHandler: ClTypeDefineHandler = { typeSymbol =>
           val dimensions = for (size <- shape) yield fast"[$size]"
-          globalContext.globalDefinitions += fast"typedef global ${elementName} (* ${typeSymbol.name})${dimensions.mkFastring};"
+          globalContext.globalDefinitions += fast"typedef global ${elementTypeCode} (* ${typeSymbol.code})${dimensions.mkFastring};"
         }
-        arrayName -> typeDefineHandler
+        arrayTypeCode -> typeDefineHandler
       }
     }
 
     final case object FloatDefinition extends ClTypeDefinition {
-      def define(globalContext: GlobalContext): (ClTypeName, ClTypeDefineHandler) = {
+      def define(globalContext: GlobalContext): (ClTypeCode, ClTypeDefineHandler) = {
         "float" -> Noop
       }
     }
   }
 
-  final case class ClTypeSymbol(firstDefinition: ClTypeDefinition, name: ClTypeName)
+  final case class ClTypeSymbol(firstDefinition: ClTypeDefinition, code: ClTypeCode)
 
   final class GlobalContext {
 
@@ -87,13 +87,13 @@ trait Context extends Terms with FloatArrays {
                                parameters: Seq[Term],
                                outputs: Seq[Term]): Fastring = {
     val parameterDeclarations = for (parameter <- parameters) yield {
-      fast"const ${parameter.typeName} ${parameter.termName}"
+      fast"const ${parameter.typeCode} ${parameter.termCode}"
     }
 
     val (outputParameters, outputAssignments) = outputs.map { output =>
-      val outputTermName = output.termName
-      val outputTypeName = output.typeName
-      val outputParameter = fast"global $outputTypeName *output_$outputTermName"
+      val outputTermCode = output.termCode
+      val outputTypeCode = output.typeCode
+      val outputParameter = fast"global $outputTypeCode *output_$outputTermCode"
       def outputIndex(dimension: Int): Fastring = {
         if (dimension == 0) {
           fast"get_global_id(0)"
@@ -103,7 +103,7 @@ trait Context extends Terms with FloatArrays {
       }
 
       val index = outputIndex(numberOfDimensions - 1)
-      val outputAssignment = fast"output_$outputTermName[$index] = $outputTermName;\n"
+      val outputAssignment = fast"output_$outputTermCode[$index] = $outputTermCode;\n"
       (outputParameter, outputAssignment)
     }.unzip
     fastraw"""
@@ -115,8 +115,8 @@ trait Context extends Terms with FloatArrays {
   }
 
   protected trait TermApi extends super.TermApi { this: Term =>
-    val termName: ClTermName
-    val typeName: ClTypeName
+    val termCode: ClTermCode
+    val typeCode: ClTypeCode
   }
 
   type Term <: TermApi
@@ -137,7 +137,7 @@ trait Context extends Terms with FloatArrays {
     def typeSymbol: ClTypeSymbol = floatSymbol
 
     @inject
-    def factory: Factory2[ClTermName, ClTypeName, ThisTerm]
+    def factory: Factory2[ClTermCode, ClTypeCode, ThisTerm]
 
     def literal(value: Float): ThisTerm = {
       val floatString = if (value.isNaN) {
@@ -151,12 +151,12 @@ trait Context extends Terms with FloatArrays {
       } else {
         value.toString
       }
-      factory.newInstance(floatString, float.typeSymbol.name)
+      factory.newInstance(floatString, float.typeSymbol.code)
     }
 
     def parameter(id: Any): ThisTerm = {
       val termSymbol = freshName(id.toString)
-      factory.newInstance(termSymbol, float.typeSymbol.name)
+      factory.newInstance(termSymbol, float.typeSymbol.code)
     }
   }
 
@@ -171,13 +171,13 @@ trait Context extends Terms with FloatArrays {
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
     @inject def factory[LocalElement <: ValueTerm]
-      : Factory3[Array[Int], ClTermName, ClTypeName, ArrayTerm { type Element = LocalElement }]
+      : Factory3[Array[Int], ClTermCode, ClTypeCode, ArrayTerm { type Element = LocalElement }]
 
     def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm { type Element = elementType.ThisTerm } = {
       val arrayDefinition = ArrayDefinition(elementType.typeSymbol.firstDefinition, shape: _*)
       val arrayTypeSymbol = cachedSymbol(arrayDefinition)
-      val termName = freshName(id.toString)
-      factory[elementType.ThisTerm].newInstance(shape.toArray, termName, arrayTypeSymbol.name)
+      val termCode = freshName(id.toString)
+      factory[elementType.ThisTerm].newInstance(shape.toArray, termCode, arrayTypeSymbol.code)
     }
   }
 
