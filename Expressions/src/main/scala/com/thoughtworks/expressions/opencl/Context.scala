@@ -4,6 +4,7 @@ import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.expressions.api.{Arrays, FloatArrays, Floats, Terms}
 import com.thoughtworks.expressions.opencl.Context.ClTypeDefinition.{ArrayDefinition, FloatDefinition}
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Lt, inject}
+import org.apache.commons.math3.linear.{MatrixUtils, RealMatrix}
 
 import scala.collection.mutable
 object Context {
@@ -170,9 +171,64 @@ trait Context extends FloatArrays {
 
   type FloatType <: (ValueType with Any) with FloatTypeApi
 
+  protected trait ArrayView[LocalElement <: ValueTerm] extends super.ArrayTermApi with CodeValues {
+    this: ArrayTerm =>
+    val elementType: LocalElement#ThisType
+
+    override def translate(offset: Int*): ThisTerm = {
+      val newMatrix = matrix.copy()
+      val lastColumnIndex = newMatrix.getColumnDimension
+      for (y <- 0 until newMatrix.getRowDimension) {
+        newMatrix.addToEntry(y, lastColumnIndex, offset(y))
+      }
+
+      arrayViewFactory.newInstance(elementType, newMatrix, originalShape, termCode, typeCode).asInstanceOf[ThisTerm]
+    }
+
+    val originalShape: Seq[Int]
+    val shape: Seq[Int] = originalShape
+
+    val matrix: RealMatrix //Array[Array[Double]]
+
+    def extract: Element = {
+      // TODO: check boundary
+      val globalIndices = for {
+        i <- shape.indices
+      } yield fast"[get_global_id($i)]"
+
+      val termId = freshName("")
+      localDefinitions += fastraw"""
+        const ${elementType.typeSymbol.code} $termId = (*${termCode})${globalIndices.mkFastring};
+      """
+
+      elementType.factory.newInstance(termId, elementType.typeSymbol.code).asInstanceOf[Element]
+    }
+  }
+
+  @inject
+  def arrayViewFactory[LocalElement <: ValueTerm]
+    : Factory5[LocalElement#ThisType,
+               RealMatrix,
+               Seq[Int],
+               ClTermCode,
+               ClTypeCode,
+               ArrayTerm with ArrayView[LocalElement] { type Element = LocalElement }]
+
   protected trait ArrayParameter[LocalElement <: ValueTerm] extends super.ArrayTermApi with CodeValues {
     this: ArrayTerm =>
     val elementType: LocalElement#ThisType
+
+    override def translate(offsets: Int*): ThisTerm = {
+      if (offsets.length != shape.length) {
+        throw new IllegalArgumentException
+      }
+      val matrix = MatrixUtils.createRealMatrix(shape.length, shape.length + 1)
+      for (i <- shape.indices) {
+        matrix.setEntry(i, i, 1.0)
+        matrix.setEntry(i, shape.length, offsets(i))
+      }
+      arrayViewFactory.newInstance(elementType, matrix, shape, termCode, typeCode).asInstanceOf[ThisTerm]
+    }
 
     def extract: Element = {
       // TODO: check boundary
@@ -192,6 +248,8 @@ trait Context extends FloatArrays {
   // FIXME: Upgrade feature.scala
   type Factory4[-Parameter0, -Parameter1, -Parameter2, -Parameter3, Output] =
     Lt[Output, (Parameter0, Parameter1, Parameter2, Parameter3) => Output]
+  type Factory5[-Parameter0, -Parameter1, -Parameter2, -Parameter3, -Parameter4, Output] =
+    Lt[Output, (Parameter0, Parameter1, Parameter2, Parameter3, Parameter4) => Output]
 
   @inject
   def arrayParameterFactory[LocalElement <: ValueTerm]
@@ -222,6 +280,10 @@ trait Context extends FloatArrays {
 
     def termCode: ClTermCode = extract.termCode
     def typeCode: ClTypeCode = extract.typeCode
+
+    override def translate(offset: Int*): ThisTerm = {
+      this.asInstanceOf[ThisTerm]
+    }
 
     val extract: Element
   }

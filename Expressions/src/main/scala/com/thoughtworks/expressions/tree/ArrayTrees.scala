@@ -17,13 +17,27 @@ trait ArrayTrees extends Arrays with ValueTrees {
   }
 
   final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends TreeApi with Operator {
-    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category, map: ExportMap): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, array.export(foreignCategory, map).extract)
         .asInstanceOf[TermIn[foreignCategory.type]]
     }
     type TermIn[C <: Category] = LocalElement#TermIn[C]
 
+  }
+
+  final case class Translate[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], offset: Int*)
+      extends TreeApi
+      with Operator {
+    type TermIn[C <: Category] = C#ArrayTerm {
+      type Element = LocalElement#TermIn[C]
+    }
+
+    def export(foreignCategory: Category, map: ExportMap): TermIn[foreignCategory.type] = {
+      map.asScala
+        .getOrElseUpdate(this, array.export(foreignCategory, map).translate(offset: _*))
+        .asInstanceOf[TermIn[foreignCategory.type]]
+    }
   }
 
   protected trait ArrayTermApi extends super.ArrayTermApi with TermApi { thisArray: ArrayTerm =>
@@ -38,6 +52,18 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
     def extract: Element = {
       valueFactory.newInstance(Extract(tree))
+    }
+
+    override def translate(offset: Int*): ThisTerm = {
+      val translatedTree = Translate[Element](tree, offset: _*)
+      array
+        .factory[Element]
+        .newInstance(
+          shape,
+          translatedTree,
+          valueFactory
+        )
+        .asInstanceOf[ThisTerm]
     }
 
   }

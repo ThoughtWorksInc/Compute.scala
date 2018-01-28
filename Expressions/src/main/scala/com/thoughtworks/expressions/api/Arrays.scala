@@ -20,9 +20,12 @@ trait Arrays extends Values {
   protected trait ArrayTermApi extends TermApi { thisArray: ArrayTerm =>
     type Element <: ValueTerm
 
+    // TODO: use def shape instead
     val shape: Seq[Int]
 
     def extract: Element
+
+    def translate(offset: Int*): ThisTerm
 
   }
 

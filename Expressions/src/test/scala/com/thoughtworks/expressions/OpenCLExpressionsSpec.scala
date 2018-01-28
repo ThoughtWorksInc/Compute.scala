@@ -52,6 +52,7 @@ class OpenCLExpressionsSpec extends FreeSpec with Matchers {
 
     val filledZeros = trees.float.literal(0.0f).fill(32, 32).extract
 
+
     val f: trees.FloatTerm = x.extract
 
     val globalContext = new GlobalContext
