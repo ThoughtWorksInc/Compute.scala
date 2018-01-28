@@ -13,11 +13,11 @@ trait Values extends Terms {
     type ThisType = TypeIn[Values.this.type]
   }
 
-  protected trait ValueApi extends TermApi with ValueExpressionApi { this: ValueTerm =>
+  protected trait ValueTermApi extends TermApi with ValueExpressionApi { this: ValueTerm =>
   }
 
   /** @template */
-  type ValueTerm <: (Term with Any) with ValueApi
+  type ValueTerm <: (Term with Any) with ValueTermApi
 
   protected trait ValueTypeApi extends ValueExpressionApi {
 
@@ -29,5 +29,5 @@ trait Values extends Terms {
 
   }
 
-  type ValueType <: ValueTypeApi
+  type ValueType <: (Type with Any) with ValueTypeApi
 }

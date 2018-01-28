@@ -11,18 +11,8 @@ import scala.language.higherKinds
   */
 trait Trees extends Terms {
 
-  protected trait TreeApi extends Product {
-    type TermIn[C <: Category]
-
-    def export(foreignCategory: Category,
-               map: IdentityHashMap[TreeApi, Any] = new IdentityHashMap[TreeApi, Any])
-      : TermIn[foreignCategory.type]
-
-    // TODO: alphaConversion
-
-    // TODO: parameter should have special implementation of `isSameStructure`
-    def isSameStructure(that: TreeApi,
-                        map: IdentityHashMap[TreeApi, TreeApi] = new IdentityHashMap[TreeApi, TreeApi]): Boolean = {
+  protected trait Operator extends TreeApi {
+    def isSameStructure(that: TreeApi, map: IdentityHashMap[TreeApi, TreeApi]): Boolean = {
       map.get(this) match {
         case null =>
           this.getClass == that.getClass && {
@@ -35,15 +25,41 @@ trait Trees extends Terms {
                 left == right
             }
           }
-        case existing if existing eq that => true
-        case _                            => false
+        case existing =>
+          existing eq that
       }
     }
   }
 
+  protected trait Parameter extends TreeApi {
+
+    def isSameStructure(that: TreeApi, map: IdentityHashMap[TreeApi, TreeApi]): Boolean = {
+      map.get(this) match {
+        case null =>
+          map.put(this, that)
+          true
+        case existing =>
+          existing eq that
+      }
+    }
+  }
+
+  protected trait TreeApi extends Product {
+    type TermIn[C <: Category]
+
+    def export(foreignCategory: Category, map: ExportMap): TermIn[foreignCategory.type]
+
+    // TODO: alphaConversion
+
+    // TODO: parameter should have special implementation of `isSameStructure`
+    def isSameStructure(that: TreeApi, map: IdentityHashMap[TreeApi, TreeApi]): Boolean
+  }
+
+  type ExportMap = IdentityHashMap[TreeApi, Any]
+
   protected trait TermApi extends super.TermApi { thisTree: Term =>
     def in(foreignCategory: Category): TermIn[foreignCategory.type] = {
-      tree.export(foreignCategory)
+      tree.export(foreignCategory, new ExportMap)
     }
 
     type Tree = TreeApi {

@@ -9,31 +9,34 @@ import com.thoughtworks.feature.Factory.inject
 trait Arrays extends Values {
   type Category >: this.type <: Arrays
 
-  protected trait ValueApi extends super.ValueApi { thisValue: ValueTerm =>
+  protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
     def fill(shape: Int*): ArrayTerm {
       type Element = thisValue.ThisTerm
     }
   }
 
-  override type ValueTerm <: (Term with Any) with ValueApi
+  override type ValueTerm <: (Term with Any) with ValueTermApi
 
-  protected trait ArrayApi extends TermApi { thisArray: ArrayTerm =>
+  protected trait ArrayTermApi extends TermApi { thisArray: ArrayTerm =>
     type Element <: ValueTerm
 
-    def shape: Array[Int]
+    // TODO: use def shape instead
+    val shape: Seq[Int]
 
     def extract: Element
 
+    def translate(offset: Int*): ThisTerm
+
   }
 
-  type ArrayTerm <: (Term with Any) with ArrayApi
+  type ArrayTerm <: (Term with Any) with ArrayTermApi
 
   @inject
   val array: Implicitly[ArrayCompanion]
 
   protected trait ArrayCompanionApi {
 
-    def parameter(id: Any, elementType: ValueType, shape: Int*): ArrayTerm {
+    def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, shape: Int*): ArrayTerm {
       type Element = elementType.ThisTerm
     }
 
