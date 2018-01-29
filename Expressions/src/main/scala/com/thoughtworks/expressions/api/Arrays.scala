@@ -2,6 +2,7 @@ package com.thoughtworks.expressions.api
 
 import com.thoughtworks.expressions.Anonymous.Implicitly
 import com.thoughtworks.feature.Factory.inject
+import org.apache.commons.math3.linear.RealMatrix
 
 /**
   * @author 杨博 (Yang Bo)
@@ -30,6 +31,7 @@ trait Arrays extends Values {
 
     def translate(offset: Int*): ThisTerm
 
+    def transform(matrix: RealMatrix): ThisTerm
   }
 
   type ArrayTerm <: (Term with Any) with ArrayTermApi
