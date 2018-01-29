@@ -17,7 +17,7 @@ trait Trees extends Terms {
 
   final class StructuralComparisonContext extends IdentityHashMap[TreeApi, TreeApi]
 
-  protected trait Operator extends TreeApi {
+  protected trait Operator extends TreeApi { thisOperator =>
 
     def structuralHashCode(context: HashCodeContext): Int = {
       @tailrec
@@ -73,7 +73,7 @@ trait Trees extends Terms {
     }
   }
 
-  protected trait Parameter extends TreeApi {
+  protected trait Parameter extends TreeApi { thisParameter =>
 
     def structuralHashCode(context: HashCodeContext): Int = {
       context.asScala.getOrElseUpdate(this, {
@@ -98,7 +98,9 @@ trait Trees extends Terms {
     var numberOfParameters = 0
   }
 
-  protected trait TreeApi extends Product {
+  final class AlphaConversionContext extends IdentityHashMap[TreeApi, TreeApi]
+
+  protected trait TreeApi extends Product { thisTree =>
     type TermIn[C <: Category]
 
     def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type]
@@ -108,6 +110,8 @@ trait Trees extends Terms {
     def isSameStructure(that: TreeApi, map: StructuralComparisonContext): Boolean
 
     def structuralHashCode(context: HashCodeContext): Int
+
+    def alphaConversion(context: AlphaConversionContext): TreeApi
 
   }
 
