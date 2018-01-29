@@ -12,12 +12,8 @@ import scala.language.higherKinds
   */
 trait FloatTrees extends Floats with ValueTrees {
 
-  protected trait FloatExpressionApi extends super.FloatExpressionApi with  ValueExpressionApi {
-    type TermIn[C <: Category] = C#FloatTerm
-    type TypeIn[C <: Category] = C#FloatType
-  }
-
-  protected trait FloatTermApi extends super.FloatTermApi with ValueTermApi with FloatExpressionApi { thisFloat: FloatTerm =>
+  protected trait FloatTermApi extends super.FloatTermApi with ValueTermApi with FloatExpressionApi {
+    thisFloat: FloatTerm =>
 
     def factory: Factory1[TreeApi { type TermIn[C <: Category] = C#FloatTerm }, ThisTerm] = {
       float.factory

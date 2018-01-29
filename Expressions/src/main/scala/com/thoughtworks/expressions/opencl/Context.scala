@@ -141,11 +141,7 @@ trait Context extends FloatArrays {
 
   type ValueType <: (Type with Any) with ValueTypeApi
 
-  protected trait FloatExpressionApi extends super.FloatExpressionApi with ValueExpressionApi with ValueTypeApi {
-    type TermIn[C <: Category] = C#FloatTerm
-    type TypeIn[C <: Category] = C#FloatType
-  }
-  protected trait FloatTypeApi extends super.FloatTypeApi with FloatExpressionApi {
+  protected trait FloatTypeApi extends super.FloatTypeApi with FloatExpressionApi with ValueTypeApi {
     def typeSymbol: ClTypeSymbol = floatSymbol
 
     def literal(value: Float): ThisTerm = {

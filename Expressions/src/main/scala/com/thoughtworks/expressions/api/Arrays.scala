@@ -20,6 +20,10 @@ trait Arrays extends Values {
   override type ValueTerm <: (Term with Any) with ValueTermApi
 
   protected trait ArrayTermApi extends TermApi { thisArray: ArrayTerm =>
+    type TermIn[C <: Category] = C#ArrayTerm {
+      type Element = thisArray.Element#TermIn[C]
+    }
+
     type Element <: ValueTerm
 
     def extract: Element
