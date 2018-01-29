@@ -1,7 +1,5 @@
 package com.thoughtworks.expressions.tree
 
-import java.util.IdentityHashMap
-
 import com.thoughtworks.expressions.api.Floats
 import com.thoughtworks.feature.Factory.{Factory1, inject}
 import scala.collection.JavaConverters._
