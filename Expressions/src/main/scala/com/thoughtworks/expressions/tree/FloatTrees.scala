@@ -20,7 +20,7 @@ trait FloatTrees extends Floats with ValueTrees {
     }
   }
 
-  override type FloatTerm <: (ValueTerm with Any) with FloatTermApi
+  type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
   final case class FloatParameter(id: Any) extends TreeApi with Parameter { thisParameter =>
     type TermIn[C <: Category] = C#FloatTerm

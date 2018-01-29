@@ -171,7 +171,7 @@ trait Context extends FloatArrays {
     this: ArrayTerm =>
     val elementType: LocalElement#ThisType
 
-    override def translate(offset: Int*): ThisTerm = {
+    def translate(offset: Int*): ThisTerm = {
       val newMatrix = matrix.copy()
       val lastColumnIndex = newMatrix.getColumnDimension
       for (y <- 0 until newMatrix.getRowDimension) {
@@ -226,7 +226,7 @@ trait Context extends FloatArrays {
 
     val elementType: LocalElement#ThisType
 
-    override def translate(offsets: Int*): ThisTerm = {
+    def translate(offsets: Int*): ThisTerm = {
       if (offsets.length != shape.length) {
         throw new IllegalArgumentException
       }
@@ -289,7 +289,7 @@ trait Context extends FloatArrays {
     def termCode: ClTermCode = extract.termCode
     def typeCode: ClTypeCode = extract.typeCode
 
-    override def translate(offset: Int*): ThisTerm = {
+    def translate(offset: Int*): ThisTerm = {
       this.asInstanceOf[ThisTerm]
     }
 

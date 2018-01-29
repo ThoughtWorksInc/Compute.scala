@@ -60,7 +60,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
       valueFactory.newInstance(Extract(tree))
     }
 
-    override def translate(offset: Int*): ThisTerm = {
+    def translate(offset: Int*): ThisTerm = {
       val translatedTree = Translate[Element](tree, offset: _*)
       array
         .parameterFactory[Element]
