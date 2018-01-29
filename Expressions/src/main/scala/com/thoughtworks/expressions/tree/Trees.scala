@@ -20,8 +20,9 @@ trait Trees extends Terms {
   trait Operator extends TreeApi { thisOperator =>
 
     def structuralHashCode(context: HashCodeContext): Int = {
+      val productArity: Int = this.productArity
       @tailrec
-      def generateHashCode(productArity: Int = this.productArity, h: Int = productPrefix.hashCode, i: Int = 0): Int = {
+      def generateHashCode(h: Int = productPrefix.hashCode, i: Int = 0): Int = {
         if (i < productArity) {
           val childHashCode = productElement(i) match {
             case childTree: TreeApi =>
@@ -29,7 +30,7 @@ trait Trees extends Terms {
             case leaf =>
               leaf.##
           }
-          generateHashCode(productArity = productArity, h = MurmurHash3.mix(h, childHashCode), i = i + 1)
+          generateHashCode(h = MurmurHash3.mix(h, childHashCode), i = i + 1)
         } else {
           MurmurHash3.finalizeHash(h, productArity)
         }
@@ -43,15 +44,16 @@ trait Trees extends Terms {
           this.getClass == that.getClass && {
             assert(this.productArity == that.productArity)
             map.put(this, that)
+            val productArity: Int = this.productArity
             @tailrec
-            def sameFields(productArity: Int = this.productArity, start: Int = 0): Boolean = {
+            def sameFields(start: Int = 0): Boolean = {
               if (start < productArity) {
                 productElement(start) match {
                   case left: TreeApi =>
                     that.productElement(start) match {
                       case right: TreeApi =>
                         if (left.isSameStructure(right, map)) {
-                          sameFields(productArity = productArity, start = start + 1)
+                          sameFields(start = start + 1)
                         } else {
                           false
                         }
