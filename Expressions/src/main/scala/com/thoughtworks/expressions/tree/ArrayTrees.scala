@@ -41,9 +41,6 @@ trait ArrayTrees extends Arrays with ValueTrees {
   }
 
   protected trait ArrayTermApi extends super.ArrayTermApi with TermApi { thisArray: ArrayTerm =>
-    type TermIn[C <: Category] = C#ArrayTerm {
-      type Element = thisArray.Element#TermIn[C]
-    }
 
     val valueFactory: Factory1[TreeApi {
                                  type TermIn[C <: Category] = thisArray.Element#TermIn[C]

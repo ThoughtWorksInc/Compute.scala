@@ -10,9 +10,9 @@ import scala.language.higherKinds
 trait Floats extends Values {
   type Category >: this.type <: Floats
 
-  protected trait FloatExpressionApi extends ExpressionApi {
-    type TermIn[C <: Category] <: C#FloatTerm
-    type TypeIn[C <: Category] <: C#FloatType
+  protected trait FloatExpressionApi extends ValueExpressionApi {
+    type TermIn[C <: Category] = C#FloatTerm
+    type TypeIn[C <: Category] = C#FloatType
   }
 
   protected trait FloatTermApi extends ValueTermApi with FloatExpressionApi { this: FloatTerm =>
