@@ -17,7 +17,7 @@ trait Trees extends Terms {
 
   final class StructuralComparisonContext extends IdentityHashMap[TreeApi, TreeApi]
 
-  protected trait Operator extends TreeApi { thisOperator =>
+  trait Operator extends TreeApi { thisOperator =>
 
     def structuralHashCode(context: HashCodeContext): Int = {
       @tailrec
@@ -73,13 +73,15 @@ trait Trees extends Terms {
     }
   }
 
-  protected trait Parameter extends TreeApi { thisParameter =>
+  trait Parameter extends TreeApi { thisParameter =>
+
+    val id: Any
 
     def structuralHashCode(context: HashCodeContext): Int = {
       context.asScala.getOrElseUpdate(this, {
-        val id = context.numberOfParameters
-        context.numberOfParameters = id + 1
-        id
+        val newId = context.numberOfParameters
+        context.numberOfParameters = newId + 1
+        newId
       })
     }
 
