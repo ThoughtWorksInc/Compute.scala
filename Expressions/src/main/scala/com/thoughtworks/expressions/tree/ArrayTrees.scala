@@ -17,7 +17,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
   }
 
   final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends TreeApi with Operator {
-    def export(foreignCategory: Category, map: ExportMap): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, array.export(foreignCategory, map).extract)
         .asInstanceOf[TermIn[foreignCategory.type]]
@@ -33,7 +33,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
       type Element = LocalElement#TermIn[C]
     }
 
-    def export(foreignCategory: Category, map: ExportMap): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, array.export(foreignCategory, map).translate(offset: _*))
         .asInstanceOf[TermIn[foreignCategory.type]]
@@ -75,7 +75,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
       type Element = LocalElement#TermIn[C]
     }
 
-    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, element.export(foreignCategory, map).fill)
         .asInstanceOf[TermIn[foreignCategory.type]]
@@ -113,7 +113,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
       type Element = elementType.TermIn[C]
     }
 
-    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, foreignCategory.array.parameter(id, elementType.in(foreignCategory), shape: _*))
         .asInstanceOf[TermIn[foreignCategory.type]]

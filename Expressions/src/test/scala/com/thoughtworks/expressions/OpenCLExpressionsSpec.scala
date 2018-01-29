@@ -57,7 +57,7 @@ class OpenCLExpressionsSpec extends FreeSpec with Matchers {
     val globalContext = new GlobalContext
     val openCLFunctionContext = Factory[Context].newInstance(globalContext)
 
-    val map = new trees.ExportMap
+    val map = new trees.ExportContext
 
     val sourceCode: Fastring =
       openCLFunctionContext.generateKernelSourceCode("kernel_name",

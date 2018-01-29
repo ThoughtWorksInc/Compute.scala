@@ -25,7 +25,7 @@ trait FloatTrees extends Floats with ValueTrees {
   final case class FloatParameter(id: Any) extends TreeApi with Parameter {
     type TermIn[C <: Category] = C#FloatTerm
 
-    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
+    def export(foreignCategory: Category, map: ExportContext): foreignCategory.FloatTerm = {
       map.asScala
         .getOrElseUpdate(this, foreignCategory.float.parameter(id))
         .asInstanceOf[foreignCategory.FloatTerm]
@@ -36,7 +36,7 @@ trait FloatTrees extends Floats with ValueTrees {
   final case class FloatLiteral(value: Float) extends TreeApi with Operator {
     type TermIn[C <: Category] = C#FloatTerm
 
-    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): foreignCategory.FloatTerm = {
+    def export(foreignCategory: Category, map: ExportContext): foreignCategory.FloatTerm = {
       map.asScala
         .getOrElseUpdate(this, foreignCategory.float.literal(value))
         .asInstanceOf[foreignCategory.FloatTerm]
