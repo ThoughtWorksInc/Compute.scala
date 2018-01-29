@@ -186,21 +186,30 @@ trait Context extends FloatArrays {
     }
 
     val originalShape: Seq[Int]
-    val shape: Seq[Int] = originalShape
 
-    val matrix: RealMatrix //Array[Array[Double]]
+    val matrix: RealMatrix
 
     def extract: Element = {
-      // TODO: check boundary
       val globalIndices = for {
-        i <- shape.indices
-      } yield fast"[get_global_id($i)]"
-
+        y <- 0 until matrix.getRowDimension
+      } yield {
+        val products = for {
+          x <- 0 until matrix.getColumnDimension
+          if matrix.getEntry(y, x) != 0.0
+        } yield {
+          if (x < originalShape.length) {
+            // TODO: check boundary
+            fast"get_global_id($x) * ${matrix.getEntry(y, x)}"
+          } else {
+            fast"${matrix.getEntry(y, x)}"
+          }
+        }
+        fastraw"""[${products.mkFastring(" + ")}]"""
+      }
       val termId = freshName("")
       localDefinitions += fastraw"""
         const ${elementType.typeSymbol.code} $termId = (*${termCode})${globalIndices.mkFastring};
       """
-
       elementType.factory.newInstance(termId, elementType.typeSymbol.code).asInstanceOf[Element]
     }
   }
@@ -216,6 +225,9 @@ trait Context extends FloatArrays {
 
   protected trait ArrayParameter[LocalElement <: ValueTerm] extends super.ArrayTermApi with CodeValues {
     this: ArrayTerm =>
+
+    val shape: Seq[Int]
+
     val elementType: LocalElement#ThisType
 
     override def translate(offsets: Int*): ThisTerm = {
@@ -290,11 +302,11 @@ trait Context extends FloatArrays {
 
   @inject
   def arrayFillFactory[LocalElement <: ValueTerm]
-    : Factory2[LocalElement, Seq[Int], ArrayTerm with ArrayFill { type Element = LocalElement }]
+    : Factory1[LocalElement, ArrayTerm with ArrayFill { type Element = LocalElement }]
 
   protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
-    def fill(shape: Int*): ArrayTerm { type Element = thisValue.ThisTerm } = {
-      arrayFillFactory[thisValue.ThisTerm].newInstance(this.asInstanceOf[ThisTerm], shape)
+    def fill: ArrayTerm { type Element = thisValue.ThisTerm } = {
+      arrayFillFactory[thisValue.ThisTerm].newInstance(this.asInstanceOf[ThisTerm])
     }
   }
   type ValueTerm <: (Term with Any) with ValueTermApi

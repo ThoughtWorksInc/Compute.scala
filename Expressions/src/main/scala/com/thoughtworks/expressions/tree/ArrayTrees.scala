@@ -57,9 +57,8 @@ trait ArrayTrees extends Arrays with ValueTrees {
     override def translate(offset: Int*): ThisTerm = {
       val translatedTree = Translate[Element](tree, offset: _*)
       array
-        .factory[Element]
+        .parameterFactory[Element]
         .newInstance(
-          shape,
           translatedTree,
           valueFactory
         )
@@ -81,7 +80,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
     def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
       map.asScala
-        .getOrElseUpdate(this, element.export(foreignCategory, map).fill(shape: _*))
+        .getOrElseUpdate(this, element.export(foreignCategory, map).fill)
         .asInstanceOf[TermIn[foreignCategory.type]]
     }
   }
@@ -89,16 +88,14 @@ trait ArrayTrees extends Arrays with ValueTrees {
   protected trait ValueTermApi extends super[Arrays].ValueTermApi with super[ValueTrees].ValueTermApi with TermApi {
     thisValue: ValueTerm =>
 
-    def fill(shape: Int*): ArrayTerm {
+    def fill: ArrayTerm {
       type Element = thisValue.ThisTerm
     } = {
       val fillTree = Fill[thisValue.ThisTerm](
-        tree.asInstanceOf[TreeApi { type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C] }],
-        shape: _*)
+        tree.asInstanceOf[TreeApi { type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C] }])
       array
-        .factory[ThisTerm]
+        .parameterFactory[ThisTerm]
         .newInstance(
-          shape,
           fillTree,
           thisValue.factory
             .asInstanceOf[Factory1[TreeApi {
@@ -125,13 +122,13 @@ trait ArrayTrees extends Arrays with ValueTrees {
         .asInstanceOf[TermIn[foreignCategory.type]]
 
     }
+
   }
 
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
-    @inject def factory[LocalElement <: ValueTerm]
-      : Factory3[Seq[Int],
-                 ArrayTree[LocalElement],
+    @inject def parameterFactory[LocalElement <: ValueTerm]
+      : Factory2[ArrayTree[LocalElement],
                  Factory1[TreeApi {
                             type TermIn[C <: Category] = LocalElement#TermIn[C]
                           },
@@ -145,9 +142,8 @@ trait ArrayTrees extends Arrays with ValueTrees {
     } = {
       val parameterTree = ArrayParameter[elementType.type](id, elementType, shape: _*)
       array
-        .factory[elementType.ThisTerm]
+        .parameterFactory[elementType.ThisTerm]
         .newInstance(
-          shape,
           parameterTree.asInstanceOf[ArrayTree[elementType.ThisTerm]],
           elementType.factory
         )

@@ -10,7 +10,9 @@ trait Arrays extends Values {
   type Category >: this.type <: Arrays
 
   protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
-    def fill(shape: Int*): ArrayTerm {
+
+    // TODO: Remove this method
+    def fill: ArrayTerm {
       type Element = thisValue.ThisTerm
     }
   }
@@ -19,9 +21,6 @@ trait Arrays extends Values {
 
   protected trait ArrayTermApi extends TermApi { thisArray: ArrayTerm =>
     type Element <: ValueTerm
-
-    // TODO: use def shape instead
-    val shape: Seq[Int]
 
     def extract: Element
 
