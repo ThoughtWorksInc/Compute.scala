@@ -102,7 +102,7 @@ trait Trees extends Terms {
 
   final class AlphaConversionContext extends IdentityHashMap[TreeApi, TreeApi]
 
-  protected trait TreeApi extends Product { thisTree =>
+  trait TreeApi extends Product { thisTree =>
     type TermIn[C <: Category]
 
     def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type]
