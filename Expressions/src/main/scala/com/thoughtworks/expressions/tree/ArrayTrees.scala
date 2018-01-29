@@ -17,13 +17,16 @@ trait ArrayTrees extends Arrays with ValueTrees {
   }
 
   final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends TreeApi with Operator {
-    def export(foreignCategory: Category, map: ExportMap): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, array.export(foreignCategory, map).extract)
         .asInstanceOf[TermIn[foreignCategory.type]]
     }
     type TermIn[C <: Category] = LocalElement#TermIn[C]
 
+    def alphaConversion(context: AlphaConversionContext): TreeApi = {
+      Extract(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
+    }
   }
 
   final case class Translate[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], offset: Int*)
@@ -33,10 +36,14 @@ trait ArrayTrees extends Arrays with ValueTrees {
       type Element = LocalElement#TermIn[C]
     }
 
-    def export(foreignCategory: Category, map: ExportMap): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, array.export(foreignCategory, map).translate(offset: _*))
         .asInstanceOf[TermIn[foreignCategory.type]]
+    }
+
+    def alphaConversion(context: AlphaConversionContext): TreeApi = {
+      Translate(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
     }
   }
 
@@ -75,10 +82,20 @@ trait ArrayTrees extends Arrays with ValueTrees {
       type Element = LocalElement#TermIn[C]
     }
 
-    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, element.export(foreignCategory, map).fill)
         .asInstanceOf[TermIn[foreignCategory.type]]
+    }
+
+    def alphaConversion(context: AlphaConversionContext): TreeApi = {
+      Fill[LocalElement](element
+             .alphaConversion(context)
+             .asInstanceOf[TreeApi {
+               type TermIn[C <: Category] = LocalElement#TermIn[C]
+             }],
+           shape: _*)
+
     }
   }
 
@@ -108,16 +125,23 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
   final case class ArrayParameter[ElementType <: ValueType](id: Any, elementType: ValueType, shape: Int*)
       extends TreeApi
-      with Parameter {
+      with Parameter { thisParameter =>
     type TermIn[C <: Category] = C#ArrayTerm {
       type Element = elementType.TermIn[C]
     }
 
-    def export(foreignCategory: Category, map: IdentityHashMap[TreeApi, Any]): TermIn[foreignCategory.type] = {
+    def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
       map.asScala
         .getOrElseUpdate(this, foreignCategory.array.parameter(id, elementType.in(foreignCategory), shape: _*))
         .asInstanceOf[TermIn[foreignCategory.type]]
 
+    }
+
+    def alphaConversion(context: AlphaConversionContext): TreeApi = {
+      val newId = new AnyRef {
+        override def toString: String = raw"""α-converted(${thisParameter.toString})"""
+      }
+      context.asScala.getOrElseUpdate(this, ArrayParameter(newId, elementType, shape: _*))
     }
 
   }
