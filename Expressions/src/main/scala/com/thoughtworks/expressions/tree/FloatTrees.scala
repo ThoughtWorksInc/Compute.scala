@@ -32,10 +32,13 @@ trait FloatTrees extends Floats with ValueTrees {
     }
 
     def alphaConversion(context: AlphaConversionContext): TreeApi = {
-      val newId = new AnyRef {
-        override def toString: String = raw"""α-converted(${thisParameter.toString})"""
+      def converted = {
+        val newId = new AnyRef {
+          override val toString: String = raw"""α-converted(${thisParameter.toString})"""
+        }
+        FloatParameter(newId)
       }
-      context.asScala.getOrElseUpdate(this, FloatParameter(newId))
+      context.asScala.getOrElseUpdate(this, converted)
     }
 
   }
