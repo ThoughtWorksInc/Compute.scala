@@ -25,7 +25,8 @@ trait ArrayTrees extends Arrays with ValueTrees {
     type TermIn[C <: Category] = LocalElement#TermIn[C]
 
     def alphaConversion(context: AlphaConversionContext): TreeApi = {
-      Extract(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
+      def converted = Extract(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
+      context.asScala.getOrElseUpdate(this, converted)
     }
   }
 
@@ -43,7 +44,8 @@ trait ArrayTrees extends Arrays with ValueTrees {
     }
 
     def alphaConversion(context: AlphaConversionContext): TreeApi = {
-      Translate(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
+      def converted = Translate(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
+      context.asScala.getOrElseUpdate(this, converted)
     }
   }
 
@@ -89,12 +91,15 @@ trait ArrayTrees extends Arrays with ValueTrees {
     }
 
     def alphaConversion(context: AlphaConversionContext): TreeApi = {
-      Fill[LocalElement](element
-             .alphaConversion(context)
-             .asInstanceOf[TreeApi {
-               type TermIn[C <: Category] = LocalElement#TermIn[C]
-             }],
-           shape: _*)
+      def converted = {
+        Fill[LocalElement](element
+                             .alphaConversion(context)
+                             .asInstanceOf[TreeApi {
+                               type TermIn[C <: Category] = LocalElement#TermIn[C]
+                             }],
+                           shape: _*)
+      }
+      context.asScala.getOrElseUpdate(this, converted)
 
     }
   }
@@ -138,10 +143,13 @@ trait ArrayTrees extends Arrays with ValueTrees {
     }
 
     def alphaConversion(context: AlphaConversionContext): TreeApi = {
-      val newId = new AnyRef {
-        override def toString: String = raw"""α-converted(${thisParameter.toString})"""
+      def converted = {
+        val newId = new AnyRef {
+          override val toString: String = raw"""α-converted(${thisParameter.toString})"""
+        }
+        ArrayParameter(newId, elementType, shape: _*)
       }
-      context.asScala.getOrElseUpdate(this, ArrayParameter(newId, elementType, shape: _*))
+      context.asScala.getOrElseUpdate(this, converted)
     }
 
   }
