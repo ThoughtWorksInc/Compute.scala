@@ -11,6 +11,7 @@ trait Floats extends Values {
   type Category >: this.type <: Floats
 
   protected trait FloatExpressionApi extends ValueExpressionApi {
+    type JvmValue = Float
     type TermIn[C <: Category] = C#FloatTerm
     type TypeIn[C <: Category] = C#FloatType
   }
@@ -21,9 +22,7 @@ trait Floats extends Values {
 
   type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
-  protected trait FloatTypeApi extends ValueTypeApi with FloatExpressionApi {
-    type JvmValue = Float
-  }
+  protected trait FloatTypeApi extends ValueTypeApi with FloatExpressionApi {}
 
   type FloatType <: (ValueType with Any) with FloatTypeApi
 

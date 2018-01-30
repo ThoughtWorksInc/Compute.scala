@@ -7,9 +7,13 @@ import scala.language.higherKinds
 trait Values extends Terms {
   type Category >: this.type <: Values
 
-  protected trait ValueExpressionApi extends ExpressionApi {
+  protected trait ValueExpressionApi extends ExpressionApi { thisValue =>
+
+    type JvmValue
     type TermIn[C <: Category] <: C#ValueTerm
-    type TypeIn[C <: Category] <: C#ValueType
+    type TypeIn[C <: Category] <: C#ValueType {
+      type JvmValue = thisValue.JvmValue
+    }
     type ThisType = TypeIn[Values.this.type]
   }
 
@@ -20,8 +24,6 @@ trait Values extends Terms {
   type ValueTerm <: (Term with Any) with ValueTermApi
 
   protected trait ValueTypeApi extends ValueExpressionApi {
-
-    type JvmValue
 
     def literal(value: JvmValue): ThisTerm
 

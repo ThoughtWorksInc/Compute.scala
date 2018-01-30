@@ -23,11 +23,11 @@ object Context {
 
     final case class ArrayDefinition(element: ClTypeDefinition, shape: Int*) extends ClTypeDefinition {
       def define(globalContext: GlobalContext): (ClTypeCode, ClTypeDefineHandler) = {
-        val elementTypeCode = globalContext.cachedSymbol(element).code
+        val elementTypeCode = globalContext.cachedSymbol(element).typeCode
         val arrayTypeCode = globalContext.freshName(raw"""${elementTypeCode}_array""")
         val typeDefineHandler: ClTypeDefineHandler = { typeSymbol =>
           val dimensions = for (size <- shape) yield fast"[$size]"
-          globalContext.globalDefinitions += fast"typedef global ${elementTypeCode} (* ${typeSymbol.code})${dimensions.mkFastring};"
+          globalContext.globalDefinitions += fast"typedef global ${elementTypeCode} (* ${typeSymbol.typeCode})${dimensions.mkFastring};"
         }
         arrayTypeCode -> typeDefineHandler
       }
@@ -40,7 +40,7 @@ object Context {
     }
   }
 
-  final case class ClTypeSymbol(firstDefinition: ClTypeDefinition, code: ClTypeCode)
+  final case class ClTypeSymbol(firstDefinition: ClTypeDefinition, typeCode: ClTypeCode)
 
   final class GlobalContext {
 
@@ -154,14 +154,14 @@ trait Context extends FloatArrays {
           "(-INFINITE)"
         }
       } else {
-        value.toString
+        raw"""${value}f"""
       }
-      factory.newInstance(floatString, float.typeSymbol.code)
+      factory.newInstance(floatString, float.typeSymbol.typeCode)
     }
 
     def parameter(id: Any): ThisTerm = {
       val termSymbol = freshName(id.toString)
-      factory.newInstance(termSymbol, float.typeSymbol.code)
+      factory.newInstance(termSymbol, float.typeSymbol.typeCode)
     }
   }
 
@@ -198,7 +198,9 @@ trait Context extends FloatArrays {
         }
       }
 
-      arrayViewFactory.newInstance(elementType, newMatrix, originalShape, termCode, typeCode).asInstanceOf[ThisTerm]
+      arrayViewFactory
+        .newInstance(elementType, newMatrix, originalPadding, originalShape, termCode, typeCode)
+        .asInstanceOf[ThisTerm]
     }
 
     def translate(offset: Int*): ThisTerm = {
@@ -208,15 +210,18 @@ trait Context extends FloatArrays {
         newMatrix.addToEntry(y, lastColumnIndex, offset(y))
       }
 
-      arrayViewFactory.newInstance(elementType, newMatrix, originalShape, termCode, typeCode).asInstanceOf[ThisTerm]
+      arrayViewFactory
+        .newInstance(elementType, newMatrix, originalPadding, originalShape, termCode, typeCode)
+        .asInstanceOf[ThisTerm]
     }
+    val originalPadding: LocalElement#JvmValue
 
     val originalShape: Seq[Int]
 
     val matrix: RealMatrix
 
     def extract: Element = {
-      val globalIndices = for {
+      val (indices, indexDefinitions) = (for {
         y <- 0 until matrix.getRowDimension
       } yield {
         val products = for {
@@ -230,36 +235,52 @@ trait Context extends FloatArrays {
             fast"${matrix.getEntry(y, x)}"
           }
         }
-        fastraw"""[${products.mkFastring(" + ")}]"""
-      }
+        val indexId = freshName("index")
+        indexId -> fast"size_t $indexId = ${products.mkFastring(" + ")}"
+      }).unzip
+
+//      fast"
+
+      val bounds = for {
+        (max, indexId) <- originalShape.view.zip(indices)
+      } yield fast"$indexId >= 0 && $indexId < $max"
+
+      localDefinitions ++= indexDefinitions
+
       val termId = freshName("")
+      val paddingCode = elementType.literal(originalPadding.asInstanceOf[elementType.JvmValue]).termCode
+      val dereferenceCode = fast"(*${termCode})${indices.map { i =>
+        fast"[$i]"
+      }.mkFastring}"
       localDefinitions += fastraw"""
-        const ${elementType.typeSymbol.code} $termId = (*${termCode})${globalIndices.mkFastring};
+        const ${elementType.typeSymbol.typeCode} $termId = (${bounds.mkFastring(" && ")}) ? $paddingCode : $dereferenceCode;
       """
-      elementType.factory.newInstance(termId, elementType.typeSymbol.code).asInstanceOf[Element]
+      elementType.factory.newInstance(termId, elementType.typeSymbol.typeCode).asInstanceOf[Element]
     }
   }
 
   @inject
   def arrayViewFactory[LocalElement <: ValueTerm]
-    : Factory5[LocalElement#ThisType,
+    : Factory6[LocalElement#ThisType,
                RealMatrix,
+               LocalElement#JvmValue,
                Seq[Int],
                ClTermCode,
                ClTypeCode,
                ArrayTerm with ArrayView[LocalElement] { type Element = LocalElement }]
 
   protected trait ArrayParameter[LocalElement <: ValueTerm] extends super.ArrayTermApi with CodeValues {
-    this: ArrayTerm =>
-
-    val shape: Seq[Int]
+    thisArrayParameter: ArrayTerm =>
 
     val elementType: LocalElement#ThisType
+    val padding: LocalElement#JvmValue
+    val shape: Seq[Int]
+
     def transform(matrix: RealMatrix): ThisTerm = {
       if (matrix.getColumnDimension != shape.length) {
         throw new IllegalArgumentException
       }
-      arrayViewFactory.newInstance(elementType, matrix, shape, termCode, typeCode).asInstanceOf[ThisTerm]
+      arrayViewFactory.newInstance(elementType, matrix, padding, shape, termCode, typeCode).asInstanceOf[ThisTerm]
     }
     def translate(offsets: Int*): ThisTerm = {
       if (offsets.length != shape.length) {
@@ -270,21 +291,26 @@ trait Context extends FloatArrays {
         matrix.setEntry(i, i, 1.0)
         matrix.setEntry(i, shape.length, offsets(i))
       }
-      arrayViewFactory.newInstance(elementType, matrix, shape, termCode, typeCode).asInstanceOf[ThisTerm]
+      arrayViewFactory.newInstance(elementType, matrix, padding, shape, termCode, typeCode).asInstanceOf[ThisTerm]
     }
 
     def extract: Element = {
-      // TODO: check boundary
       val globalIndices = for {
         i <- shape.indices
       } yield fast"[get_global_id($i)]"
 
-      val termId = freshName("")
+      val bounds = for {
+        (max, i) <- shape.view.zipWithIndex
+      } yield fast"get_global_id($i) >= 0 && get_global_id($i) < $max"
+
+      val valueTermName = freshName("")
+      val paddingCode = elementType.literal(padding.asInstanceOf[elementType.JvmValue]).termCode
+      val dereferenceCode = fast"(*${thisArrayParameter.termCode})${globalIndices.mkFastring}"
       localDefinitions += fastraw"""
-        const ${elementType.typeSymbol.code} $termId = (*${termCode})${globalIndices.mkFastring};
+        const ${elementType.typeSymbol.typeCode} $valueTermName = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode;
       """
 
-      elementType.factory.newInstance(termId, elementType.typeSymbol.code).asInstanceOf[Element]
+      elementType.factory.newInstance(valueTermName, elementType.typeSymbol.typeCode).asInstanceOf[Element]
     }
   }
 
@@ -293,10 +319,13 @@ trait Context extends FloatArrays {
     Lt[Output, (Parameter0, Parameter1, Parameter2, Parameter3) => Output]
   type Factory5[-Parameter0, -Parameter1, -Parameter2, -Parameter3, -Parameter4, Output] =
     Lt[Output, (Parameter0, Parameter1, Parameter2, Parameter3, Parameter4) => Output]
+  type Factory6[-Parameter0, -Parameter1, -Parameter2, -Parameter3, -Parameter4, -Parameter5, Output] =
+    Lt[Output, (Parameter0, Parameter1, Parameter2, Parameter3, Parameter4, Parameter5) => Output]
 
   @inject
   def arrayParameterFactory[LocalElement <: ValueTerm]
-    : Factory4[LocalElement#ThisType,
+    : Factory5[LocalElement#ThisType,
+               LocalElement#JvmValue,
                Seq[Int],
                ClTermCode,
                ClTypeCode,
@@ -304,16 +333,20 @@ trait Context extends FloatArrays {
 
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
-    def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, shape: Int*): ArrayTerm {
+    def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
+                                                                                 elementType: ElementType,
+                                                                                 padding: Padding,
+                                                                                 shape: Int*): ArrayTerm {
       type Element = elementType.ThisTerm
     } = {
       val arrayDefinition = ArrayDefinition(elementType.typeSymbol.firstDefinition, shape: _*)
       val arrayTypeSymbol = cachedSymbol(arrayDefinition)
       val termCode = freshName(id.toString)
       arrayParameterFactory[elementType.ThisTerm].newInstance(elementType.asInstanceOf[elementType.ThisTerm#ThisType],
+                                                              padding.asInstanceOf[elementType.ThisTerm#JvmValue],
                                                               shape,
                                                               termCode,
-                                                              arrayTypeSymbol.code)
+                                                              arrayTypeSymbol.typeCode)
     }
   }
 

@@ -47,8 +47,8 @@ class OpenCLExpressionsSpec extends FreeSpec with Matchers {
       Factory[FloatArrayTrees].newInstance()
     }
 
-    val x: trees.ArrayTerm { type Element = trees.FloatTerm } = trees.array.parameter("x", trees.float, 32, 32)
-    val y: trees.ArrayTerm { type Element = trees.FloatTerm } = trees.array.parameter("y", trees.float, 32, 32)
+    val x: trees.ArrayTerm { type Element = trees.FloatTerm } = trees.array.parameter("x", trees.float, 0.0f, 32, 32)
+    val y: trees.ArrayTerm { type Element = trees.FloatTerm } = trees.array.parameter("y", trees.float, 0.0f, 32, 32)
 
     val filledZeros = trees.float.literal(0.0f).fill.extract
 

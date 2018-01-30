@@ -29,6 +29,7 @@ trait Arrays extends Values {
 
     def extract: Element
 
+    @deprecated(since = "0.2.0", message = "Use [[transform]] instead.")
     def translate(offset: Int*): ThisTerm
 
     def transform(matrix: RealMatrix): ThisTerm
@@ -41,7 +42,10 @@ trait Arrays extends Values {
 
   protected trait ArrayCompanionApi {
 
-    def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, shape: Int*): ArrayTerm {
+    def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
+                                                                                 elementType: ElementType,
+                                                                                 padding: ElementType#JvmValue,
+                                                                                 shape: Int*): ArrayTerm {
       type Element = elementType.ThisTerm
     }
 
