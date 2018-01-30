@@ -2,7 +2,6 @@ package com.thoughtworks.compute
 
 import java.nio.ByteBuffer
 
-import com.thoughtworks.compute.{Memory, OpenCL}
 import com.thoughtworks.feature.Factory
 import TensorsSpec._
 import com.thoughtworks.raii.asynchronous._

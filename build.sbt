@@ -10,9 +10,9 @@ lazy val Expressions = project
 
 lazy val Trees = project.dependsOn(Expressions)
 
-lazy val OpenCLKernelBuilder = project.dependsOn(Trees)
+lazy val OpenCLKernelBuilder = project.dependsOn(Expressions, Trees % Test)
 
-lazy val Tensors = project.dependsOn(OpenCLKernelBuilder, OpenCL)
+lazy val Tensors = project.dependsOn(OpenCLKernelBuilder, OpenCL, Trees)
 
 val defaultCrossTypeLevelScalaVersions = Seq(
   // "2.12.4-bin-typelevel-4" // Disabled due to https://github.com/typelevel/scala/issues/176
