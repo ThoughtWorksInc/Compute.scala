@@ -10,7 +10,7 @@ import com.thoughtworks.continuation._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats}
 import com.thoughtworks.compute.opencl.Context
 import com.thoughtworks.compute.opencl.Context.GlobalContext
-import com.thoughtworks.compute.tree.{FloatArrayTrees, StructuralTrees}
+import com.thoughtworks.compute.Trees.{FloatArrayTrees, StructuralTrees}
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
