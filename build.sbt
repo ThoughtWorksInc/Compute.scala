@@ -10,6 +10,8 @@ lazy val Benchmark = project.dependsOn(OpenCL)
 
 lazy val Expressions = project
 
+lazy val Tensors = project.dependsOn(Expressions, OpenCL)
+
 val defaultCrossTypeLevelScalaVersions = Seq(
   // "2.12.4-bin-typelevel-4" // Disabled due to https://github.com/typelevel/scala/issues/176
 )
