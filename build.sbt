@@ -1,4 +1,4 @@
-crossScalaVersions := Seq("2.12.4", "2.11.11")
+crossScalaVersions in ThisBuild := Seq("2.12.4", "2.11.12")
 
 organization in ThisBuild := "com.thoughtworks.compute"
 
