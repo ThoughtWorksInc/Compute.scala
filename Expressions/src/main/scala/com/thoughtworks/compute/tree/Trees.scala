@@ -1,9 +1,9 @@
-package com.thoughtworks.expressions.tree
+package com.thoughtworks.compute.tree
 
 import java.util.IdentityHashMap
 
 import scala.collection.JavaConverters._
-import com.thoughtworks.expressions.api.Terms
+import com.thoughtworks.compute.api.Terms
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer

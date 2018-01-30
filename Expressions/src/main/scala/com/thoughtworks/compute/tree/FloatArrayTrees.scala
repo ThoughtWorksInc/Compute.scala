@@ -1,6 +1,6 @@
-package com.thoughtworks.expressions.tree
+package com.thoughtworks.compute.tree
 
-import com.thoughtworks.expressions.api.{Arrays, FloatArrays, Floats}
+import com.thoughtworks.compute.api.{Arrays, FloatArrays, Floats}
 
 /**
   * @author 杨博 (Yang Bo)

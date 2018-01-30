@@ -1,4 +1,4 @@
-package com.thoughtworks.expressions
+package com.thoughtworks.compute
 
 import scala.language.higherKinds
 import com.thoughtworks.feature.{Factory, ImplicitApply}

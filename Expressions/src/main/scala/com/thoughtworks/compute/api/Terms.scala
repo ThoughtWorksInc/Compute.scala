@@ -1,4 +1,4 @@
-package com.thoughtworks.expressions.api
+package com.thoughtworks.compute.api
 
 import scala.language.higherKinds
 

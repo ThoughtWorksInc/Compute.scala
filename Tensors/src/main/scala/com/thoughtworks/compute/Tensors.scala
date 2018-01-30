@@ -1,4 +1,4 @@
-package com.thoughtworks.deeplearning.plugins
+package com.thoughtworks.compute
 
 import java.util.{Collections, IdentityHashMap}
 import java.util.concurrent.Callable
@@ -7,10 +7,10 @@ import com.dongxiguo.fastring.Fastring.Implicits._
 import com.google.common.cache._
 import com.thoughtworks.compute.OpenCL
 import com.thoughtworks.continuation._
-import com.thoughtworks.expressions.api.{Arrays, Floats}
-import com.thoughtworks.expressions.opencl.Context
-import com.thoughtworks.expressions.opencl.Context.GlobalContext
-import com.thoughtworks.expressions.tree.{FloatArrayTrees, StructuralTrees}
+import com.thoughtworks.compute.api.{Arrays, Floats}
+import com.thoughtworks.compute.opencl.Context
+import com.thoughtworks.compute.opencl.Context.GlobalContext
+import com.thoughtworks.compute.tree.{FloatArrayTrees, StructuralTrees}
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._

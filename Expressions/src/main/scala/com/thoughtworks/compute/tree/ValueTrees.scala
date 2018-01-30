@@ -1,6 +1,6 @@
-package com.thoughtworks.expressions.tree
+package com.thoughtworks.compute.tree
 
-import com.thoughtworks.expressions.api.Values
+import com.thoughtworks.compute.api.Values
 import com.thoughtworks.feature.Factory.Factory1
 
 import scala.language.higherKinds

@@ -1,6 +1,6 @@
-package com.thoughtworks.expressions.api
+package com.thoughtworks.compute.api
 
-import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.compute.Anonymous.Implicitly
 import com.thoughtworks.feature.Factory.inject
 import scala.language.higherKinds
 

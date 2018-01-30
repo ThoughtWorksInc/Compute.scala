@@ -1,4 +1,4 @@
-package com.thoughtworks.deeplearning.plugins
+package com.thoughtworks.compute
 
 import java.nio.ByteBuffer
 
@@ -29,7 +29,7 @@ object TensorsSpec {
 
   private val handleOpenCLNotification = { (errorInfo: String, buffer: ByteBuffer) =>
     if (buffer.remaining > 0) {
-      val hexText = for (i <- (buffer.position until buffer.limit).view) yield {
+      val hexText = for (i <- (buffer.position() until buffer.limit).view) yield {
         f"${buffer.get(i)}%02X"
       }
       Console.err.println(hexText.mkString(errorInfo, " ", ""))

@@ -1,15 +1,15 @@
-package com.thoughtworks.expressions
+package com.thoughtworks.compute
 
 import com.dongxiguo.fastring.Fastring
-import com.thoughtworks.expressions.api.{Arrays, Floats}
-import com.thoughtworks.expressions.opencl.Context.{ClTermCode, ClTypeCode, GlobalContext}
-import com.thoughtworks.expressions.opencl.Context
-import com.thoughtworks.expressions.tree.FloatArrayTrees
+import com.thoughtworks.compute.api.{Arrays, Floats}
+import com.thoughtworks.compute.opencl.Context.{ClTermCode, ClTypeCode, GlobalContext}
+import com.thoughtworks.compute.opencl.Context
+import com.thoughtworks.compute.tree.FloatArrayTrees
 import com.thoughtworks.feature.Factory
 import org.scalatest.{FreeSpec, Matchers}
 import java.util.IdentityHashMap
 
-import com.thoughtworks.expressions.Anonymous.Implicitly
+import com.thoughtworks.compute.Anonymous.Implicitly
 import com.thoughtworks.feature.Factory.Factory3
 
 /**

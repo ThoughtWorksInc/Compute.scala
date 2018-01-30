@@ -1,6 +1,6 @@
-package com.thoughtworks.expressions.tree
+package com.thoughtworks.compute.tree
 
-import com.thoughtworks.expressions.api.Arrays
+import com.thoughtworks.compute.api.Arrays
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 
 import scala.collection.JavaConverters._

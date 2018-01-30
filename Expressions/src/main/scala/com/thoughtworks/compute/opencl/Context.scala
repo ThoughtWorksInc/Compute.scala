@@ -1,8 +1,8 @@
-package com.thoughtworks.expressions.opencl
+package com.thoughtworks.compute.opencl
 
 import com.dongxiguo.fastring.Fastring.Implicits._
-import com.thoughtworks.expressions.api.{Arrays, FloatArrays, Floats, Terms}
-import com.thoughtworks.expressions.opencl.Context.ClTypeDefinition.{ArrayDefinition, FloatDefinition}
+import com.thoughtworks.compute.api.{Arrays, FloatArrays, Floats, Terms}
+import com.thoughtworks.compute.opencl.Context.ClTypeDefinition.{ArrayDefinition, FloatDefinition}
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Factory4, Factory5, Factory6, inject}
 import org.apache.commons.math3.linear.{MatrixUtils, RealMatrix}
 
@@ -76,7 +76,7 @@ object Context {
   }
 
 }
-import com.thoughtworks.expressions.opencl.Context._
+import com.thoughtworks.compute.opencl.Context._
 
 /**
   * @author 杨博 (Yang Bo)
