@@ -1,7 +1,7 @@
 package com.thoughtworks.compute.opencl
 
 import com.dongxiguo.fastring.Fastring.Implicits._
-import com.thoughtworks.compute.api.{Arrays, FloatArrays, Floats, Terms}
+import com.thoughtworks.compute.Expressions.{Arrays, FloatArrays, Floats}
 import com.thoughtworks.compute.opencl.Context.ClTypeDefinition.{ArrayDefinition, FloatDefinition}
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Factory4, Factory5, Factory6, inject}
 import org.apache.commons.math3.linear.{MatrixUtils, RealMatrix}

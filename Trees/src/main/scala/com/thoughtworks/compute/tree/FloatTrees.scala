@@ -1,6 +1,6 @@
 package com.thoughtworks.compute.tree
 
-import com.thoughtworks.compute.api.Floats
+import com.thoughtworks.compute.Expressions.Floats
 import com.thoughtworks.feature.Factory.{Factory1, inject}
 import scala.collection.JavaConverters._
 import scala.language.higherKinds

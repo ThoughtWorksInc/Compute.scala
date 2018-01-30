@@ -7,7 +7,7 @@ import com.dongxiguo.fastring.Fastring.Implicits._
 import com.google.common.cache._
 import com.thoughtworks.compute.OpenCL
 import com.thoughtworks.continuation._
-import com.thoughtworks.compute.api.{Arrays, Floats}
+import com.thoughtworks.compute.Expressions.{Arrays, Floats}
 import com.thoughtworks.compute.opencl.Context
 import com.thoughtworks.compute.opencl.Context.GlobalContext
 import com.thoughtworks.compute.tree.{FloatArrayTrees, StructuralTrees}

@@ -2,9 +2,9 @@ package com.thoughtworks.compute.tree
 
 import java.util.IdentityHashMap
 
-import scala.collection.JavaConverters._
-import com.thoughtworks.compute.api.Terms
+import com.thoughtworks.compute.Expressions
 
+import scala.collection.JavaConverters._
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.language.higherKinds
@@ -13,7 +13,7 @@ import scala.util.hashing.{Hashing, MurmurHash3}
 /**
   * @author 杨博 (Yang Bo)
   */
-trait Trees extends Terms {
+trait Trees extends Expressions {
 
   final class StructuralComparisonContext extends IdentityHashMap[TreeApi, TreeApi]
 
