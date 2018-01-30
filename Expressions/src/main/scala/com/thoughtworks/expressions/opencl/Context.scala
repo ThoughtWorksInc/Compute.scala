@@ -3,7 +3,7 @@ package com.thoughtworks.expressions.opencl
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.expressions.api.{Arrays, FloatArrays, Floats, Terms}
 import com.thoughtworks.expressions.opencl.Context.ClTypeDefinition.{ArrayDefinition, FloatDefinition}
-import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Lt, inject}
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Factory4, Factory5, Factory6, inject}
 import org.apache.commons.math3.linear.{MatrixUtils, RealMatrix}
 
 import scala.collection.mutable
@@ -313,14 +313,6 @@ trait Context extends FloatArrays {
       elementType.factory.newInstance(valueTermName, elementType.typeSymbol.typeCode).asInstanceOf[Element]
     }
   }
-
-  // FIXME: Upgrade feature.scala
-  type Factory4[-Parameter0, -Parameter1, -Parameter2, -Parameter3, Output] =
-    Lt[Output, (Parameter0, Parameter1, Parameter2, Parameter3) => Output]
-  type Factory5[-Parameter0, -Parameter1, -Parameter2, -Parameter3, -Parameter4, Output] =
-    Lt[Output, (Parameter0, Parameter1, Parameter2, Parameter3, Parameter4) => Output]
-  type Factory6[-Parameter0, -Parameter1, -Parameter2, -Parameter3, -Parameter4, -Parameter5, Output] =
-    Lt[Output, (Parameter0, Parameter1, Parameter2, Parameter3, Parameter4, Parameter5) => Output]
 
   @inject
   def arrayParameterFactory[LocalElement <: ValueTerm]
