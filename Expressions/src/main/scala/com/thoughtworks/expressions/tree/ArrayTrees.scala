@@ -161,7 +161,11 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
   type ValueTerm <: (Term with Any) with ValueTermApi
 
-  final case class ArrayParameter[ElementType <: ValueType](id: Any, elementType: ValueType, shape: Int*)
+  final case class ArrayParameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](
+      id: Any,
+      elementType: ElementType,
+      padding: Padding,
+      shape: Int*)
       extends TreeApi
       with Parameter { thisParameter =>
     type TermIn[C <: Category] = C#ArrayTerm {
@@ -170,7 +174,13 @@ trait ArrayTrees extends Arrays with ValueTrees {
 
     def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
       map.asScala
-        .getOrElseUpdate(this, foreignCategory.array.parameter(id, elementType.in(foreignCategory), shape: _*))
+        .getOrElseUpdate(
+          this,
+          foreignCategory.array
+            .parameter[Padding, elementType.TypeIn[foreignCategory.type]](id,
+                                                                          elementType.in(foreignCategory),
+                                                                          padding,
+                                                                          shape: _*))
         .asInstanceOf[TermIn[foreignCategory.type]]
 
     }
@@ -180,7 +190,7 @@ trait ArrayTrees extends Arrays with ValueTrees {
         val newId = new AnyRef {
           override val toString: String = raw"""α-converted(${thisParameter.toString})"""
         }
-        ArrayParameter(newId, elementType, shape: _*)
+        ArrayParameter(newId, elementType, padding, shape: _*)
       }
       context.asScala.getOrElseUpdate(this, converted)
     }
@@ -199,10 +209,13 @@ trait ArrayTrees extends Arrays with ValueTrees {
                    type Element = LocalElement
                  }]
 
-    def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, shape: Int*): ArrayTerm {
+    def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
+                                                                                 elementType: ElementType,
+                                                                                 padding: Padding,
+                                                                                 shape: Int*): ArrayTerm {
       type Element = elementType.ThisTerm
     } = {
-      val parameterTree = ArrayParameter[elementType.type](id, elementType, shape: _*)
+      val parameterTree = ArrayParameter[Padding, elementType.type](id, elementType, padding, shape: _*)
       array
         .parameterFactory[elementType.ThisTerm]
         .newInstance(
