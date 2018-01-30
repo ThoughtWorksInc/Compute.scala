@@ -1,8 +1,8 @@
-libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.3.0-M5"
+libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.3.0-M6"
 
-libraryDependencies += "com.thoughtworks.feature" %% "implicitapply" % "2.3.0-M5"
+libraryDependencies += "com.thoughtworks.feature" %% "implicitapply" % "2.3.0-M6"
 
-libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.3.0-M5"
+libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.3.0-M6"
 
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.3"
 
