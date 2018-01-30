@@ -2,8 +2,7 @@ package com.thoughtworks.compute
 
 import com.dongxiguo.fastring.Fastring
 import com.thoughtworks.compute.Expressions.{Arrays, Floats}
-import com.thoughtworks.compute.opencl.Context.{ClTermCode, ClTypeCode, GlobalContext}
-import com.thoughtworks.compute.opencl.Context
+import com.thoughtworks.compute.OpenCLKernelBuilder.{ClTermCode, ClTypeCode, GlobalContext}
 import com.thoughtworks.compute.Trees.FloatArrayTrees
 import com.thoughtworks.feature.Factory
 import org.scalatest.{FreeSpec, Matchers}
@@ -51,7 +50,7 @@ class OpenCLExpressionsSpec extends FreeSpec with Matchers {
     val f: trees.FloatTerm = x.extract
 
     val globalContext = new GlobalContext
-    val openCLFunctionContext = Factory[Context].newInstance(globalContext)
+    val openCLFunctionContext = Factory[OpenCLKernelBuilder].newInstance(globalContext)
 
     val map = new trees.ExportContext
 

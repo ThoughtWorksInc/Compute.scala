@@ -5,11 +5,9 @@ import java.util.concurrent.Callable
 
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.google.common.cache._
-import com.thoughtworks.compute.OpenCL
 import com.thoughtworks.continuation._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats}
-import com.thoughtworks.compute.opencl.Context
-import com.thoughtworks.compute.opencl.Context.GlobalContext
+import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
 import com.thoughtworks.compute.Trees.{FloatArrayTrees, StructuralTrees}
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
@@ -138,7 +136,7 @@ trait Tensors extends OpenCL {
 
             val sourceCode = {
               val globalContext = new GlobalContext
-              val functionContext = Factory[Context].newInstance(globalContext)
+              val functionContext = Factory[OpenCLKernelBuilder].newInstance(globalContext)
 
               val exportContext = new ExportContext
               val kernelBody = convertedTerm.tree.export(functionContext, exportContext)

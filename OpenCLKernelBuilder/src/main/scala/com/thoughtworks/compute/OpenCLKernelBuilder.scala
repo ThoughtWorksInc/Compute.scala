@@ -1,13 +1,13 @@
-package com.thoughtworks.compute.opencl
+package com.thoughtworks.compute
 
 import com.dongxiguo.fastring.Fastring.Implicits._
-import com.thoughtworks.compute.Expressions.{Arrays, FloatArrays, Floats}
-import com.thoughtworks.compute.opencl.Context.ClTypeDefinition.{ArrayDefinition, FloatDefinition}
-import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Factory4, Factory5, Factory6, inject}
+import com.thoughtworks.compute.OpenCLKernelBuilder.ClTypeDefinition._
+import com.thoughtworks.compute.Expressions.FloatArrays
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory5, Factory6, inject}
 import org.apache.commons.math3.linear.{MatrixUtils, RealMatrix}
 
 import scala.collection.mutable
-object Context {
+object OpenCLKernelBuilder {
 
   type ClTermCode = String
   type ClTypeCode = String
@@ -76,12 +76,12 @@ object Context {
   }
 
 }
-import com.thoughtworks.compute.opencl.Context._
+import com.thoughtworks.compute.OpenCLKernelBuilder._
 
 /**
   * @author 杨博 (Yang Bo)
   */
-trait Context extends FloatArrays {
+trait OpenCLKernelBuilder extends FloatArrays {
   protected val globalContext: GlobalContext
   import globalContext._
 
