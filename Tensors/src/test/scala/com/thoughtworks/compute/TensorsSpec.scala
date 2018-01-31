@@ -1,27 +1,49 @@
 package com.thoughtworks.compute
 
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, FloatBuffer}
 
 import com.thoughtworks.feature.Factory
 import TensorsSpec._
+import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
 import org.lwjgl.opencl.CLCapabilities
 
+import scalaz.syntax.all._
 import scala.language.existentials
+import org.scalatest._
 
 /**
   * @author 杨博 (Yang Bo)
   */
-class TensorsSpec {
-  private val hyperparameters =
+class TensorsSpec extends AsyncFreeSpec with Matchers {
+  private val tensors: Tensors =
     Factory[
       OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors]
       .newInstance(
         handleOpenCLNotification = handleOpenCLNotification,
         numberOfCommandQueuesForDevice = { (deviceId: Long, capabilities: CLCapabilities) =>
-          1
+          5
         }
       )
+
+  "create a tensor of a constant" in {
+    val shape = Array(2, 3, 5)
+    val element = 42.0f
+    val zeros = tensors.Tensor.fill(element, shape)
+
+    for {
+      pendingBuffer <- zeros.enqueue
+      floatBuffer <- pendingBuffer.toHostBuffer
+    } yield {
+      for (i <- 0 until floatBuffer.capacity()) {
+        floatBuffer.get(i) should be(element)
+      }
+      floatBuffer.position() should be(0)
+      floatBuffer.limit() should be(shape.product)
+      floatBuffer.capacity() should be(shape.product)
+    }
+  }.run.toScalaFuture
+
 }
 
 object TensorsSpec {

@@ -65,6 +65,19 @@ trait Tensors extends OpenCL {
     def event: Event
 
     def buffer: DeviceBuffer[Float]
+
+    def toHostBuffer = {
+      buffer.toHostBuffer(event)
+    }
+  }
+  object Tensor {
+    def fill(value: Float, shape0: Array[Int]) = {
+      new InlineTensor {
+        val padding: Float = value
+        val shape: shape0.type = shape0
+        val closure: trees.FloatTerm = float.literal(value)
+      }
+    }
   }
 
   sealed trait Tensor { thisTensor =>
@@ -75,6 +88,7 @@ trait Tensors extends OpenCL {
 
     def closure: ValueTerm
 
+    // TODO: rename to make buffer
     def enqueue: Do[PendingBuffer]
 
     def padding: Float
@@ -132,22 +146,21 @@ trait Tensors extends OpenCL {
           def call(): CompiledKernel = {
 
             val alphConversionContext = new AlphaConversionContext
-            val convertedTerm = closure.tree.alphaConversion(alphConversionContext).asInstanceOf[ValueTerm]
+            val convertedTree = closure.tree.alphaConversion(alphConversionContext)
 
             val sourceCode = {
               val globalContext = new GlobalContext
               val functionContext = Factory[OpenCLKernelBuilder].newInstance(globalContext)
 
               val exportContext = new ExportContext
-              val kernelBody = convertedTerm.tree.export(functionContext, exportContext)
+              val kernelBody = convertedTree.export(functionContext, exportContext).asInstanceOf[functionContext.Term]
 
               val kernelParameters = upvalues(closure.tree).map { upvalue: Parameter =>
                 exportContext.get(alphConversionContext.get(upvalue)).asInstanceOf[functionContext.Term]
               }
               fastraw"""
-              ${globalContext.globalDeclarations}
-              ${globalContext.globalDefinitions}
-              ${functionContext.generateKernelSourceCode("kernel", shape.length, kernelParameters, Seq(kernelBody))}
+              $globalContext
+              ${functionContext.generateKernelSourceCode("jit_kernel", shape.length, kernelParameters, Seq(kernelBody))}
               """
             }
 
@@ -188,7 +201,7 @@ trait Tensors extends OpenCL {
 
               }
             }
-            kernelCache.put(convertedTerm, compiledKernel)
+            kernelCache.put(float.factory.newInstance(convertedTree.asInstanceOf[float.Tree]), compiledKernel)
             compiledKernel
           }
         }

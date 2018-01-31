@@ -63,8 +63,7 @@ class OpenCLKernelBuilderSpec extends FreeSpec with Matchers {
                                                      ),
                                                      Seq(f.tree.export(openCLFunctionContext, map)))
 
-    globalContext.globalDeclarations.foreach(print)
-    globalContext.globalDefinitions.foreach(print)
+    globalContext.foreach(print)
     sourceCode.foreach(print)
 
     // TODO: Convert this example to a test case

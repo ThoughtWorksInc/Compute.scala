@@ -122,19 +122,28 @@ trait Trees extends Expressions {
 
   final class ExportContext extends IdentityHashMap[TreeApi, Any]
 
-  protected trait TermApi extends super.TermApi { thisTree: Term =>
+  protected trait ExpressionApi extends super.ExpressionApi { thisExpression =>
+    type Tree = TreeApi {
+      type TermIn[C <: Category] = thisExpression.TermIn[C]
+    }
+  }
+
+  protected trait TermApi extends ExpressionApi with super.TermApi { thisTree: Term =>
+
+    def alphaConversion: ThisTerm
+
     def in(foreignCategory: Category): TermIn[foreignCategory.type] = {
       tree.export(foreignCategory, new ExportContext)
     }
 
-    type Tree = TreeApi {
-      type TermIn[C <: Category] = thisTree.TermIn[C]
-    }
     val tree: Tree
 
   }
 
   type Term <: TermApi
+
+  protected trait TypeApi extends ExpressionApi with super.TypeApi
+  type Type <: TypeApi
 
 }
 
@@ -157,6 +166,10 @@ object Trees {
     protected trait ValueTermApi extends TermApi with super.ValueTermApi { thisValue: ValueTerm =>
 
       def factory: Factory1[TreeApi { type TermIn[C <: Category] = thisValue.TermIn[C] }, ThisTerm]
+
+      def alphaConversion: ThisTerm = {
+        factory.newInstance(tree.alphaConversion(new AlphaConversionContext).asInstanceOf[Tree])
+      }
     }
 
     type ValueTerm <: (Term with Any) with ValueTermApi
@@ -321,6 +334,13 @@ object Trees {
 
     protected trait ArrayTermApi extends super.ArrayTermApi with TermApi { thisArray: ArrayTerm =>
 
+      def alphaConversion: ThisTerm = {
+        array
+          .factory[Element]
+          .newInstance(tree.alphaConversion(new AlphaConversionContext).asInstanceOf[Tree], valueFactory)
+          .asInstanceOf[ThisTerm]
+      }
+
       val valueFactory: Factory1[TreeApi {
                                    type TermIn[C <: Category] = thisArray.Element#TermIn[C]
                                  },
@@ -333,7 +353,7 @@ object Trees {
       def transform(matrix: RealMatrix): ThisTerm = {
         val translatedTree = Transform[Element](tree, matrix)
         array
-          .parameterFactory[Element]
+          .factory[Element]
           .newInstance(
             translatedTree,
             valueFactory
@@ -344,7 +364,7 @@ object Trees {
       def translate(offset: Array[Int]): ThisTerm = {
         val translatedTree = Translate[Element](tree, offset)
         array
-          .parameterFactory[Element]
+          .factory[Element]
           .newInstance(
             translatedTree,
             valueFactory
@@ -393,7 +413,7 @@ object Trees {
         val fillTree = Fill[thisValue.ThisTerm](
           tree.asInstanceOf[TreeApi { type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C] }])
         array
-          .parameterFactory[ThisTerm]
+          .factory[ThisTerm]
           .newInstance(
             fillTree,
             thisValue.factory
@@ -446,7 +466,7 @@ object Trees {
 
     protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
-      @inject def parameterFactory[LocalElement <: ValueTerm]
+      @inject def factory[LocalElement <: ValueTerm]
         : Factory2[ArrayTree[LocalElement],
                    Factory1[TreeApi {
                               type TermIn[C <: Category] = LocalElement#TermIn[C]
@@ -464,7 +484,7 @@ object Trees {
       } = {
         val parameterTree = ArrayParameter[Padding, elementType.type](id, elementType, padding, shape)
         array
-          .parameterFactory[elementType.ThisTerm]
+          .factory[elementType.ThisTerm]
           .newInstance(
             parameterTree.asInstanceOf[ArrayTree[elementType.ThisTerm]],
             elementType.factory
