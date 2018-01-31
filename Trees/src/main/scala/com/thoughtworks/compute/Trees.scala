@@ -18,25 +18,58 @@ trait Trees extends Expressions {
 
   final class StructuralComparisonContext extends IdentityHashMap[TreeApi, TreeApi]
 
+  private def childHashCode(child: Any, context: HashCodeContext): Int = {
+    child match {
+      case childTree: TreeApi =>
+        childTree.structuralHashCode(context)
+      case childArray: Array[_] =>
+        arrayHashCode(childArray, context)
+      case _ =>
+        child.##
+    }
+  }
+
+  private def arrayHashCode[@specialized A](childArray: Array[A], context: HashCodeContext): Int = {
+    val length = childArray.length
+    if (length == 0) {
+      MurmurHash3.arraySeed
+    } else {
+      val last = length - 1
+      @tailrec
+      def arrayLoop(h: Int, i: Int): Int = {
+        if (i < last) {
+          arrayLoop(h = MurmurHash3.mix(h, childHashCode(childArray(i), context)), i = i + 1)
+        } else {
+          MurmurHash3.finalizeHash(MurmurHash3.mixLast(h, childHashCode(childArray(i), context)), length)
+        }
+      }
+      arrayLoop(MurmurHash3.arraySeed, 0)
+    }
+  }
+
   trait Operator extends TreeApi { thisOperator =>
 
     def structuralHashCode(context: HashCodeContext): Int = {
       val productArity: Int = this.productArity
-      @tailrec
-      def generateHashCode(h: Int = productPrefix.hashCode, i: Int = 0): Int = {
-        if (i < productArity) {
-          val childHashCode = productElement(i) match {
-            case childTree: TreeApi =>
-              childTree.structuralHashCode(context)
-            case leaf =>
-              leaf.##
+      if (productArity == 0) {
+        productPrefix.##
+      } else {
+        context.asScala.getOrElseUpdate(
+          this, {
+            val last = productArity - 1
+            @tailrec
+            def loop(h: Int = productPrefix.hashCode, i: Int = 0): Int = {
+              if (i < last) {
+                loop(h = MurmurHash3.mix(h, childHashCode(productElement(i), context)), i = i + 1)
+              } else {
+                MurmurHash3.finalizeHash(MurmurHash3.mixLast(h, childHashCode(productElement(i), context)),
+                                         productArity)
+              }
+            }
+            loop()
           }
-          generateHashCode(h = MurmurHash3.mix(h, childHashCode), i = i + 1)
-        } else {
-          MurmurHash3.finalizeHash(h, productArity)
-        }
+        )
       }
-      context.asScala.getOrElseUpdate(this, generateHashCode())
     }
 
     def isSameStructure(that: TreeApi, map: StructuralComparisonContext): Boolean = {
@@ -79,14 +112,6 @@ trait Trees extends Expressions {
   trait Parameter extends TreeApi { thisParameter =>
 
     val id: Any
-
-    def structuralHashCode(context: HashCodeContext): Int = {
-      context.asScala.getOrElseUpdate(this, {
-        val newId = context.numberOfParameters
-        context.numberOfParameters = newId + 1
-        newId
-      })
-    }
 
     def isSameStructure(that: TreeApi, map: StructuralComparisonContext): Boolean = {
       map.get(this) match {
@@ -155,6 +180,11 @@ object Trees {
   trait ValueTrees extends Values with Trees {
 
     protected trait ValueTypeApi extends super.ValueTypeApi {
+
+      override def equals(that: scala.Any): Boolean = {
+        that != null && that.getClass == this.getClass
+      }
+
       def in(foreignCategory: Category): TypeIn[foreignCategory.type]
 
       def factory: Factory1[TreeApi { type TermIn[C <: Category] = ThisTerm#TermIn[C] }, ThisTerm]
@@ -217,6 +247,14 @@ object Trees {
     final case class FloatParameter(id: Any) extends TreeApi with Parameter { thisParameter =>
       type TermIn[C <: Category] = C#FloatTerm
 
+      def structuralHashCode(context: HashCodeContext): Int = {
+        context.asScala.getOrElseUpdate(this, {
+          val newId = context.numberOfParameters
+          context.numberOfParameters = newId + 1
+          newId
+        })
+      }
+
       def export(foreignCategory: Category, map: ExportContext): foreignCategory.FloatTerm = {
         map.asScala
           .getOrElseUpdate(this, foreignCategory.float.parameter(id))
@@ -248,7 +286,7 @@ object Trees {
       }
     }
 
-    protected trait FloatTypeApi extends super.FloatTypeApi with FloatExpressionApi {
+    protected trait FloatTypeApi extends ValueTypeApi with super.FloatTypeApi with FloatExpressionApi {
       def in(foreignCategory: Category): TypeIn[foreignCategory.type] = {
         foreignCategory.float
       }
@@ -263,6 +301,10 @@ object Trees {
 
       @inject
       def factory: Factory1[TreeApi { type TermIn[C <: Category] = ThisTerm#TermIn[C] }, ThisTerm]
+
+      override def hashCode(): Int = {
+        "float".##
+      }
     }
 
     type FloatType <: (ValueType with Any) with FloatTypeApi
@@ -435,8 +477,30 @@ object Trees {
         shape: Array[Int])
         extends TreeApi
         with Parameter { thisParameter =>
+
       type TermIn[C <: Category] = C#ArrayTerm {
         type Element = elementType.TermIn[C]
+      }
+
+      def structuralHashCode(context: HashCodeContext): Int = {
+        context.asScala.getOrElseUpdate(
+          this, {
+            val h = context.numberOfParameters
+            context.numberOfParameters = h + 1
+
+            MurmurHash3.finalizeHash(
+              MurmurHash3.mixLast(
+                MurmurHash3.mix(
+                  MurmurHash3.mix(h, elementType.##),
+                  padding.##
+                ),
+                MurmurHash3.arrayHash(shape)
+              ),
+              3
+            )
+          }
+        )
+
       }
 
       def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
