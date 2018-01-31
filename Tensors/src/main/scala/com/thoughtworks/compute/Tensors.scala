@@ -110,7 +110,7 @@ trait Tensors extends OpenCL {
       })
   }
 
-  protected val kernelCache: Cache[ValueTerm, CompiledKernel] = kernelCacheBuilder.build()
+  protected[compute] val kernelCache: Cache[ValueTerm, CompiledKernel] = kernelCacheBuilder.build()
 
   protected implicit val executionContext: ExecutionContext
 
