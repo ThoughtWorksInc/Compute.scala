@@ -42,7 +42,7 @@ object OpenCLKernelBuilder {
 
   final case class ClTypeSymbol(firstDefinition: ClTypeDefinition, typeCode: ClTypeCode)
 
-  final class GlobalContext {
+  final class GlobalContext extends Fastring {
 
     private var seed = 0
 
@@ -56,8 +56,8 @@ object OpenCLKernelBuilder {
       name
     }
 
-    val globalDeclarations = mutable.Buffer.empty[Fastring]
-    val globalDefinitions = mutable.Buffer.empty[Fastring]
+    protected[OpenCLKernelBuilder] val globalDeclarations = mutable.Buffer.empty[Fastring]
+    protected[OpenCLKernelBuilder] val globalDefinitions = mutable.Buffer.empty[Fastring]
     private val typeSymbolCache = mutable.HashMap.empty[ClTypeDefinition, ClTypeSymbol]
 
     val floatSymbol = cachedSymbol(FloatDefinition)
@@ -73,6 +73,10 @@ object OpenCLKernelBuilder {
       typeSymbol
     }
 
+    def foreach[U](f: String => U): Unit = {
+      globalDeclarations.foreach(_.foreach(f))
+      globalDefinitions.foreach(_.foreach(f))
+    }
   }
 
 }
@@ -98,7 +102,8 @@ trait OpenCLKernelBuilder extends FloatArrays {
     val (outputParameters, outputAssignments) = outputs.map { output =>
       val outputTermCode = output.termCode
       val outputTypeCode = output.typeCode
-      val outputParameter = fast"global $outputTypeCode *output_$outputTermCode"
+      val outputId = freshName("output")
+      val outputParameter = fast"global $outputTypeCode *$outputId"
       def outputIndex(dimension: Int): Fastring = {
         if (dimension == 0) {
           fast"get_global_id(0)"
@@ -108,11 +113,11 @@ trait OpenCLKernelBuilder extends FloatArrays {
       }
 
       val index = outputIndex(numberOfDimensions - 1)
-      val outputAssignment = fast"output_$outputTermCode[$index] = $outputTermCode;\n"
+      val outputAssignment = fast"$outputId[$index] = $outputTermCode;\n"
       (outputParameter, outputAssignment)
     }.unzip
     fastraw"""
-      kernel void $functionName(${parameterDeclarations.mkFastring(", ")}, ${outputParameters.mkFastring(", ")}) {
+      kernel void $functionName(${(parameterDeclarations.view ++ outputParameters).mkFastring(", ")}) {
         ${localDefinitions.mkFastring}
         ${outputAssignments.mkFastring}
       }

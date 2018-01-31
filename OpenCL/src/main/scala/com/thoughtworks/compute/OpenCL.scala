@@ -588,13 +588,13 @@ object OpenCL {
       *       will cause memory access error.
       *
       */
-    final def toHostBuffer(implicit witnessOwner: Witness.Aux[Owner],
-                           memory: Memory[Element]): Do[memory.HostBuffer] = {
+    final def toHostBuffer(preconditionEvents: Event[Owner]*)(implicit witnessOwner: Witness.Aux[Owner],
+                                                              memory: Memory[Element]): Do[memory.HostBuffer] = {
       Do(TryT(ResourceT(UnitContinuation.delay {
         val hostBuffer = memory.allocate(length)
         Resource(value = Success(hostBuffer), release = UnitContinuation.delay { memory.free(hostBuffer) })
       }))).flatMap { hostBuffer =>
-        enqueueReadBuffer[memory.HostBuffer](hostBuffer)(witnessOwner, memory)
+        enqueueReadBuffer[memory.HostBuffer](hostBuffer, preconditionEvents: _*)(witnessOwner, memory)
           .flatMap { event =>
             Do.garbageCollected(event.waitForComplete())
           }

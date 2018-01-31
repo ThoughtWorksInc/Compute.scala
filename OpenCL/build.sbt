@@ -13,9 +13,7 @@ val lwjglNatives: String = {
 
 libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.5"
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5"
-
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5" % Test classifier lwjglNatives
+libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.5" % Test).classifier(lwjglNatives).jar()
 
 libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M8"
 

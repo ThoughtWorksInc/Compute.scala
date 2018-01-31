@@ -25,7 +25,7 @@ trait Expressions {
 
   type Term <: TermApi
 
-  protected trait TypeApi extends ExpressionApi {}
+  protected trait TypeApi extends ExpressionApi
 
   type Type <: TypeApi
 
