@@ -300,7 +300,7 @@ object Trees {
       }
     }
 
-    final case class Translate[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], offset: Int*)
+    final case class Translate[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], offset: Array[Int])
         extends TreeApi
         with Operator {
       type TermIn[C <: Category] = C#ArrayTerm {
@@ -309,12 +309,12 @@ object Trees {
 
       def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
         map.asScala
-          .getOrElseUpdate(this, array.export(foreignCategory, map).translate(offset: _*))
+          .getOrElseUpdate(this, array.export(foreignCategory, map).translate(offset))
           .asInstanceOf[TermIn[foreignCategory.type]]
       }
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = {
-        def converted = Translate(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]], offset: _*)
+        def converted = Translate(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]], offset)
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
@@ -341,8 +341,8 @@ object Trees {
           .asInstanceOf[ThisTerm]
       }
 
-      def translate(offset: Int*): ThisTerm = {
-        val translatedTree = Translate[Element](tree, offset: _*)
+      def translate(offset: Array[Int]): ThisTerm = {
+        val translatedTree = Translate[Element](tree, offset)
         array
           .parameterFactory[Element]
           .newInstance(
@@ -358,8 +358,7 @@ object Trees {
 
     final case class Fill[LocalElement <: ValueTerm](element: TreeApi {
       type TermIn[C <: Category] = LocalElement#TermIn[C]
-    }, shape: Int*)
-        extends TreeApi
+    }) extends TreeApi
         with Operator {
       type TermIn[C <: Category] = C#ArrayTerm {
         type Element = LocalElement#TermIn[C]
@@ -373,12 +372,12 @@ object Trees {
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = {
         def converted = {
-          Fill[LocalElement](element
-                               .alphaConversion(context)
-                               .asInstanceOf[TreeApi {
-                                 type TermIn[C <: Category] = LocalElement#TermIn[C]
-                               }],
-                             shape: _*)
+          Fill[LocalElement](
+            element
+              .alphaConversion(context)
+              .asInstanceOf[TreeApi {
+                type TermIn[C <: Category] = LocalElement#TermIn[C]
+              }])
         }
         context.asScala.getOrElseUpdate(this, converted)
 
@@ -413,7 +412,7 @@ object Trees {
         id: Any,
         elementType: ElementType,
         padding: Padding,
-        shape: Int*)
+        shape: Array[Int])
         extends TreeApi
         with Parameter { thisParameter =>
       type TermIn[C <: Category] = C#ArrayTerm {
@@ -428,7 +427,7 @@ object Trees {
               .parameter[Padding, elementType.TypeIn[foreignCategory.type]](id,
                                                                             elementType.in(foreignCategory),
                                                                             padding,
-                                                                            shape: _*))
+                                                                            shape))
           .asInstanceOf[TermIn[foreignCategory.type]]
 
       }
@@ -438,7 +437,7 @@ object Trees {
           val newId = new AnyRef {
             override val toString: String = raw"""α-converted(${thisParameter.toString})"""
           }
-          ArrayParameter(newId, elementType, padding, shape: _*)
+          ArrayParameter(newId, elementType, padding, shape)
         }
         context.asScala.getOrElseUpdate(this, converted)
       }
@@ -460,10 +459,10 @@ object Trees {
       def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
                                                                                    elementType: ElementType,
                                                                                    padding: Padding,
-                                                                                   shape: Int*): ArrayTerm {
+                                                                                   shape: Array[Int]): ArrayTerm {
         type Element = elementType.ThisTerm
       } = {
-        val parameterTree = ArrayParameter[Padding, elementType.type](id, elementType, padding, shape: _*)
+        val parameterTree = ArrayParameter[Padding, elementType.type](id, elementType, padding, shape)
         array
           .parameterFactory[elementType.ThisTerm]
           .newInstance(
