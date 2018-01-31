@@ -22,7 +22,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
       .newInstance(
         handleOpenCLNotification = handleOpenCLNotification,
         numberOfCommandQueuesForDevice = { (deviceId: Long, capabilities: CLCapabilities) =>
-          1
+          5
         }
       )
 
