@@ -18,3 +18,5 @@ val lwjglNatives: String = {
 }
 
 libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.5" % Test).classifier(lwjglNatives).jar()
+
+fork in Test := true
