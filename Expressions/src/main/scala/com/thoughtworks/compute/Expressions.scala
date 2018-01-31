@@ -134,7 +134,7 @@ object Expressions {
       def extract: Element
 
       @deprecated(since = "0.2.0", message = "Use [[transform]] instead.")
-      def translate(offset: Int*): ThisTerm
+      def translate(offset: Array[Int]): ThisTerm
 
       def transform(matrix: RealMatrix): ThisTerm
     }
@@ -149,7 +149,7 @@ object Expressions {
       def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
                                                                                    elementType: ElementType,
                                                                                    padding: ElementType#JvmValue,
-                                                                                   shape: Int*): ArrayTerm {
+                                                                                   shape: Array[Int]): ArrayTerm {
         type Element = elementType.ThisTerm
       }
 

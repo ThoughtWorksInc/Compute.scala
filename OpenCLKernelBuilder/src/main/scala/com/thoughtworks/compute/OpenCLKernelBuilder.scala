@@ -21,7 +21,7 @@ object OpenCLKernelBuilder {
   object ClTypeDefinition {
     private val Noop: ClTypeDefineHandler = Function.const(())
 
-    final case class ArrayDefinition(element: ClTypeDefinition, shape: Int*) extends ClTypeDefinition {
+    final case class ArrayDefinition(element: ClTypeDefinition, shape: Array[Int]) extends ClTypeDefinition {
       def define(globalContext: GlobalContext): (ClTypeCode, ClTypeDefineHandler) = {
         val elementTypeCode = globalContext.cachedSymbol(element).typeCode
         val arrayTypeCode = globalContext.freshName(raw"""${elementTypeCode}_array""")
@@ -203,7 +203,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
         .asInstanceOf[ThisTerm]
     }
 
-    def translate(offset: Int*): ThisTerm = {
+    def translate(offset: Array[Int]): ThisTerm = {
       val newMatrix = matrix.copy()
       val lastColumnIndex = newMatrix.getColumnDimension
       for (y <- 0 until newMatrix.getRowDimension) {
@@ -216,7 +216,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
     }
     val originalPadding: LocalElement#JvmValue
 
-    val originalShape: Seq[Int]
+    val originalShape: Array[Int]
 
     val matrix: RealMatrix
 
@@ -264,7 +264,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
     : Factory6[LocalElement#ThisType,
                RealMatrix,
                LocalElement#JvmValue,
-               Seq[Int],
+               Array[Int],
                ClTermCode,
                ClTypeCode,
                ArrayTerm with ArrayView[LocalElement] { type Element = LocalElement }]
@@ -274,7 +274,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
 
     val elementType: LocalElement#ThisType
     val padding: LocalElement#JvmValue
-    val shape: Seq[Int]
+    val shape: Array[Int]
 
     def transform(matrix: RealMatrix): ThisTerm = {
       if (matrix.getColumnDimension != shape.length) {
@@ -282,7 +282,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
       }
       arrayViewFactory.newInstance(elementType, matrix, padding, shape, termCode, typeCode).asInstanceOf[ThisTerm]
     }
-    def translate(offsets: Int*): ThisTerm = {
+    def translate(offsets: Array[Int]): ThisTerm = {
       if (offsets.length != shape.length) {
         throw new IllegalArgumentException
       }
@@ -318,7 +318,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
   def arrayParameterFactory[LocalElement <: ValueTerm]
     : Factory5[LocalElement#ThisType,
                LocalElement#JvmValue,
-               Seq[Int],
+               Array[Int],
                ClTermCode,
                ClTypeCode,
                ArrayTerm with ArrayParameter[LocalElement] { type Element = LocalElement }]
@@ -328,10 +328,10 @@ trait OpenCLKernelBuilder extends FloatArrays {
     def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
                                                                                  elementType: ElementType,
                                                                                  padding: Padding,
-                                                                                 shape: Int*): ArrayTerm {
+                                                                                 shape: Array[Int]): ArrayTerm {
       type Element = elementType.ThisTerm
     } = {
-      val arrayDefinition = ArrayDefinition(elementType.typeSymbol.firstDefinition, shape: _*)
+      val arrayDefinition = ArrayDefinition(elementType.typeSymbol.firstDefinition, shape)
       val arrayTypeSymbol = cachedSymbol(arrayDefinition)
       val termCode = freshName(id.toString)
       arrayParameterFactory[elementType.ThisTerm].newInstance(elementType.asInstanceOf[elementType.ThisTerm#ThisType],
@@ -352,7 +352,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
       this.asInstanceOf[ThisTerm]
     }
 
-    def translate(offset: Int*): ThisTerm = {
+    def translate(offset: Array[Int]): ThisTerm = {
       this.asInstanceOf[ThisTerm]
     }
 
