@@ -2,7 +2,7 @@ package com.thoughtworks.compute
 
 import com.dongxiguo.fastring.Fastring
 import com.thoughtworks.compute.Expressions.{Arrays, Floats}
-import com.thoughtworks.compute.OpenCLKernelBuilder.{ClTermCode, ClTypeCode, GlobalContext}
+import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
 import com.thoughtworks.compute.Trees.FloatArrayTrees
 import com.thoughtworks.feature.Factory
 import org.scalatest.{FreeSpec, Matchers}
@@ -10,7 +10,7 @@ import org.scalatest.{FreeSpec, Matchers}
 /**
   * @author 杨博 (Yang Bo)
   */
-class OpenCLExpressionsSpec extends FreeSpec with Matchers {
+class OpenCLKernelBuilderSpec extends FreeSpec with Matchers {
 
   "id" in {
     val category1 = {
