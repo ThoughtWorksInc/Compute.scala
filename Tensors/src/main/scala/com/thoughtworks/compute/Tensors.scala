@@ -26,6 +26,8 @@ import scalaz.syntax.tag._
 // TODO: Rename to VirtualTensors, like virtual-dom
 trait Tensors extends OpenCL {
 
+  def concatenate(tensors: Seq[Tensor], dimension: Int): Tensor = ???
+
   protected val trees: FloatArrayTrees with StructuralTrees { type Category = Floats with Arrays } =
     Factory[FloatArrayTrees with StructuralTrees].newInstance()
   import trees._
@@ -81,8 +83,56 @@ trait Tensors extends OpenCL {
   }
 
   sealed trait Tensor { thisTensor =>
+    def broadcast(newShape: Array[Int]): Tensor = ???
 
-//    def debuggingInformation: Implicitly[DebuggingInformation]
+    def *(rightHandSide: Tensor): Tensor = ???
+
+    def +(rightHandSide: Tensor): Tensor = ???
+
+    def translate(
+        offset: Array[Double],
+        newShape: Array[Int] = shape) /*(implicit debuggingInformation0: Implicitly[DebuggingInformation])*/: Tensor = {
+      if (offset.length != thisTensor.shape.length) {
+        throw new IllegalArgumentException
+      }
+
+      thisTensor match {
+        case thisTensor: TransformedTensor =>
+          new TransformedTensor {
+            val matrix: RealMatrix = {
+              val newMatrix = thisTensor.matrix.copy()
+              for (i <- offset.indices) {
+                newMatrix.addToEntry(i, newMatrix.getColumnDimension - 1, offset(i))
+              }
+              newMatrix
+            }
+            val checkpoint: Tensor = thisTensor.checkpoint
+            val shape: Array[Int] = thisTensor.shape
+            //          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
+            val padding: Float = thisTensor.padding
+          }
+        case _ =>
+          new TransformedTensor {
+            val checkpoint: Tensor = thisTensor
+            val shape: Array[Int] = newShape
+            //          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
+            val matrix: RealMatrix = {
+              val newMatrix = MatrixUtils.createRealMatrix(shape.length, shape.length + 1)
+              for (i <- offset.indices) {
+                newMatrix.setEntry(i, i, 1.0)
+                newMatrix.setEntry(i, newMatrix.getColumnDimension - 1, offset(i))
+              }
+              newMatrix
+            }
+
+            def padding: Float = checkpoint.padding
+          }
+      }
+    }
+
+    def split(dimension: Int): Seq[Tensor] = ???
+
+    //    def debuggingInformation: Implicitly[DebuggingInformation]
 
     def shape: Array[Int]
 
@@ -228,51 +278,6 @@ trait Tensors extends OpenCL {
   trait BufferedTensor extends Tensor {
     val closure: ValueTerm = {
       array.parameter(this, float, padding, shape).extract
-    }
-  }
-
-  def translate(previousTensor: Tensor, offset: Seq[Double]): Tensor = {
-    translate(previousTensor, offset, previousTensor.shape)
-  }
-
-  def translate(previousTensor: Tensor,
-                offset: Seq[Double],
-                newShape: Array[Int]) /*(implicit debuggingInformation0: Implicitly[DebuggingInformation])*/: Tensor = {
-    if (offset.length != previousTensor.shape.length) {
-      throw new IllegalArgumentException
-    }
-
-    previousTensor match {
-      case previousTensor: TransformedTensor =>
-        new TransformedTensor {
-          val matrix: RealMatrix = {
-            val newMatrix = previousTensor.matrix.copy()
-            for (i <- offset.indices) {
-              newMatrix.addToEntry(i, newMatrix.getColumnDimension - 1, offset(i))
-            }
-            newMatrix
-          }
-          val checkpoint: Tensor = previousTensor.checkpoint
-          val shape: Array[Int] = previousTensor.shape
-//          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
-          val padding: Float = previousTensor.padding
-        }
-      case _ =>
-        new TransformedTensor {
-          val checkpoint: Tensor = previousTensor
-          val shape: Array[Int] = newShape
-//          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
-          val matrix: RealMatrix = {
-            val newMatrix = MatrixUtils.createRealMatrix(shape.length, shape.length + 1)
-            for (i <- offset.indices) {
-              newMatrix.setEntry(i, i, 1.0)
-              newMatrix.setEntry(i, newMatrix.getColumnDimension - 1, offset(i))
-            }
-            newMatrix
-          }
-
-          def padding: Float = checkpoint.padding
-        }
     }
   }
 

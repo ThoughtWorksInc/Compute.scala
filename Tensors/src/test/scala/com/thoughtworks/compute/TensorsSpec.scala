@@ -16,8 +16,8 @@ import org.scalatest._
   * @author 杨博 (Yang Bo)
   */
 class TensorsSpec extends AsyncFreeSpec with Matchers {
-  private def doTensors: Do[Tensors] = Do.monadicCloseable(
-    Factory[
+  private def doTensors: Do[Tensors] =
+    Do.monadicCloseable(Factory[
       OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors]
       .newInstance(
         handleOpenCLNotification = handleOpenCLNotification,
@@ -48,6 +48,59 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     }
   }.run.toScalaFuture
 
+  "convolution" ignore {
+    doTensors.flatMap { tensors =>
+      import tensors.Tensor
+      import tensors.concatenate
+      def convolute(input: Tensor /* batchSize × height × width × depth */,
+                    weight: Tensor /* kernelHeight × kernelWidth × depth × filterSize */,
+                    bias: Tensor /* filterSize*/ ): Tensor = {
+        input.shape match {
+          case Array(batchSize, height, width, depth) =>
+            weight.shape match {
+              case Array(kernelHeight, kernelWidth, `depth`, filterSize) =>
+                bias.shape match {
+                  case Array(`filterSize`) =>
+                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.split(dimension = 3)
+
+                    val weightSeq: Seq[Seq[Seq[Seq[Tensor]]]] /* filterSize × kernelHeight × kernelWidth × depth */ =
+                      weight
+                        .split(dimension = 3)
+                        .map(_.split(dimension = 0).map(_.split(dimension = 0).map(_.split(dimension = 0))))
+
+                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.split(dimension = 0)
+
+                    val outputChannels: Seq[Tensor] = weightSeq.view.zip(biasSeq).map {
+                      case (weightPerFilter, biasPerFilter) =>
+                        val summands: Seq[Tensor] = for {
+                          (offsetY, weightPerRow) <- (-1 to 1).view.zip(weightPerFilter)
+                          (offsetX, weightPerPixel) <- (-1 to 1).view.zip(weightPerRow)
+                          (
+                            inputPerChannel /* batchSize × height × width */,
+                            weightPerChannel /* scalar */
+                          ) <- inputSeq.view.zip(weightPerPixel)
+                        } yield {
+                          inputPerChannel.translate(Array(0, offsetY, offsetX)) *
+                            weightPerChannel.broadcast(Array(batchSize, height, width))
+                        }
+
+                        biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
+                    }
+                    concatenate(outputChannels, dimension = 3)
+                  case _ =>
+                    throw new IllegalArgumentException
+                }
+              case _ =>
+                throw new IllegalArgumentException
+            }
+          case _ =>
+            throw new IllegalArgumentException
+        }
+      }
+
+      ??? : Do[Assertion]
+    }
+  }.run.toScalaFuture
 }
 
 object TensorsSpec {
