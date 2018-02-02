@@ -48,8 +48,8 @@ object OpenCLKernelBuilder {
 
     def freshName(prefix: String): String = {
       val encodedPrefix = prefix.map {
-        case c if c.isLetterOrDigit => c
-        case _                      => '_'
+        case c if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') => c
+        case _                                                                               => '_'
       }
       val name = raw"""${encodedPrefix}_${seed}"""
       seed += 1
