@@ -234,14 +234,18 @@ trait OpenCLKernelBuilder extends FloatArrays {
           if matrix.getEntry(y, x) != 0.0
         } yield {
           if (x < originalShape.length) {
-            // TODO: check boundary
-            fast"get_global_id($x) * ${matrix.getEntry(y, x)}"
+            matrix.getEntry(y, x) match {
+              case 1.0 =>
+                fast"get_global_id($x)"
+              case scale =>
+                fast"get_global_id($x) * $scale"
+            }
           } else {
             fast"${matrix.getEntry(y, x)}"
           }
         }
         val indexId = freshName("index")
-        indexId -> fast"size_t $indexId = ${products.mkFastring(" + ")}"
+        indexId -> fast"size_t $indexId = ${products.mkFastring(" + ")};\n"
       }).unzip
 
 //      fast"
@@ -258,7 +262,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
         fast"[$i]"
       }.mkFastring}"
       localDefinitions += fastraw"""
-        const ${elementType.typeSymbol.typeCode} $termId = (${bounds.mkFastring(" && ")}) ? $paddingCode : $dereferenceCode;
+        const ${elementType.typeSymbol.typeCode} $termId = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode;
       """
       elementType.factory.newInstance(termId, elementType.typeSymbol.typeCode).asInstanceOf[Element]
     }
@@ -282,7 +286,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
     val shape: Array[Int]
 
     def transform(matrix: RealMatrix): ThisTerm = {
-      if (matrix.getColumnDimension != shape.length) {
+      if (matrix.getRowDimension != shape.length) {
         throw new IllegalArgumentException
       }
       arrayViewFactory.newInstance(elementType, matrix, padding, shape, termCode, typeCode).asInstanceOf[ThisTerm]
