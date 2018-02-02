@@ -140,49 +140,46 @@ trait Tensors extends OpenCL {
     }
 
     lazy val enqueue: Do[PendingBuffer] = {
-      val compiledKernel = kernelCache.get(
-        closure,
-        new Callable[CompiledKernel] {
-          def call(): CompiledKernel = {
+      val compiledKernel = kernelCache.getIfPresent(closure) match {
+        case null =>
+          val alphConversionContext = new AlphaConversionContext
+          val convertedTree = closure.tree.alphaConversion(alphConversionContext)
+          val loader = new Callable[CompiledKernel] {
+            def call(): CompiledKernel = {
+              val sourceCode = {
+                val globalContext = new GlobalContext
+                val functionContext = Factory[OpenCLKernelBuilder].newInstance(globalContext)
 
-            val alphConversionContext = new AlphaConversionContext
-            val convertedTree = closure.tree.alphaConversion(alphConversionContext)
+                val exportContext = new ExportContext
+                val kernelBody = convertedTree.export(functionContext, exportContext).asInstanceOf[functionContext.Term]
 
-            val sourceCode = {
-              val globalContext = new GlobalContext
-              val functionContext = Factory[OpenCLKernelBuilder].newInstance(globalContext)
-
-              val exportContext = new ExportContext
-              val kernelBody = convertedTree.export(functionContext, exportContext).asInstanceOf[functionContext.Term]
-
-              val kernelParameters = upvalues(closure.tree).map { upvalue: Parameter =>
-                exportContext.get(alphConversionContext.get(upvalue)).asInstanceOf[functionContext.Term]
-              }
-              fastraw"""
+                val kernelParameters = upvalues(closure.tree).map { upvalue: Parameter =>
+                  exportContext.get(alphConversionContext.get(upvalue)).asInstanceOf[functionContext.Term]
+                }
+                fastraw"""
               $globalContext
               ${functionContext.generateKernelSourceCode("jit_kernel", shape.length, kernelParameters, Seq(kernelBody))}
               """
-            }
+              }
 
-            val program = createProgramWithSource(sourceCode)
-            program.build()
+              val program = createProgramWithSource(sourceCode)
+              program.build()
 
-            val compiledKernel = new CompiledKernel {
+              val compiledKernel = new CompiledKernel {
 
-              def monadicClose: UnitContinuation[Unit] = program.monadicClose
+                def monadicClose: UnitContinuation[Unit] = program.monadicClose
 
-              def run(upvalues: List[Parameter]): Do[PendingBuffer] = {
-                // TODO: Manage life cycle of upvalues more delicately
-                // e.g. a buffer should be release as soon as possible if it is a dependency of another buffer,
-                // e.g. however, it can be hold longer time if it is dependencies of many other buffers.
+                def run(upvalues: List[Parameter]): Do[PendingBuffer] = {
+                  // TODO: Manage life cycle of upvalues more delicately
+                  // e.g. a buffer should be release as soon as possible if it is a dependency of another buffer,
+                  // e.g. however, it can be hold longer time if it is dependencies of many other buffers.
 
-                upvalues
-                  .traverse[ParallelDo, PendingBuffer] { tree =>
-                    Parallel(tree.asInstanceOf[Parameter].id.asInstanceOf[Tensor].enqueue)
-                  }
-                  .unwrap
-                  .intransitiveFlatMap {
-                    arguments: List[PendingBuffer] =>
+                  upvalues
+                    .traverse[ParallelDo, PendingBuffer] { tree =>
+                      Parallel(tree.id.asInstanceOf[Tensor].enqueue)
+                    }
+                    .unwrap
+                    .intransitiveFlatMap { arguments: List[PendingBuffer] =>
                       Do.monadicCloseable(program.createFirstKernel()).intransitiveFlatMap { kernel: Kernel =>
                         allocateBuffer[Float](shape.product).flatMap { outputBuffer =>
                           for ((arugment, i) <- arguments.view.zipWithIndex) {
@@ -197,15 +194,17 @@ trait Tensors extends OpenCL {
                           }
                         }
                       }
-                  }
+                    }
 
+                }
               }
+              compiledKernel
             }
-            kernelCache.put(float.factory.newInstance(convertedTree.asInstanceOf[float.Tree]), compiledKernel)
-            compiledKernel
           }
-        }
-      )
+          kernelCache.get(float.factory.newInstance(convertedTree.asInstanceOf[float.Tree]), loader)
+        case compiledKernel =>
+          compiledKernel
+      }
 
       compiledKernel.run(upvalues(closure.tree)).shared
     }

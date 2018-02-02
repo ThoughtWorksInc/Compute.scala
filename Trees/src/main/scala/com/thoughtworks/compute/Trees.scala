@@ -72,7 +72,41 @@ trait Trees extends Expressions {
       }
     }
 
+    private def isSameChild(left: Any, right: Any, map: StructuralComparisonContext): Boolean = {
+      left match {
+        case left: TreeApi =>
+          right match {
+            case right: TreeApi =>
+              left.isSameStructure(right, map)
+            case _ =>
+              false
+          }
+        case left: Array[_] =>
+          right match {
+            case right: Array[_] =>
+              val leftLength = left.length
+              val rightLength = right.length
+              @tailrec def arrayLoop(start: Int): Boolean = {
+                if (start < leftLength) {
+                  if (isSameChild(left(start), right(start), map)) {
+                    arrayLoop(start + 1)
+                  } else {
+                    false
+                  }
+                } else {
+                  true
+                }
+              }
+              leftLength == rightLength && arrayLoop(0)
+            case _ =>
+              false
+          }
+        case _ =>
+          left == right
+      }
+    }
     def isSameStructure(that: TreeApi, map: StructuralComparisonContext): Boolean = {
+
       map.get(this) match {
         case null =>
           this.getClass == that.getClass && {
@@ -80,28 +114,18 @@ trait Trees extends Expressions {
             map.put(this, that)
             val productArity: Int = this.productArity
             @tailrec
-            def sameFields(start: Int = 0): Boolean = {
-              if (start < productArity) {
-                productElement(start) match {
-                  case left: TreeApi =>
-                    that.productElement(start) match {
-                      case right: TreeApi =>
-                        if (left.isSameStructure(right, map)) {
-                          sameFields(start = start + 1)
-                        } else {
-                          false
-                        }
-                      case _ =>
-                        false
-                    }
-                  case _ =>
-                    false
+            def fieldLoop(from: Int): Boolean = {
+              if (from < productArity) {
+                if (isSameChild(this.productElement(from), that.productElement(from), map)) {
+                  fieldLoop(from + 1)
+                } else {
+                  false
                 }
               } else {
                 true
               }
             }
-            sameFields()
+            fieldLoop(0)
           }
         case existing =>
           existing eq that
@@ -113,15 +137,6 @@ trait Trees extends Expressions {
 
     val id: Any
 
-    def isSameStructure(that: TreeApi, map: StructuralComparisonContext): Boolean = {
-      map.get(this) match {
-        case null =>
-          map.put(this, that)
-          true
-        case existing =>
-          existing eq that
-      }
-    }
   }
 
   final class HashCodeContext extends IdentityHashMap[TreeApi, Int] {
@@ -246,6 +261,15 @@ object Trees {
 
     final case class FloatParameter(id: Any) extends TreeApi with Parameter { thisParameter =>
       type TermIn[C <: Category] = C#FloatTerm
+      def isSameStructure(that: TreeApi, map: StructuralComparisonContext): Boolean = {
+        map.get(this) match {
+          case null =>
+            map.put(this, that)
+            true
+          case existing =>
+            existing eq that
+        }
+      }
 
       def structuralHashCode(context: HashCodeContext): Int = {
         context.asScala.getOrElseUpdate(this, {
@@ -480,6 +504,23 @@ object Trees {
 
       type TermIn[C <: Category] = C#ArrayTerm {
         type Element = elementType.TermIn[C]
+      }
+
+      def isSameStructure(that: TreeApi, map: StructuralComparisonContext): Boolean = {
+        map.get(this) match {
+          case null =>
+            that match {
+              case ArrayParameter(thatId, thatElemenetType, thatPadding, thatShape)
+                  if elementType == thatElemenetType && padding == padding && java.util.Arrays.equals(shape,
+                                                                                                      thatShape) =>
+                map.put(this, that)
+                true
+              case _ =>
+                false
+            }
+          case existing =>
+            existing eq that
+        }
       }
 
       def structuralHashCode(context: HashCodeContext): Int = {
