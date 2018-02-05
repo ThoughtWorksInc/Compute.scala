@@ -66,7 +66,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         floatBuffer.get(array)
         val array3d = array.grouped(shape(2)).grouped(shape(1))
         for ((xi, i) <- array3d.zipWithIndex; (xij, j) <- xi.zipWithIndex; (xijk, k) <- xij.view.zipWithIndex) {
-          if (2 - i > 1 && 3 - j > 2 && k >= 3) {
+          if (i >= 1 && j >= 2 && 5 - k > 3) {
             xijk should be(element)
           } else {
             xijk should be(0.0f)

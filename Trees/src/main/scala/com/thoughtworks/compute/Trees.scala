@@ -3,8 +3,8 @@ package com.thoughtworks.compute
 import java.util.IdentityHashMap
 
 import com.thoughtworks.compute.Expressions.{Arrays, FloatArrays, Floats, Values}
+import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
-import org.apache.commons.math3.linear.RealMatrix
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -360,7 +360,7 @@ object Trees {
       }
     }
 
-    final case class Transform[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], matrix: RealMatrix)
+    final case class Transform[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], matrix: MatrixData)
         extends TreeApi
         with Operator {
       type TermIn[C <: Category] = C#ArrayTerm {
@@ -375,25 +375,6 @@ object Trees {
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = {
         def converted = Transform(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]], matrix)
-        context.asScala.getOrElseUpdate(this, converted)
-      }
-    }
-
-    final case class Translate[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], offset: Array[Int])
-        extends TreeApi
-        with Operator {
-      type TermIn[C <: Category] = C#ArrayTerm {
-        type Element = LocalElement#TermIn[C]
-      }
-
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
-        map.asScala
-          .getOrElseUpdate(this, array.export(foreignCategory, map).translate(offset))
-          .asInstanceOf[TermIn[foreignCategory.type]]
-      }
-
-      def alphaConversion(context: AlphaConversionContext): TreeApi = {
-        def converted = Translate(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]], offset)
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
@@ -416,19 +397,8 @@ object Trees {
         valueFactory.newInstance(Extract(tree))
       }
 
-      def transform(matrix: RealMatrix): ThisTerm = {
+      def transform(matrix: MatrixData): ThisTerm = {
         val translatedTree = Transform[Element](tree, matrix)
-        array
-          .factory[Element]
-          .newInstance(
-            translatedTree,
-            valueFactory
-          )
-          .asInstanceOf[ThisTerm]
-      }
-
-      def translate(offset: Array[Int]): ThisTerm = {
-        val translatedTree = Translate[Element](tree, offset)
         array
           .factory[Element]
           .newInstance(

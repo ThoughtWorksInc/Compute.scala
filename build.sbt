@@ -6,13 +6,13 @@ lazy val OpenCL = project.dependsOn(Memory)
 
 lazy val Benchmark = project.dependsOn(OpenCL)
 
-lazy val Expressions = project
+lazy val Expressions = project.dependsOn(NDimensionalAffineTransform)
 
 lazy val Trees = project.dependsOn(Expressions)
 
 lazy val NDimensionalAffineTransform = project
 
-lazy val OpenCLKernelBuilder = project.dependsOn(NDimensionalAffineTransform, Expressions, Trees % Test)
+lazy val OpenCLKernelBuilder = project.dependsOn(Expressions, Trees % Test)
 
 lazy val Tensors = project.dependsOn(OpenCLKernelBuilder, OpenCL, Trees)
 

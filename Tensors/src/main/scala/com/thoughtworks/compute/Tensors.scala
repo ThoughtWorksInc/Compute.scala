@@ -7,13 +7,13 @@ import com.dongxiguo.fastring.Fastring.Implicits._
 import com.google.common.cache._
 import com.thoughtworks.continuation._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats}
+import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
 import com.thoughtworks.compute.Trees.{FloatArrayTrees, StructuralTrees}
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
 import com.thoughtworks.raii.covariant._
-import org.apache.commons.math3.linear._
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
@@ -95,16 +95,13 @@ trait Tensors extends OpenCL {
       if (offset.length != thisTensor.shape.length) {
         throw new IllegalArgumentException
       }
+      val translateMatrix = NDimensionalAffineTransform.translate(offset.map(-_))
 
       thisTensor match {
         case thisTensor: TransformedTensor =>
           new TransformedTensor {
-            val matrix: RealMatrix = {
-              val newMatrix = thisTensor.matrix.copy()
-              for (i <- offset.indices) {
-                newMatrix.addToEntry(i, newMatrix.getColumnDimension - 1, offset(i))
-              }
-              newMatrix
+            val matrix: MatrixData = {
+              NDimensionalAffineTransform.concatenate(thisTensor.matrix, translateMatrix, thisTensor.shape.length)
             }
             val checkpoint: Tensor = thisTensor.checkpoint
             val shape: Array[Int] = thisTensor.shape
@@ -112,16 +109,11 @@ trait Tensors extends OpenCL {
             val padding: Float = thisTensor.padding
           }
         case _ =>
-          val newMatrix = MatrixUtils.createRealMatrix(shape.length, shape.length + 1)
-          for (i <- offset.indices) {
-            newMatrix.setEntry(i, i, 1.0)
-            newMatrix.setEntry(i, newMatrix.getColumnDimension - 1, offset(i))
-          }
           new TransformedTensor {
             def checkpoint: Tensor = thisTensor
             def shape: Array[Int] = newShape
             //          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
-            def matrix: RealMatrix = newMatrix
+            def matrix: MatrixData = translateMatrix
 
             def padding: Float = checkpoint.padding
           }
@@ -268,7 +260,7 @@ trait Tensors extends OpenCL {
       *
       * The matrix size is __number of dimensions of original tensor × number of dimensions of new tensor__.
       */
-    def matrix: RealMatrix
+    def matrix: MatrixData
 
     val closure: ValueTerm = {
       array.parameter(checkpoint, float, padding, shape).transform(matrix).extract
