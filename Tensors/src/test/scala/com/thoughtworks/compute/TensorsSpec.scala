@@ -6,7 +6,9 @@ import com.thoughtworks.feature.Factory
 import TensorsSpec._
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
+import org.lwjgl.BufferUtils
 import org.lwjgl.opencl.CLCapabilities
+import org.lwjgl.system.MemoryUtil
 
 import scalaz.syntax.all._
 import scala.language.existentials
@@ -30,9 +32,9 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     doTensors.flatMap { tensors =>
       val shape = Array(2, 3, 5)
       val element = 42.0f
-      val zeros = tensors.Tensor.fill(element, shape)
+      val filled = tensors.Tensor.fill(element, shape)
       for {
-        pendingBuffer <- zeros.enqueue
+        pendingBuffer <- filled.enqueue
         floatBuffer <- pendingBuffer.toHostBuffer
       } yield {
         for (i <- 0 until floatBuffer.capacity()) {
@@ -41,9 +43,39 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         floatBuffer.position() should be(0)
         floatBuffer.limit() should be(shape.product)
         floatBuffer.capacity() should be(shape.product)
-        tensors.kernelCache.getIfPresent(zeros.closure) should not be null
+        tensors.kernelCache.getIfPresent(filled.closure) should not be null
         val zeros2 = tensors.Tensor.fill(element, shape)
         tensors.kernelCache.getIfPresent(zeros2.closure) should not be null
+      }
+    }
+  }.run.toScalaFuture
+
+  "translate" in {
+    doTensors.flatMap { tensors =>
+      val shape = Array(2, 3, 5)
+      val element = 42.0f
+      val translated = tensors.Tensor.fill(element, shape).translate(Array(1, 2, -3))
+      for {
+        pendingBuffer <- translated.enqueue
+        floatBuffer <- pendingBuffer.toHostBuffer
+      } yield {
+
+        floatBuffer.position() should be(0)
+
+        val array = Array.ofDim[Float](shape.product)
+        floatBuffer.get(array)
+        val array3d = array.grouped(shape(2)).grouped(shape(1))
+        for ((xi, i) <- array3d.zipWithIndex; (xij, j) <- xi.zipWithIndex; (xijk, k) <- xij.view.zipWithIndex) {
+          if (2 - i > 1 && 3 - j > 2 && k >= 3) {
+            xijk should be(element)
+          } else {
+            xijk should be(0.0f)
+          }
+        }
+
+        floatBuffer.limit() should be(shape.product)
+        floatBuffer.capacity() should be(shape.product)
+
       }
     }
   }.run.toScalaFuture

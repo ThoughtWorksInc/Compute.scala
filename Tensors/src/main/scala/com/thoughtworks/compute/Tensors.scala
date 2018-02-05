@@ -73,9 +73,9 @@ trait Tensors extends OpenCL {
     }
   }
   object Tensor {
-    def fill(value: Float, shape0: Array[Int]) = {
+    def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f) = {
       new InlineTensor {
-        val padding: Float = value
+        val padding: Float = padding
         val shape: shape0.type = shape0
         val closure: trees.FloatTerm = float.literal(value)
       }
@@ -112,18 +112,16 @@ trait Tensors extends OpenCL {
             val padding: Float = thisTensor.padding
           }
         case _ =>
+          val newMatrix = MatrixUtils.createRealMatrix(shape.length, shape.length + 1)
+          for (i <- offset.indices) {
+            newMatrix.setEntry(i, i, 1.0)
+            newMatrix.setEntry(i, newMatrix.getColumnDimension - 1, offset(i))
+          }
           new TransformedTensor {
-            val checkpoint: Tensor = thisTensor
-            val shape: Array[Int] = newShape
+            def checkpoint: Tensor = thisTensor
+            def shape: Array[Int] = newShape
             //          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
-            val matrix: RealMatrix = {
-              val newMatrix = MatrixUtils.createRealMatrix(shape.length, shape.length + 1)
-              for (i <- offset.indices) {
-                newMatrix.setEntry(i, i, 1.0)
-                newMatrix.setEntry(i, newMatrix.getColumnDimension - 1, offset(i))
-              }
-              newMatrix
-            }
+            def matrix: RealMatrix = newMatrix
 
             def padding: Float = checkpoint.padding
           }
@@ -211,6 +209,8 @@ trait Tensors extends OpenCL {
               ${functionContext.generateKernelSourceCode("jit_kernel", shape.length, kernelParameters, Seq(kernelBody))}
               """
               }
+
+              sourceCode.foreach(print)
 
               val program = createProgramWithSource(sourceCode)
               program.build()
