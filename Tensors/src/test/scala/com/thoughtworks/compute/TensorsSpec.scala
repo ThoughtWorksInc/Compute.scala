@@ -14,6 +14,8 @@ import scalaz.syntax.all._
 import scala.language.existentials
 import org.scalatest._
 
+import scalaz.EphemeralStream
+
 /**
   * @author 杨博 (Yang Bo)
   */
@@ -51,34 +53,43 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
   }.run.toScalaFuture
 
   "translate" in {
-    doTensors.flatMap { tensors =>
-      val shape = Array(2, 3, 5)
-      val element = 42.0f
-      val translated = tensors.Tensor.fill(element, shape).translate(Array(1, 2, -3))
-      for {
-        pendingBuffer <- translated.enqueue
-        floatBuffer <- pendingBuffer.toHostBuffer
-      } yield {
+    import scalaz.std.anyVal._
 
-        floatBuffer.position() should be(0)
+    ((0 |=> 10): EphemeralStream[Int]).traverseU_ { i =>
 
-        val array = Array.ofDim[Float](shape.product)
-        floatBuffer.get(array)
-        val array3d = array.grouped(shape(2)).grouped(shape(1))
-        for ((xi, i) <- array3d.zipWithIndex; (xij, j) <- xi.zipWithIndex; (xijk, k) <- xij.view.zipWithIndex) {
-          if (i >= 1 && j >= 2 && 5 - k > 3) {
-            xijk should be(element)
-          } else {
-            xijk should be(0.0f)
+      locally {
+        doTensors.flatMap { tensors =>
+          val shape = Array(2, 3, 5)
+          val element = 42.0f
+          val translated = tensors.Tensor.fill(element, shape).translate(Array(1, 2, -3))
+          for {
+            pendingBuffer <- translated.enqueue
+            floatBuffer <- pendingBuffer.toHostBuffer
+          } yield {
+
+            floatBuffer.position() should be(0)
+
+            val array = Array.ofDim[Float](shape.product)
+            floatBuffer.get(array)
+            val array3d = array.grouped(shape(2)).grouped(shape(1))
+            for ((xi, i) <- array3d.zipWithIndex; (xij, j) <- xi.zipWithIndex; (xijk, k) <- xij.view.zipWithIndex) {
+              if (i >= 1 && j >= 2 && 5 - k > 3) {
+                xijk should be(element)
+              } else {
+                xijk should be(0.0f)
+              }
+            }
+
+            floatBuffer.limit() should be(shape.product)
+            floatBuffer.capacity() should be(shape.product)
+
           }
         }
-
-        floatBuffer.limit() should be(shape.product)
-        floatBuffer.capacity() should be(shape.product)
-
-      }
+      }.run
+    }.toScalaFuture.map{_:Unit =>
+      succeed
     }
-  }.run.toScalaFuture
+  }
 
   "convolution" ignore {
     doTensors.flatMap { tensors =>
