@@ -7,7 +7,26 @@ import scala.annotation.tailrec
   */
 object NDimensionalAffineTransform {
 
-  def preConcatenate(matrix01: Array[Double], matrix12: Array[Double], length0: Int): Array[Double] = {
+  type MatrixData = Array[Double]
+  type VectorData = Array[Double]
+
+  def translate(offsets: VectorData): MatrixData = {
+    val length = offsets.length
+    val matrix = Array.ofDim[Double](length * (length + 1))
+    @tailrec
+    def loop(i: Int): Unit = {
+      if (i < length) {
+        matrix(i * (length + 1) + i) = 1.0
+        matrix(i * (length + 1) + length) = offsets(i)
+        loop(i + 1)
+      }
+    }
+    loop(0)
+    matrix
+  }
+
+  @inline
+  def preConcatenate(matrix01: MatrixData, matrix12: MatrixData, length0: Int): Array[Double] = {
     val length1 = matrix01.length / (length0 + 1)
     val length2 = matrix12.length / (length1 + 1)
     val matrix02 = Array.ofDim[Double]((length0 + 1) * length2)
@@ -16,7 +35,7 @@ object NDimensionalAffineTransform {
   }
 
   @inline
-  def concatenate(matrix12: Array[Double], matrix01: Array[Double], length2: Int): Array[Double] = {
+  def concatenate(matrix12: MatrixData, matrix01: MatrixData, length2: Int): MatrixData = {
 
     val length1 = matrix12.length / length2 - 1
     val length0 = matrix01.length / length1 - 1
@@ -26,12 +45,12 @@ object NDimensionalAffineTransform {
     matrix02
   }
 
-  def concatenate(matrix01: Array[Double],
-                  matrix12: Array[Double],
-                  matrix02: Array[Double],
-                  length0: Int,
-                  length1: Int,
-                  length2: Int): Unit = {
+  private def concatenate(matrix01: MatrixData,
+                          matrix12: MatrixData,
+                          matrix02: MatrixData,
+                          length0: Int,
+                          length1: Int,
+                          length2: Int): Unit = {
 
     @tailrec
     def loop2(index2: Int): Unit = {
@@ -75,14 +94,14 @@ object NDimensionalAffineTransform {
 
   }
 
-  def transform(matrix: Array[Double], source: Array[Double]): Array[Double] = {
+  def transform(matrix: MatrixData, source: VectorData): VectorData = {
     val sourceLength = source.length
     val destination = Array.ofDim[Double](matrix.length / (sourceLength + 1))
     transform(matrix, source, destination)
     destination
   }
 
-  private def transform(matrix: Array[Double], source: Array[Double], destination: Array[Double]): Unit = {
+  private def transform(matrix: MatrixData, source: VectorData, destination: VectorData): Unit = {
     val sourceLength = source.length
     val destinationLength = destination.length
     if (matrix.length != (sourceLength + 1) * destinationLength) {

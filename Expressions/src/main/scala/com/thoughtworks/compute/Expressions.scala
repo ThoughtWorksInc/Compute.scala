@@ -2,7 +2,7 @@ package com.thoughtworks.compute
 
 import com.thoughtworks.feature.Factory.inject
 import com.thoughtworks.feature.{Factory, ImplicitApply}
-import org.apache.commons.math3.linear.RealMatrix
+import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 
 import scala.language.higherKinds
 
@@ -133,10 +133,7 @@ object Expressions {
 
       def extract: Element
 
-      @deprecated(since = "0.2.0", message = "Use [[transform]] instead.")
-      def translate(offset: Array[Int]): ThisTerm
-
-      def transform(matrix: RealMatrix): ThisTerm
+      def transform(matrix: MatrixData): ThisTerm
     }
 
     type ArrayTerm <: (Term with Any) with ArrayTermApi

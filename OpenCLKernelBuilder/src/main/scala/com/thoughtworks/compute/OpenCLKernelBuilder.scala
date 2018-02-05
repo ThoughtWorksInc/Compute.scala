@@ -3,11 +3,39 @@ package com.thoughtworks.compute
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.compute.OpenCLKernelBuilder.ClTypeDefinition._
 import com.thoughtworks.compute.Expressions.FloatArrays
+import com.thoughtworks.compute.NDimensionalAffineTransform._
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory5, Factory6, inject}
-import org.apache.commons.math3.linear.{MatrixUtils, RealMatrix}
 
 import scala.collection.mutable
 object OpenCLKernelBuilder {
+//
+//  private def transformMatrix(matrix: RealMatrix, matrix1: RealMatrix): RealMatrix = {
+//    val originalShapeSize = matrix.getColumnDimension - 1
+//    val previousShapeSize = matrix.getRowDimension
+//    val newShapeSize = matrix1.getRowDimension
+//    assert(matrix.getRowDimension == previousShapeSize)
+//    assert(matrix1.getColumnDimension == previousShapeSize + 1)
+//
+//    val newMatrix = MatrixUtils.createRealMatrix(newShapeSize, originalShapeSize + 1)
+//
+//    for (newY <- 0 until newShapeSize) {
+//      for (newX <- 0 until originalShapeSize) {
+//        var accumulator = 0.0
+//        for (previousY <- 0 until previousShapeSize) {
+//          accumulator += matrix1.getEntry(newY, previousY) * matrix.getEntry(previousY, newX)
+//        }
+//        newMatrix.setEntry(newY, newX, accumulator)
+//      }
+//      locally {
+//        var accumulator = matrix1.getEntry(newY, previousShapeSize)
+//        for (previousY <- 0 until previousShapeSize) {
+//          accumulator += matrix1.getEntry(newY, previousY) * matrix.getEntry(previousY, originalShapeSize)
+//        }
+//        newMatrix.setEntry(newY, originalShapeSize, accumulator)
+//      }
+//    }
+//    newMatrix
+//  }
 
   type ClTermCode = String
   type ClTypeCode = String
@@ -176,72 +204,40 @@ trait OpenCLKernelBuilder extends FloatArrays {
     this: ArrayTerm =>
     val elementType: LocalElement#ThisType
 
-    def transform(matrix1: RealMatrix): ThisTerm = {
-      val originalShapeSize = originalShape.length
-      val previousShapeSize = matrix.getRowDimension
-      val newShapeSize = matrix1.getRowDimension
-      assert(matrix.getColumnDimension == originalShapeSize + 1)
-      assert(matrix.getRowDimension == previousShapeSize)
-      assert(matrix1.getColumnDimension == previousShapeSize + 1)
-
-      val newMatrix = MatrixUtils.createRealMatrix(newShapeSize, originalShapeSize + 1)
-
-      for (newY <- 0 until newShapeSize) {
-        for (newX <- 0 until originalShapeSize) {
-          var accumulator = 0.0
-          for (previousY <- 0 until previousShapeSize) {
-            accumulator += matrix1.getEntry(newY, previousY) * matrix.getEntry(previousY, newX)
-          }
-          newMatrix.setEntry(newY, newX, accumulator)
-        }
-        locally {
-          var accumulator = matrix1.getEntry(newY, previousShapeSize)
-          for (previousY <- 0 until previousShapeSize) {
-            accumulator += matrix1.getEntry(newY, previousY) * matrix.getEntry(previousY, originalShapeSize)
-          }
-          newMatrix.setEntry(newY, originalShapeSize, accumulator)
-        }
-      }
-
+    def transform(matrix1: MatrixData): ThisTerm = {
+      val newMatrix: MatrixData =
+        NDimensionalAffineTransform.concatenate(matrix, matrix1, originalShape.length)
       arrayViewFactory
         .newInstance(elementType, newMatrix, originalPadding, originalShape, termCode, typeCode)
         .asInstanceOf[ThisTerm]
     }
 
-    def translate(offset: Array[Int]): ThisTerm = {
-      val newMatrix = matrix.copy()
-      val lastColumnIndex = newMatrix.getColumnDimension
-      for (y <- 0 until newMatrix.getRowDimension) {
-        newMatrix.addToEntry(y, lastColumnIndex, offset(y))
-      }
-
-      arrayViewFactory
-        .newInstance(elementType, newMatrix, originalPadding, originalShape, termCode, typeCode)
-        .asInstanceOf[ThisTerm]
-    }
     val originalPadding: LocalElement#JvmValue
 
     val originalShape: Array[Int]
 
-    val matrix: RealMatrix
+    val matrix: MatrixData
 
     def extract: Element = {
+      val numberOfRows = originalShape.length
+      val numberOfColumns = matrix.length / numberOfRows
+
       val (indices, indexDefinitions) = (for {
-        y <- 0 until matrix.getRowDimension
+        y <- 0 until numberOfRows
       } yield {
         val products = for {
-          x <- 0 until matrix.getColumnDimension
-          if matrix.getEntry(y, x) != 0.0
+          x <- 0 until numberOfColumns
+          if matrix(y * numberOfColumns + x) != 0.0
         } yield {
           if (x < originalShape.length) {
-            matrix.getEntry(y, x) match {
+            matrix(y * numberOfColumns + x) match {
               case 1.0 =>
                 fast"get_global_id($x)"
               case scale =>
                 fast"get_global_id($x) * $scale"
             }
           } else {
-            fast"${matrix.getEntry(y, x)}"
+            fast"${matrix(y * numberOfColumns + x)}"
           }
         }
         val indexId = freshName("index")
@@ -271,7 +267,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
   @inject
   def arrayViewFactory[LocalElement <: ValueTerm]
     : Factory6[LocalElement#ThisType,
-               RealMatrix,
+               MatrixData,
                LocalElement#JvmValue,
                Array[Int],
                ClTermCode,
@@ -285,21 +281,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
     val padding: LocalElement#JvmValue
     val shape: Array[Int]
 
-    def transform(matrix: RealMatrix): ThisTerm = {
-      if (matrix.getRowDimension != shape.length) {
-        throw new IllegalArgumentException
-      }
-      arrayViewFactory.newInstance(elementType, matrix, padding, shape, termCode, typeCode).asInstanceOf[ThisTerm]
-    }
-    def translate(offsets: Array[Int]): ThisTerm = {
-      if (offsets.length != shape.length) {
-        throw new IllegalArgumentException
-      }
-      val matrix = MatrixUtils.createRealMatrix(shape.length, shape.length + 1)
-      for (i <- shape.indices) {
-        matrix.setEntry(i, i, 1.0)
-        matrix.setEntry(i, shape.length, offsets(i))
-      }
+    def transform(matrix: MatrixData): ThisTerm = {
       arrayViewFactory.newInstance(elementType, matrix, padding, shape, termCode, typeCode).asInstanceOf[ThisTerm]
     }
 
@@ -357,11 +339,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
 
     def termCode: ClTermCode = extract.termCode
     def typeCode: ClTypeCode = extract.typeCode
-    def transform(matrix: RealMatrix): ThisTerm = {
-      this.asInstanceOf[ThisTerm]
-    }
-
-    def translate(offset: Array[Int]): ThisTerm = {
+    def transform(matrix: MatrixData): ThisTerm = {
       this.asInstanceOf[ThisTerm]
     }
 
