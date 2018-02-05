@@ -4,6 +4,8 @@ import java.awt.geom.AffineTransform
 
 import org.scalatest._
 
+import scala.util.Random
+
 /**
   * @author 杨博 (Yang Bo)
   */
@@ -40,8 +42,8 @@ final class NDimensionalAffineTransformSpec extends FreeSpec with Matchers {
     )
 
     checkConcatenate2D(
-      Array.fill(6)(math.random()),
-      Array.fill(6)(math.random())
+      Array.fill(6)(Random.nextInt(100).toDouble),
+      Array.fill(6)(Random.nextInt(100).toDouble)
     )
   }
 
