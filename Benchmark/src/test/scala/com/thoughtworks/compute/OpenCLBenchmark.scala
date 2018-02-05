@@ -81,7 +81,7 @@ object OpenCLBenchmark {
           kernel(1) = output
           kernel(2) = weight
           val self: this.type = this
-          kernel.enqueue(batchSize, width, height)(Witness(self)).flatMap { event =>
+          kernel.enqueue(Array[Long](batchSize, width, height))(Witness(self)).flatMap { event =>
             Do.garbageCollected(event.waitForComplete())
           }
         }

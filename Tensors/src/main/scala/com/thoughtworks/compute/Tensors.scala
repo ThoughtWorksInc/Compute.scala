@@ -270,12 +270,15 @@ trait Tensors extends OpenCL {
                             kernel(i) = arugment.buffer
                           }
                           kernel(arguments.length) = outputBuffer
-                          kernel.enqueue(shape.view.map(_.toLong): _*).map { event0 =>
-                            new PendingBuffer {
-                              val event: Event = event0
-                              val buffer: DeviceBuffer[Float] = outputBuffer
+                          kernel
+                            .enqueue(globalWorkSize = shape.view.map(_.toLong),
+                                     waitingEvents = arguments.view.map(_.event.handle))
+                            .map { event0 =>
+                              new PendingBuffer {
+                                val event: Event = event0
+                                val buffer: DeviceBuffer[Float] = outputBuffer
+                              }
                             }
-                          }
                         }
                       }
                     }
