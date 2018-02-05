@@ -315,7 +315,7 @@ object OpenCL {
 
   }
 
-  trait UseAllGpuDevice {
+  trait UseAllGpuDevices {
 
     protected val platformId: Long
 
@@ -346,7 +346,7 @@ object OpenCL {
     }
   }
 
-  trait UseAllCpuDevice {
+  trait UseAllCpuDevices {
 
     protected val platformId: Long
 
