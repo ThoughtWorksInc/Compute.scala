@@ -69,7 +69,15 @@ trait Tensors extends OpenCL {
     def buffer: DeviceBuffer[Float]
 
     def toHostBuffer = {
-      buffer.toHostBuffer(event)
+      // We want to read buffer after `event` complete.
+      // According to OpenCL's specification, we should pass the `event` as an `event_wait_list` to `clEnqueueReadBuffer`.
+      // Unfortunately it seems not work on AMD SDK
+      // buffer.toHostBuffer(event)
+      //
+      // Instead, we have to wait the event then call `clEnqueueReadBuffer`:
+      Do.garbageCollected(event.waitForComplete()) >> buffer.toHostBuffer(event)
+
+      // TODO: find other solution instead of this workaround
     }
   }
   object Tensor {
