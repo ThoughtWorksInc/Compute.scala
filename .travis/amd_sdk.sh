@@ -12,7 +12,8 @@ POSTID_STRING='name="post_id"'
 NONCE2_STRING='name="amd_developer_central_nonce"'
 
 #For newest FORM=`wget -qO - $URL | sed -n '/download-2/,/64-bit/p'`
-FORM=`wget -qO - $URL | sed -n '/download-5/,/64-bit/p'`
+#For older FORM=`wget -qO - $URL | sed -n '/download-5/,/64-bit/p'`
+FORM=`wget -qO - $URL | sed -n '/download-2/,/64-bit/p'`
 
 # Get nonce from form
 NONCE1=`echo $FORM | awk -F ${NONCE1_STRING} '{print $2}'`
