@@ -89,19 +89,37 @@ trait Tensors extends OpenCL {
 
     def +(rightHandSide: Tensor): Tensor = ???
 
-    def translate(
-        offset: Array[Double],
-        newShape: Array[Int] = shape) /*(implicit debuggingInformation0: Implicitly[DebuggingInformation])*/: Tensor = {
+    def scale(newShape: Array[Int]): Tensor = {
+      val length = newShape.length
+      if (length != shape.length) {
+        throw new IllegalArgumentException
+      }
+      val matrix1 = Array.ofDim[Double](length * (length + 1))
+      @tailrec
+      def loop(i: Int): Unit = {
+        if (i < length) {
+          matrix1(i * (length + 1) + i) = shape(i).toDouble / newShape(i)
+          loop(i + 1)
+        }
+      }
+      loop(0)
+      transform(newShape, matrix1)
+    }
+
+    def translate(offset: Array[Double], newShape: Array[Int] = shape): Tensor = {
       if (offset.length != thisTensor.shape.length) {
         throw new IllegalArgumentException
       }
       val translateMatrix = NDimensionalAffineTransform.translate(offset.map(-_))
+      transform(newShape, translateMatrix)
+    }
 
+    private def transform(newShape: Array[Int], matrix1: MatrixData): TransformedTensor = {
       thisTensor match {
         case thisTensor: TransformedTensor =>
           new TransformedTensor {
             val matrix: MatrixData = {
-              NDimensionalAffineTransform.concatenate(thisTensor.matrix, translateMatrix, thisTensor.shape.length)
+              NDimensionalAffineTransform.concatenate(thisTensor.matrix, matrix1, thisTensor.shape.length)
             }
             val checkpoint: Tensor = thisTensor.checkpoint
             val shape: Array[Int] = thisTensor.shape
@@ -111,9 +129,11 @@ trait Tensors extends OpenCL {
         case _ =>
           new TransformedTensor {
             def checkpoint: Tensor = thisTensor
+
             def shape: Array[Int] = newShape
+
             //          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
-            def matrix: MatrixData = translateMatrix
+            def matrix: MatrixData = matrix1
 
             def padding: Float = checkpoint.padding
           }
