@@ -2,7 +2,7 @@ package com.thoughtworks.compute
 
 import scala.collection.JavaConverters._
 import java.nio.{ByteBuffer, IntBuffer}
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, Executors}
 import java.util.concurrent.atomic.AtomicReference
 
 import org.lwjgl.opencl._
@@ -379,6 +379,16 @@ object OpenCL {
 
   trait GlobalExecutionContext extends HandleEventInExecutionContext {
     val executionContext: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
+  }
+
+  trait SingleThreadExecutionContext extends HandleEventInExecutionContext {
+    val executionContext = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
+
+    override def monadicClose: UnitContinuation[Unit] = {
+      super.monadicClose.map { _: Unit =>
+        executionContext.shutdown()
+      }
+    }
   }
 
   object CommandQueuePool {

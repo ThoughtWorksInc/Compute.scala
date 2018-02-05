@@ -19,14 +19,14 @@ import org.scalatest._
   */
 class TensorsSpec extends AsyncFreeSpec with Matchers {
   private def doTensors: Do[Tensors] =
-    Do.monadicCloseable(Factory[
-      OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors]
-      .newInstance(
-        handleOpenCLNotification = handleOpenCLNotification,
-        numberOfCommandQueuesForDevice = { (deviceId: Long, capabilities: CLCapabilities) =>
-          5
-        }
-      ))
+    Do.monadicCloseable(
+      Factory[OpenCL.SingleThreadExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors]
+        .newInstance(
+          handleOpenCLNotification = handleOpenCLNotification,
+          numberOfCommandQueuesForDevice = { (deviceId: Long, capabilities: CLCapabilities) =>
+            5
+          }
+        ))
 
   "create a tensor of a constant" in {
     doTensors.flatMap { tensors =>
