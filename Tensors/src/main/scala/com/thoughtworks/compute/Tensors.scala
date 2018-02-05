@@ -83,7 +83,29 @@ trait Tensors extends OpenCL {
   }
 
   sealed trait Tensor { thisTensor =>
-    def broadcast(newShape: Array[Int]): Tensor = ???
+    def broadcast(newShape: Array[Int]): Tensor = {
+      val newLength = newShape.length
+      val length = shape.length
+      val matrix1 = Array.ofDim[Double]((newLength + 1) * length)
+
+      @tailrec
+      def loop(i: Int): Unit = {
+        if (i < length) {
+          shape(i) match {
+            case di if di == newShape(i) =>
+              matrix1(i * (length + 1) + i) = 1.0
+            case 1 =>
+            case _ =>
+              throw new IllegalArgumentException(
+                raw"""Cannot broadcast ${shape.mkString("[", ",", "]")} to ${newShape.mkString("[", ",", "]")}""")
+          }
+          loop(i + 1)
+        }
+      }
+      loop(0)
+
+      transform(newShape, matrix1)
+    }
 
     def *(rightHandSide: Tensor): Tensor = ???
 
