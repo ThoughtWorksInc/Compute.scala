@@ -15,6 +15,17 @@ object NDimensionalAffineTransform {
     matrix02
   }
 
+  @inline
+  def concatenate(matrix12: Array[Double], matrix01: Array[Double], length2: Int): Array[Double] = {
+
+    val length1 = matrix12.length / length2 - 1
+    val length0 = matrix01.length / length1 - 1
+
+    val matrix02 = Array.ofDim[Double]((length0 + 1) * length2)
+    concatenate(matrix01, matrix12, matrix02, length0, length1, length2)
+    matrix02
+  }
+
   def concatenate(matrix01: Array[Double],
                   matrix12: Array[Double],
                   matrix02: Array[Double],
