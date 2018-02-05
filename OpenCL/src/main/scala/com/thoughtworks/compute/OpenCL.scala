@@ -641,18 +641,23 @@ object OpenCL {
       }
     }
 
-    def enqueue(globalWorkSize: Long*)(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
+    def enqueue(globalWorkSize: Seq[Long], waitingEvents: Seq[Long] = Array.empty[Long])(
+        implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
       witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
         Do.monadicCloseable {
           val stack = stackPush()
           val outputEvent = try {
-            val inputEventBuffer = null
             val outputEventBuffer = stack.pointers(0L)
+            val inputEventBuffer = if (waitingEvents.isEmpty) {
+              null
+            } else {
+              stack.pointers(waitingEvents: _*)
+            }
             checkErrorCode(
               clEnqueueNDRangeKernel(
                 commandQueue,
                 handle,
-                globalWorkSize.size,
+                globalWorkSize.length,
                 null,
                 stack.pointers(globalWorkSize: _*),
                 null,
