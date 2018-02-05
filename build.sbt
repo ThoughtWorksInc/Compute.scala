@@ -10,7 +10,9 @@ lazy val Expressions = project
 
 lazy val Trees = project.dependsOn(Expressions)
 
-lazy val OpenCLKernelBuilder = project.dependsOn(Expressions, Trees % Test)
+lazy val NDimensionalAffineTransform = project
+
+lazy val OpenCLKernelBuilder = project.dependsOn(NDimensionalAffineTransform, Expressions, Trees % Test)
 
 lazy val Tensors = project.dependsOn(OpenCLKernelBuilder, OpenCL, Trees)
 
