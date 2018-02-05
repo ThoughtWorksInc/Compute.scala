@@ -244,8 +244,6 @@ trait Tensors extends OpenCL {
               """
               }
 
-              sourceCode.foreach(print)
-
               val program = createProgramWithSource(sourceCode)
               program.build()
 
