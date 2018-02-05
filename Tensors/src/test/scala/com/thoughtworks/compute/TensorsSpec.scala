@@ -61,7 +61,8 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         doTensors.flatMap { tensors =>
           val shape = Array(2, 3, 5)
           val element = 42.0f
-          val translated = tensors.Tensor.fill(element, shape).translate(Array(1, 2, -3))
+          val padding = 99.0f
+          val translated = tensors.Tensor.fill(element, shape, padding = padding).translate(Array(1, 2, -3))
           for {
             pendingBuffer <- translated.enqueue
             floatBuffer <- pendingBuffer.toHostBuffer
@@ -76,7 +77,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
               if (i >= 1 && j >= 2 && 5 - k > 3) {
                 xijk should be(element)
               } else {
-                xijk should be(0.0f)
+                xijk should be(padding)
               }
             }
 
