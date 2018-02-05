@@ -74,8 +74,9 @@ trait Tensors extends OpenCL {
   }
   object Tensor {
     def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f) = {
+      val padding0 = padding
       new InlineTensor {
-        val padding: Float = padding
+        val padding: Float = padding0
         val shape: shape0.type = shape0
         val closure: trees.FloatTerm = float.literal(value)
       }
