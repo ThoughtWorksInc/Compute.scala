@@ -19,10 +19,7 @@ lazy val Tensors = project.dependsOn(OpenCLKernelBuilder, OpenCL, Trees)
 val defaultCrossTypeLevelScalaVersions = Seq(
   // "2.12.4-bin-typelevel-4" // Disabled due to https://github.com/typelevel/scala/issues/176
 )
-
-// Disable Scala 2.11 for now due to https://github.com/ThoughtWorksInc/Compute.scala/issues/21
-val crossLightbendScalaVersions = Seq("2.12.4")
-// val crossLightbendScalaVersions = Seq("2.11.12", "2.12.4")
+val crossLightbendScalaVersions = Seq("2.11.12", "2.12.4")
 
 crossScalaVersions in ThisBuild := {
   crossLightbendScalaVersions ++
