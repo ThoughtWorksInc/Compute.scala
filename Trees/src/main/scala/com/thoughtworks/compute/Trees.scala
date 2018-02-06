@@ -2,7 +2,7 @@ package com.thoughtworks.compute
 
 import java.util.IdentityHashMap
 
-import com.thoughtworks.compute.Expressions.{Arrays, FloatArrays, Floats, Values}
+import com.thoughtworks.compute.Expressions.{Pointers, FloatPointers, Floats, Values}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
 
@@ -457,58 +457,60 @@ object Trees {
   /**
     * @author 杨博 (Yang Bo)
     */
-  trait ArrayTrees extends Arrays with ValueTrees {
+  trait PointerTrees extends Pointers with ValueTrees {
 
-    type ArrayTree[LocalElement <: ValueTerm] = TreeApi {
-      type TermIn[C <: Category] = C#ArrayTerm {
+    type PointerTree[LocalElement <: ValueTerm] = TreeApi {
+      type TermIn[C <: Category] = C#PointerTerm {
         type Element = LocalElement#TermIn[C]
       }
     }
 
-    final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends TreeApi with Operator {
+    final case class Extract[LocalElement <: ValueTerm](pointer: PointerTree[LocalElement])
+        extends TreeApi
+        with Operator {
       def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
         map.asScala
-          .getOrElseUpdate(this, array.export(foreignCategory, map).extract)
+          .getOrElseUpdate(this, pointer.export(foreignCategory, map).extract)
           .asInstanceOf[TermIn[foreignCategory.type]]
       }
       type TermIn[C <: Category] = LocalElement#TermIn[C]
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = {
-        def converted = copy(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
+        def converted = copy(pointer.alphaConversion(context).asInstanceOf[PointerTree[LocalElement]])
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
-    final case class Transform[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], matrix: MatrixData)
+    final case class Transform[LocalElement <: ValueTerm](pointer: PointerTree[LocalElement], matrix: MatrixData)
         extends TreeApi
         with Operator {
-      type TermIn[C <: Category] = C#ArrayTerm {
+      type TermIn[C <: Category] = C#PointerTerm {
         type Element = LocalElement#TermIn[C]
       }
 
       def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
         map.asScala
-          .getOrElseUpdate(this, array.export(foreignCategory, map).transform(matrix))
+          .getOrElseUpdate(this, pointer.export(foreignCategory, map).transform(matrix))
           .asInstanceOf[TermIn[foreignCategory.type]]
       }
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = {
-        def converted = copy(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]], matrix)
+        def converted = copy(pointer.alphaConversion(context).asInstanceOf[PointerTree[LocalElement]], matrix)
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
-    protected trait ArrayTermApi extends super.ArrayTermApi with TermApi { thisArray: ArrayTerm =>
+    protected trait PointerTermApi extends super.PointerTermApi with TermApi { thisPointer: PointerTerm =>
 
       def alphaConversion: ThisTerm = {
-        array
+        pointer
           .factory[Element]
           .newInstance(tree.alphaConversion(new AlphaConversionContext).asInstanceOf[Tree], valueFactory)
           .asInstanceOf[ThisTerm]
       }
 
       val valueFactory: Factory1[TreeApi {
-                                   type TermIn[C <: Category] = thisArray.Element#TermIn[C]
+                                   type TermIn[C <: Category] = thisPointer.Element#TermIn[C]
                                  },
                                  Element]
 
@@ -518,7 +520,7 @@ object Trees {
 
       def transform(matrix: MatrixData): ThisTerm = {
         val translatedTree = Transform[Element](tree, matrix)
-        array
+        pointer
           .factory[Element]
           .newInstance(
             translatedTree,
@@ -529,13 +531,13 @@ object Trees {
 
     }
 
-    type ArrayTerm <: (Term with Any) with ArrayTermApi
+    type PointerTerm <: (Term with Any) with PointerTermApi
 
     final case class Fill[LocalElement <: ValueTerm](element: TreeApi {
       type TermIn[C <: Category] = LocalElement#TermIn[C]
     }) extends TreeApi
         with Operator {
-      type TermIn[C <: Category] = C#ArrayTerm {
+      type TermIn[C <: Category] = C#PointerTerm {
         type Element = LocalElement#TermIn[C]
       }
 
@@ -559,15 +561,15 @@ object Trees {
       }
     }
 
-    protected trait ValueTermApi extends super[Arrays].ValueTermApi with super[ValueTrees].ValueTermApi with TermApi {
+    protected trait ValueTermApi extends super[Pointers].ValueTermApi with super[ValueTrees].ValueTermApi with TermApi {
       thisValue: ValueTerm =>
 
-      def fill: ArrayTerm {
+      def fill: PointerTerm {
         type Element = thisValue.ThisTerm
       } = {
         val fillTree = Fill[thisValue.ThisTerm](
           tree.asInstanceOf[TreeApi { type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C] }])
-        array
+        pointer
           .factory[ThisTerm]
           .newInstance(
             fillTree,
@@ -583,7 +585,7 @@ object Trees {
 
     type ValueTerm <: (Term with Any) with ValueTermApi
 
-    final case class ArrayParameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](
+    final case class PointerParameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](
         id: Any,
         elementType: ElementType,
         padding: Padding,
@@ -591,7 +593,7 @@ object Trees {
         extends TreeApi
         with Parameter { thisParameter =>
 
-      type TermIn[C <: Category] = C#ArrayTerm {
+      type TermIn[C <: Category] = C#PointerTerm {
         type Element = elementType.TermIn[C]
       }
 
@@ -599,7 +601,7 @@ object Trees {
         map.get(this) match {
           case null =>
             that match {
-              case ArrayParameter(thatId, thatElemenetType, thatPadding, thatShape)
+              case PointerParameter(thatId, thatElemenetType, thatPadding, thatShape)
                   if elementType == thatElemenetType && padding == padding && java.util.Arrays.equals(shape,
                                                                                                       thatShape) =>
                 map.put(this, that)
@@ -637,7 +639,7 @@ object Trees {
         map.asScala
           .getOrElseUpdate(
             this,
-            foreignCategory.array
+            foreignCategory.pointer
               .parameter[Padding, elementType.TypeIn[foreignCategory.type]](id,
                                                                             elementType.in(foreignCategory),
                                                                             padding,
@@ -651,48 +653,48 @@ object Trees {
           val newId = new AnyRef {
             override val toString: String = raw"""α-converted(${thisParameter.toString})"""
           }
-          ArrayParameter(newId, elementType, padding, shape)
+          PointerParameter(newId, elementType, padding, shape)
         }
         context.asScala.getOrElseUpdate(this, converted)
       }
 
     }
 
-    protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
+    protected trait PointerCompanionApi extends super.PointerCompanionApi {
 
       @inject def factory[LocalElement <: ValueTerm]
-        : Factory2[ArrayTree[LocalElement],
+        : Factory2[PointerTree[LocalElement],
                    Factory1[TreeApi {
                               type TermIn[C <: Category] = LocalElement#TermIn[C]
                             },
                             LocalElement],
-                   ArrayTerm {
+                   PointerTerm {
                      type Element = LocalElement
                    }]
 
       def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
                                                                                    elementType: ElementType,
                                                                                    padding: Padding,
-                                                                                   shape: Array[Int]): ArrayTerm {
+                                                                                   shape: Array[Int]): PointerTerm {
         type Element = elementType.ThisTerm
       } = {
-        val parameterTree = ArrayParameter[Padding, elementType.type](id, elementType, padding, shape)
-        array
+        val parameterTree = PointerParameter[Padding, elementType.type](id, elementType, padding, shape)
+        pointer
           .factory[elementType.ThisTerm]
           .newInstance(
-            parameterTree.asInstanceOf[ArrayTree[elementType.ThisTerm]],
+            parameterTree.asInstanceOf[PointerTree[elementType.ThisTerm]],
             elementType.factory
           )
       }
 
     }
 
-    type ArrayCompanion <: ArrayCompanionApi
+    type PointerCompanion <: PointerCompanionApi
   }
 
   /**
     * @author 杨博 (Yang Bo)
     */
-  trait FloatArrayTrees extends ArrayTrees with FloatTrees with FloatArrays
+  trait FloatPointerTrees extends PointerTrees with FloatTrees with FloatPointers
 
 }

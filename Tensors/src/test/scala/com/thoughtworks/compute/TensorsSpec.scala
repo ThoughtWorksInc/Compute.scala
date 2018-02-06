@@ -59,9 +59,9 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         floatBuffer <- pendingBuffer.toHostBuffer
       } yield {
         floatBuffer.position() should be(0)
-        val array = Array.ofDim[Float](shape.product)
-        floatBuffer.get(array)
-        val array3d = array.grouped(shape(2)).grouped(shape(1))
+        val pointer = Array.ofDim[Float](shape.product)
+        floatBuffer.get(pointer)
+        val array3d = pointer.grouped(shape(2)).grouped(shape(1))
         for ((xi, i) <- array3d.zipWithIndex; (xij, j) <- xi.zipWithIndex; (xijk, k) <- xij.view.zipWithIndex) {
           if (i >= 1 && j >= 2 && 5 - k > 3) {
             xijk should be(element)
