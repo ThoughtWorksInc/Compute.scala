@@ -119,22 +119,22 @@ object Expressions {
   /**
     * @author 杨博 (Yang Bo)
     */
-  trait Arrays extends Values {
-    type Category >: this.type <: Arrays
+  trait Pointers extends Values {
+    type Category >: this.type <: Pointers
 
     protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
 
       // TODO: Remove this method
-      def fill: ArrayTerm {
+      def fill: PointerTerm {
         type Element = thisValue.ThisTerm
       }
     }
 
     override type ValueTerm <: (Term with Any) with ValueTermApi
 
-    protected trait ArrayTermApi extends TermApi { thisArray: ArrayTerm =>
-      type TermIn[C <: Category] = C#ArrayTerm {
-        type Element = thisArray.Element#TermIn[C]
+    protected trait PointerTermApi extends TermApi { thisPointer: PointerTerm =>
+      type TermIn[C <: Category] = C#PointerTerm {
+        type Element = thisPointer.Element#TermIn[C]
       }
 
       type Element <: ValueTerm
@@ -144,31 +144,31 @@ object Expressions {
       def transform(matrix: MatrixData): ThisTerm
     }
 
-    type ArrayTerm <: (Term with Any) with ArrayTermApi
+    type PointerTerm <: (Term with Any) with PointerTermApi
 
     @inject
-    val array: Implicitly[ArrayCompanion]
+    val pointer: Implicitly[PointerSingleton]
 
-    protected trait ArrayCompanionApi {
+    protected trait PointerSingletonApi {
 
       def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
                                                                                    elementType: ElementType,
                                                                                    padding: ElementType#JvmValue,
-                                                                                   shape: Array[Int]): ArrayTerm {
+                                                                                   shape: Array[Int]): PointerTerm {
         type Element = elementType.ThisTerm
       }
 
     }
 
-    type ArrayCompanion <: ArrayCompanionApi
+    type PointerSingleton <: PointerSingletonApi
 
   }
 
   /**
     * @author 杨博 (Yang Bo)
     */
-  trait FloatArrays extends Floats with Arrays {
-    type Category >: this.type <: Floats with Arrays
+  trait FloatPointers extends Floats with Pointers {
+    type Category >: this.type <: Floats with Pointers
   }
 
 }
