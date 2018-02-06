@@ -163,6 +163,25 @@ trait Tensors extends OpenCL {
       }
     }
 
+    def permute(dimensions: Array[Int]): TransformedTensor = {
+      val length = shape.length
+      if (dimensions.length != length) {
+        throw new IllegalArgumentException
+      }
+      val newShape = Array.ofDim[Int](length)
+      val matrix = Array.ofDim[Double](length * (length + 1))
+      @tailrec def loop(newDimensionIndex: Int): Unit = {
+        if (newDimensionIndex < length) {
+          val oldDimensionIndex = dimensions(newDimensionIndex)
+          newShape(newDimensionIndex) = shape(oldDimensionIndex)
+          matrix(oldDimensionIndex * (length + 1) + newDimensionIndex) = 1.0
+          loop(newDimensionIndex + 1)
+        }
+      }
+      loop(0)
+      transform(newShape, matrix)
+    }
+
     def split(dimension: Int): IndexedSeq[Tensor] = {
       // TODO: override map/reduce to produce less OpenCL C code
       new IndexedSeq[Tensor] {
