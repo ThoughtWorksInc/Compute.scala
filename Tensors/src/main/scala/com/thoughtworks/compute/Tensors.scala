@@ -108,45 +108,63 @@ trait Tensors extends OpenCL {
       transform(newShape, matrix1)
     }
 
-    private def elementWiseOperator(rightHandSide: Tensor, makeClosure: () => trees.FloatTerm): InlineTensor = {
+    private def derivedTensor(newClosure: FloatTerm): InlineTensor = {
+      new {
+        val padding: Float = thisTensor.padding
+        val shape: Array[Int] = thisTensor.shape
+        val closure: ValueTerm = newClosure
+      } with InlineTensor
+    }
+
+    def unary_- : Tensor = {
+      derivedTensor(closure.asInstanceOf[FloatTerm].unary_-)
+    }
+
+    def unary_+ : Tensor = this
+
+    def *(rightHandSide: Tensor): Tensor = {
+      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] * rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
-        new {
-          val padding: Float = thisTensor.padding
-
-          val shape: Array[Int] = thisTensor.shape
-
-          val closure: ValueTerm = {
-            makeClosure()
-          }
-        } with InlineTensor
+        derivedTensor(newClosure)
       } else {
         throw new IllegalArgumentException
       }
     }
 
-    def *(rightHandSide: Tensor): Tensor = {
-      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] * rightHandSide.closure.asInstanceOf[FloatTerm]
-      elementWiseOperator(rightHandSide, newClosure _)
-    }
-
     def +(rightHandSide: Tensor): Tensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] + rightHandSide.closure.asInstanceOf[FloatTerm]
-      elementWiseOperator(rightHandSide, newClosure _)
+      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
+        derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
     }
 
     def -(rightHandSide: Tensor): Tensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] - rightHandSide.closure.asInstanceOf[FloatTerm]
-      elementWiseOperator(rightHandSide, newClosure _)
+      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
+        derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
     }
 
     def /(rightHandSide: Tensor): Tensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] / rightHandSide.closure.asInstanceOf[FloatTerm]
-      elementWiseOperator(rightHandSide, newClosure _)
+      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
+        derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
     }
 
     def %(rightHandSide: Tensor): Tensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] % rightHandSide.closure.asInstanceOf[FloatTerm]
-      elementWiseOperator(rightHandSide, newClosure _)
+      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
+        derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
     }
 
     def scale(newShape: Array[Int]): Tensor = {
