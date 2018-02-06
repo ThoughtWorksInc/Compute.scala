@@ -8,34 +8,6 @@ import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory5, Factory6,
 
 import scala.collection.mutable
 object OpenCLKernelBuilder {
-//
-//  private def transformMatrix(matrix: RealMatrix, matrix1: RealMatrix): RealMatrix = {
-//    val originalShapeSize = matrix.getColumnDimension - 1
-//    val previousShapeSize = matrix.getRowDimension
-//    val newShapeSize = matrix1.getRowDimension
-//    assert(matrix.getRowDimension == previousShapeSize)
-//    assert(matrix1.getColumnDimension == previousShapeSize + 1)
-//
-//    val newMatrix = MatrixUtils.createRealMatrix(newShapeSize, originalShapeSize + 1)
-//
-//    for (newY <- 0 until newShapeSize) {
-//      for (newX <- 0 until originalShapeSize) {
-//        var accumulator = 0.0
-//        for (previousY <- 0 until previousShapeSize) {
-//          accumulator += matrix1.getEntry(newY, previousY) * matrix.getEntry(previousY, newX)
-//        }
-//        newMatrix.setEntry(newY, newX, accumulator)
-//      }
-//      locally {
-//        var accumulator = matrix1.getEntry(newY, previousShapeSize)
-//        for (previousY <- 0 until previousShapeSize) {
-//          accumulator += matrix1.getEntry(newY, previousY) * matrix.getEntry(previousY, originalShapeSize)
-//        }
-//        newMatrix.setEntry(newY, originalShapeSize, accumulator)
-//      }
-//    }
-//    newMatrix
-//  }
 
   type ClTermCode = String
   type ClTypeCode = String
