@@ -26,7 +26,7 @@ object NDimensionalAffineTransform {
   }
 
   @inline
-  def preConcatenate(matrix01: MatrixData, matrix12: MatrixData, length0: Int): Array[Double] = {
+  def preConcatenate(matrix01: MatrixData, matrix12: MatrixData, length0: Int): MatrixData = {
     val length1 = matrix01.length / (length0 + 1)
     val length2 = matrix12.length / (length1 + 1)
     val matrix02 = Array.ofDim[Double]((length0 + 1) * length2)
