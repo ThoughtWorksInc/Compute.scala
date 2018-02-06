@@ -209,10 +209,10 @@ trait Tensors extends OpenCL {
     *
     * @note When this [[InlineTensor]] is referenced more than one expressions,
     *       the computation for the tensor may be evaluated more than once.
-    * @see [[force]] to create a tensor that will cache the result.
+    * @see [[bufferred]] to create a tensor that will cache the result.
     */
   trait InlineTensor extends Tensor {
-    def force: BufferedTensor = {
+    def buffered: BufferedTensor = {
       new {
 //        val debuggingInformation: Implicitly[DebuggingInformation] = InlineTensor.this.debuggingInformation
         val shape: Array[Int] = InlineTensor.this.shape
