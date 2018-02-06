@@ -81,6 +81,8 @@ object Expressions {
     type ValueType <: (Type with Any) with ValueTypeApi
   }
 
+  // TODO: Boolean types
+
   /**
     * @author 杨博 (Yang Bo)
     */
