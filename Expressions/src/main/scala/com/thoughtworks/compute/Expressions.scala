@@ -94,7 +94,11 @@ object Expressions {
     }
 
     protected trait FloatTermApi extends ValueTermApi with FloatExpressionApi { this: FloatTerm =>
-
+      def +(rightHandSide: FloatTerm): FloatTerm
+      def -(rightHandSide: FloatTerm): FloatTerm
+      def *(rightHandSide: FloatTerm): FloatTerm
+      def /(rightHandSide: FloatTerm): FloatTerm
+      def %(rightHandSide: FloatTerm): FloatTerm
       def unary_- : FloatTerm
       def unary_+ : FloatTerm
     }

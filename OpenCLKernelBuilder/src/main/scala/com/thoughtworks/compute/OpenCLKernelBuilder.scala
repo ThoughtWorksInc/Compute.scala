@@ -373,6 +373,46 @@ trait OpenCLKernelBuilder extends FloatArrays {
     def unary_+ : FloatTerm = {
       float.factory.newInstance(termCode)
     }
+
+    def +(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode + ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
+
+    def -(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode - ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
+
+    def *(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode * ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
+
+    def /(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode / ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
+
+    def %(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode % ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
   }
   type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
