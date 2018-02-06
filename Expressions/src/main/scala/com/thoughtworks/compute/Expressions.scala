@@ -81,6 +81,8 @@ object Expressions {
     type ValueType <: (Type with Any) with ValueTypeApi
   }
 
+  // TODO: Boolean types
+
   /**
     * @author 杨博 (Yang Bo)
     */
@@ -94,7 +96,13 @@ object Expressions {
     }
 
     protected trait FloatTermApi extends ValueTermApi with FloatExpressionApi { this: FloatTerm =>
-
+      def +(rightHandSide: FloatTerm): FloatTerm
+      def -(rightHandSide: FloatTerm): FloatTerm
+      def *(rightHandSide: FloatTerm): FloatTerm
+      def /(rightHandSide: FloatTerm): FloatTerm
+      def %(rightHandSide: FloatTerm): FloatTerm
+      def unary_- : FloatTerm
+      def unary_+ : FloatTerm
     }
 
     type FloatTerm <: (ValueTerm with Any) with FloatTermApi

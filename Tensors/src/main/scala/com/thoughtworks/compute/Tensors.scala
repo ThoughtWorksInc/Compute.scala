@@ -108,9 +108,64 @@ trait Tensors extends OpenCL {
       transform(newShape, matrix1)
     }
 
-    def *(rightHandSide: Tensor): Tensor = ???
+    private def derivedTensor(newClosure: FloatTerm): InlineTensor = {
+      new {
+        val padding: Float = thisTensor.padding
+        val shape: Array[Int] = thisTensor.shape
+        val closure: ValueTerm = newClosure
+      } with InlineTensor
+    }
 
-    def +(rightHandSide: Tensor): Tensor = ???
+    def unary_- : Tensor = {
+      derivedTensor(closure.asInstanceOf[FloatTerm].unary_-)
+    }
+
+    def unary_+ : Tensor = this
+
+    def *(rightHandSide: Tensor): Tensor = {
+      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] * rightHandSide.closure.asInstanceOf[FloatTerm]
+      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
+        derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
+    }
+
+    def +(rightHandSide: Tensor): Tensor = {
+      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] + rightHandSide.closure.asInstanceOf[FloatTerm]
+      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
+        derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
+    }
+
+    def -(rightHandSide: Tensor): Tensor = {
+      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] - rightHandSide.closure.asInstanceOf[FloatTerm]
+      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
+        derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
+    }
+
+    def /(rightHandSide: Tensor): Tensor = {
+      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] / rightHandSide.closure.asInstanceOf[FloatTerm]
+      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
+        derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
+    }
+
+    def %(rightHandSide: Tensor): Tensor = {
+      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] % rightHandSide.closure.asInstanceOf[FloatTerm]
+      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
+        derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
+    }
 
     def scale(newShape: Array[Int]): Tensor = {
       val length = newShape.length

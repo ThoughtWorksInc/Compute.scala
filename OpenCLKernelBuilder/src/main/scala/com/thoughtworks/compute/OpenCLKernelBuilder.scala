@@ -168,7 +168,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
 
     def typeSymbol: ClTypeSymbol
 
-    @inject def factory: Factory2[ClTermCode, ClTypeCode, ThisTerm with CodeValues]
+    @inject def factory: Factory1[ClTermCode, ThisTerm]
 
   }
 
@@ -176,7 +176,6 @@ trait OpenCLKernelBuilder extends FloatArrays {
 
   protected trait FloatTypeApi extends super.FloatTypeApi with FloatExpressionApi with ValueTypeApi {
     def typeSymbol: ClTypeSymbol = floatSymbol
-
     def literal(value: Float): ThisTerm = {
       val floatString = if (value.isNaN) {
         "NAN"
@@ -189,12 +188,12 @@ trait OpenCLKernelBuilder extends FloatArrays {
       } else {
         raw"""${value}f"""
       }
-      factory.newInstance(floatString, float.typeSymbol.typeCode)
+      factory.newInstance(floatString)
     }
 
     def parameter(id: Any): ThisTerm = {
       val termSymbol = freshName(id.toString)
-      factory.newInstance(termSymbol, float.typeSymbol.typeCode)
+      factory.newInstance(termSymbol)
     }
   }
 
@@ -260,7 +259,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
       localDefinitions += fastraw"""
         const ${elementType.typeSymbol.typeCode} $termId = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode;
       """
-      elementType.factory.newInstance(termId, elementType.typeSymbol.typeCode).asInstanceOf[Element]
+      elementType.factory.newInstance(termId).asInstanceOf[Element]
     }
   }
 
@@ -301,7 +300,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
         const ${elementType.typeSymbol.typeCode} $valueTermName = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode;
       """
 
-      elementType.factory.newInstance(valueTermName, elementType.typeSymbol.typeCode).asInstanceOf[Element]
+      elementType.factory.newInstance(valueTermName).asInstanceOf[Element]
     }
   }
 
@@ -350,11 +349,71 @@ trait OpenCLKernelBuilder extends FloatArrays {
   def arrayFillFactory[LocalElement <: ValueTerm]
     : Factory1[LocalElement, ArrayTerm with ArrayFill { type Element = LocalElement }]
 
-  protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
+  protected trait ValueTermApi extends super.ValueTermApi with TermApi { thisValue: ValueTerm =>
+
+    val termCode: ClTermCode
+
     def fill: ArrayTerm { type Element = thisValue.ThisTerm } = {
       arrayFillFactory[thisValue.ThisTerm].newInstance(this.asInstanceOf[ThisTerm])
     }
   }
   type ValueTerm <: (Term with Any) with ValueTermApi
+
+  protected trait FloatTermApi extends super.FloatTermApi with ValueTermApi { this: FloatTerm =>
+    def typeCode: ClTypeCode = floatSymbol.typeCode
+
+    def unary_- : FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = -$termCode;
+      """
+      float.factory.newInstance(valueTermName)
+    }
+
+    def unary_+ : FloatTerm = {
+      float.factory.newInstance(termCode)
+    }
+
+    def +(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode + ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
+
+    def -(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode - ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
+
+    def *(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode * ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
+
+    def /(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode / ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
+
+    def %(rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const $typeCode $valueTermName = $termCode % ${rightHandSide.termCode};
+      """
+      float.factory.newInstance(valueTermName)
+    }
+  }
+  type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
 }

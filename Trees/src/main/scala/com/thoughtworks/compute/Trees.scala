@@ -148,7 +148,7 @@ trait Trees extends Expressions {
   trait TreeApi extends Product { thisTree =>
     type TermIn[C <: Category]
 
-    def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type]
+    def export(foreignCategory: Category, context: ExportContext): TermIn[foreignCategory.type]
 
     // TODO: alphaConversion
 
@@ -255,9 +255,28 @@ object Trees {
       def factory: Factory1[TreeApi { type TermIn[C <: Category] = C#FloatTerm }, ThisTerm] = {
         float.factory
       }
+
+      def unary_- : FloatTerm = factory.newInstance(UnaryMinus(tree))
+
+      def unary_+ : FloatTerm = factory.newInstance(UnaryPlus(tree))
+
+      def +(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Plus(tree, rightHandSide.tree))
+      def -(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Minus(tree, rightHandSide.tree))
+      def *(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Times(tree, rightHandSide.tree))
+      def /(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Div(tree, rightHandSide.tree))
+      def %(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Percent(tree, rightHandSide.tree))
     }
 
     type FloatTerm <: (ValueTerm with Any) with FloatTermApi
+
+    type FloatTree = TreeApi {
+      type TermIn[C <: Category] = C#FloatTerm
+    }
+
+    protected trait FloatOperatorApi extends TreeApi with Operator {
+      type TermIn[C <: Category] = C#FloatTerm
+
+    }
 
     final case class FloatParameter(id: Any) extends TreeApi with Parameter { thisParameter =>
       type TermIn[C <: Category] = C#FloatTerm
@@ -297,16 +316,116 @@ object Trees {
 
     }
 
-    final case class FloatLiteral(value: Float) extends TreeApi with Operator {
+    final case class FloatLiteral(value: Float) extends FloatOperatorApi {
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = this
 
-      type TermIn[C <: Category] = C#FloatTerm
-
-      def export(foreignCategory: Category, map: ExportContext): foreignCategory.FloatTerm = {
-        map.asScala
+      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+        context.asScala
           .getOrElseUpdate(this, foreignCategory.float.literal(value))
           .asInstanceOf[foreignCategory.FloatTerm]
+      }
+    }
+
+    final case class Plus(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
+
+      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+        context.asScala
+          .getOrElseUpdate(this, operand0.export(foreignCategory, context) + operand1.export(foreignCategory, context))
+          .asInstanceOf[foreignCategory.FloatTerm]
+      }
+
+      def alphaConversion(context: AlphaConversionContext): TreeApi = {
+        def converted =
+          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
+               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    final case class Minus(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
+      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+        context.asScala
+          .getOrElseUpdate(this, operand0.export(foreignCategory, context) - operand1.export(foreignCategory, context))
+          .asInstanceOf[foreignCategory.FloatTerm]
+      }
+
+      def alphaConversion(context: AlphaConversionContext): TreeApi = {
+        def converted =
+          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
+               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    final case class Times(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
+      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+        context.asScala
+          .getOrElseUpdate(this, operand0.export(foreignCategory, context) * operand1.export(foreignCategory, context))
+          .asInstanceOf[foreignCategory.FloatTerm]
+      }
+
+      def alphaConversion(context: AlphaConversionContext): TreeApi = {
+        def converted =
+          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
+               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    final case class Div(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
+      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+        context.asScala
+          .getOrElseUpdate(this, operand0.export(foreignCategory, context) / operand1.export(foreignCategory, context))
+          .asInstanceOf[foreignCategory.FloatTerm]
+      }
+
+      def alphaConversion(context: AlphaConversionContext): TreeApi = {
+        def converted =
+          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
+               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    final case class Percent(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
+      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+        context.asScala
+          .getOrElseUpdate(this, operand0.export(foreignCategory, context) % operand1.export(foreignCategory, context))
+          .asInstanceOf[foreignCategory.FloatTerm]
+      }
+
+      def alphaConversion(context: AlphaConversionContext): TreeApi = {
+        def converted =
+          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
+               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    final case class UnaryMinus(operand: FloatTree) extends FloatOperatorApi {
+      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+        context.asScala
+          .getOrElseUpdate(this, operand.export(foreignCategory, context).unary_-)
+          .asInstanceOf[foreignCategory.FloatTerm]
+      }
+
+      def alphaConversion(context: AlphaConversionContext): TreeApi = {
+        def converted = copy(operand.alphaConversion(context).asInstanceOf[FloatTree])
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    final case class UnaryPlus(operand: FloatTree) extends FloatOperatorApi {
+      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+        context.asScala
+          .getOrElseUpdate(this, operand.export(foreignCategory, context).unary_+)
+          .asInstanceOf[foreignCategory.FloatTerm]
+      }
+
+      def alphaConversion(context: AlphaConversionContext): TreeApi = {
+        def converted = copy(operand.alphaConversion(context).asInstanceOf[FloatTree])
+        context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
@@ -355,7 +474,7 @@ object Trees {
       type TermIn[C <: Category] = LocalElement#TermIn[C]
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = {
-        def converted = Extract(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
+        def converted = copy(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
@@ -374,7 +493,7 @@ object Trees {
       }
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = {
-        def converted = Transform(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]], matrix)
+        def converted = copy(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]], matrix)
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
