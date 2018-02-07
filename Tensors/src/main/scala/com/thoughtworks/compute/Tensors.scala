@@ -32,10 +32,10 @@ trait Tensors extends OpenCL {
     Factory[FloatArrayTrees with StructuralTrees].newInstance()
   import trees._
 
-  private def upvalues(tree: TreeApi): List[Parameter] = {
-    val traversed: java.util.Set[TreeApi] = Collections.newSetFromMap(new IdentityHashMap)
+  private def upvalues(tree: Tree): List[Parameter] = {
+    val traversed: java.util.Set[Tree] = Collections.newSetFromMap(new IdentityHashMap)
     val builder = List.newBuilder[Parameter]
-    def buildParameterList(tree: TreeApi): Unit = {
+    def buildParameterList(tree: Tree): Unit = {
       tree match {
         case tree: Parameter =>
           builder += tree
@@ -44,7 +44,7 @@ trait Tensors extends OpenCL {
           @tailrec def loop(i: Int): Unit = {
             if (i < productArity) {
               tree.productElement(i) match {
-                case child: TreeApi @unchecked =>
+                case child: Tree @unchecked =>
                   val isNew = traversed.add(tree)
                   if (isNew) {
                     buildParameterList(child)
@@ -398,7 +398,11 @@ trait Tensors extends OpenCL {
               compiledKernel
             }
           }
-          kernelCache.get(float.factory.newInstance(convertedTree.asInstanceOf[float.Tree]), loader)
+          kernelCache.get(float.factory.newInstance(
+                            convertedTree.asInstanceOf[
+                              Tree { type TermIn[C <: trees.Category] = C#FloatTerm }
+                            ]),
+                          loader)
         case compiledKernel =>
           compiledKernel
       }
