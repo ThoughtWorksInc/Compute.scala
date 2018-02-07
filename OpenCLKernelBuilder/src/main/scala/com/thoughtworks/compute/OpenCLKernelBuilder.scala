@@ -285,7 +285,7 @@ trait OpenCLKernelBuilder extends FloatPointers {
                ClTypeCode,
                PointerTerm with PointerParameter[LocalElement] { type Element = LocalElement }]
 
-  protected trait PointerSingletonApi extends super.PointerSingletonApi {
+  protected trait PointerCompanionApi extends super.PointerCompanionApi {
 
     def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
                                                                                  elementType: ElementType,
@@ -304,7 +304,7 @@ trait OpenCLKernelBuilder extends FloatPointers {
     }
   }
 
-  type PointerSingleton <: PointerSingletonApi
+  type PointerCompanion <: PointerCompanionApi
 
   protected trait PointerFill extends super.PointerTermApi with TermApi { this: PointerTerm =>
 

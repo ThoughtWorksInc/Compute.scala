@@ -147,9 +147,9 @@ object Expressions {
     type PointerTerm <: (Term with Any) with PointerTermApi
 
     @inject
-    val pointer: Implicitly[PointerSingleton]
+    val pointer: Implicitly[PointerCompanion]
 
-    protected trait PointerSingletonApi {
+    protected trait PointerCompanionApi {
 
       def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
                                                                                    elementType: ElementType,
@@ -160,7 +160,7 @@ object Expressions {
 
     }
 
-    type PointerSingleton <: PointerSingletonApi
+    type PointerCompanion <: PointerCompanionApi
 
   }
 

@@ -660,7 +660,7 @@ object Trees {
 
     }
 
-    protected trait PointerSingletonApi extends super.PointerSingletonApi {
+    protected trait PointerCompanionApi extends super.PointerCompanionApi {
 
       @inject def factory[LocalElement <: ValueTerm]
         : Factory2[PointerTree[LocalElement],
@@ -689,7 +689,7 @@ object Trees {
 
     }
 
-    type PointerSingleton <: PointerSingletonApi
+    type PointerCompanion <: PointerCompanionApi
   }
 
   /**
