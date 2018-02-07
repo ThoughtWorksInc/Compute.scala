@@ -321,7 +321,7 @@ trait Tensors extends OpenCL {
     *
     * @note When this [[InlineTensor]] is referenced more than one expressions,
     *       the computation for the tensor may be evaluated more than once.
-    * @see [[bufferred]] to create a tensor that will cache the result.
+    * @see [[buffered]] to create a tensor that will cache the result.
     */
   trait InlineTensor extends Tensor {
     def buffered: BufferedTensor = {
