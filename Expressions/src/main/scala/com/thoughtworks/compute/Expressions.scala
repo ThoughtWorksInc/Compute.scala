@@ -168,4 +168,45 @@ object Expressions {
     type Category >: this.type <: Floats with Arrays
   }
 
+  trait Tuples extends Values {
+    type Category >: this.type <: Tuples
+
+    protected trait TupleExpressionApi extends ExpressionApi { thisTuple =>
+      type Element <: ValueTerm
+      type JvmValue = Array[ValueTerm#JvmValue]
+      type TermIn[C <: Category] = C#TupleTerm {
+        type Element = thisTuple.Element#TermIn[C]
+      }
+      type TypeIn[C <: Category] = C#TupleType {
+        type Element = thisTuple.Element#TermIn[C]
+        type JvmValue = thisTuple.JvmValue
+      }
+    }
+
+    protected trait TupleTermApi extends ValueTermApi with TupleExpressionApi { this: TupleTerm =>
+      
+    }
+    type TupleTerm <: (ValueTerm with Any) with TupleTermApi
+
+    protected trait TupleTypeApi extends ValueTypeApi with TupleExpressionApi {
+
+    }
+
+    type TupleType <: (ValueType with Any) with TupleTypeApi
+
+    @inject
+    val tuple: Implicitly[TupleSingleton]
+
+    protected trait TupleSingletonApi {
+
+      def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, numberOfElements: Int): TupleTerm {
+        type Element = elementType.ThisTerm
+      }
+
+    }
+
+    type TupleSingleton <: TupleSingletonApi
+
+  }
+
 }
