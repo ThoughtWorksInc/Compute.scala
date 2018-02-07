@@ -716,11 +716,25 @@ object Trees {
 
   trait TupleTrees extends ValueTrees with Tuples {
 
+    protected trait TupleTermApi extends super[ValueTrees].ValueTermApi with super[Tuples].TupleTermApi {
+      this: TupleTerm =>
+      def split: Seq[Element] = {
+        ???
+      }
+    }
+    type TupleTerm <: (ValueTerm with Any) with TupleTermApi
+
     protected trait TupleSingletonApi extends super.TupleSingletonApi {
 
       def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, numberOfElements: Int): TupleTerm {
         type Element = elementType.ThisTerm
-      } = ???
+      } = {
+        ???
+      }
+
+      def concatenate[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 } = {
+        ???
+      }
 
     }
 
