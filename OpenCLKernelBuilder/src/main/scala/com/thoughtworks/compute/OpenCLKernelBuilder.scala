@@ -212,7 +212,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
           }
         }
         val indexId = freshName("index")
-        indexId -> fast"size_t $indexId = ${products.mkFastring(" + ")};\n"
+        indexId -> fast"ptrdiff_t $indexId = ${products.mkFastring(" + ")};\n"
       }).unzip
 
 //      fast"
