@@ -70,7 +70,9 @@ object Expressions {
     /** @template */
     type ValueTerm <: (Term with Any) with ValueTermApi
 
-    protected trait ValueTypeApi extends ValueExpressionApi {
+    protected trait ValueTypeApi extends ValueExpressionApi
+
+    protected trait ValueSingletonApi extends ValueTypeApi {
 
       def literal(value: JvmValue): ThisTerm
 
@@ -107,7 +109,7 @@ object Expressions {
 
     type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
-    protected trait FloatTypeApi extends ValueTypeApi with FloatExpressionApi {}
+    protected trait FloatTypeApi extends ValueSingletonApi with FloatExpressionApi {}
 
     type FloatType <: (ValueType with Any) with FloatTypeApi
 
