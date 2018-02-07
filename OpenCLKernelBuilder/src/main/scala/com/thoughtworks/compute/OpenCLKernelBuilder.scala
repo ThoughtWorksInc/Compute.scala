@@ -2,7 +2,7 @@ package com.thoughtworks.compute
 
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.compute.OpenCLKernelBuilder.ClTypeDefinition._
-import com.thoughtworks.compute.Expressions.FloatPointers
+import com.thoughtworks.compute.Expressions.FloatArrays
 import com.thoughtworks.compute.NDimensionalAffineTransform._
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory5, Factory6, inject}
 
@@ -21,15 +21,15 @@ object OpenCLKernelBuilder {
   object ClTypeDefinition {
     private val Noop: ClTypeDefineHandler = Function.const(())
 
-    final case class PointerDefinition(element: ClTypeDefinition, shape: Array[Int]) extends ClTypeDefinition {
+    final case class ArrayDefinition(element: ClTypeDefinition, shape: Array[Int]) extends ClTypeDefinition {
       def define(globalContext: GlobalContext): (ClTypeCode, ClTypeDefineHandler) = {
         val elementTypeCode = globalContext.cachedSymbol(element).typeCode
-        val pointerTypeCode = globalContext.freshName(raw"""${elementTypeCode}_array""")
+        val arrayTypeCode = globalContext.freshName(raw"""${elementTypeCode}_array""")
         val typeDefineHandler: ClTypeDefineHandler = { typeSymbol =>
           val dimensions = for (size <- shape) yield fast"[$size]"
           globalContext.globalDefinitions += fast"typedef global ${elementTypeCode} (* ${typeSymbol.typeCode})${dimensions.mkFastring};"
         }
-        pointerTypeCode -> typeDefineHandler
+        arrayTypeCode -> typeDefineHandler
       }
     }
 
@@ -85,7 +85,7 @@ import com.thoughtworks.compute.OpenCLKernelBuilder._
 /**
   * @author 杨博 (Yang Bo)
   */
-trait OpenCLKernelBuilder extends FloatPointers {
+trait OpenCLKernelBuilder extends FloatArrays {
   protected val globalContext: GlobalContext
   import globalContext._
 
@@ -171,14 +171,14 @@ trait OpenCLKernelBuilder extends FloatPointers {
 
   type FloatType <: (ValueType with Any) with FloatTypeApi
 
-  protected trait PointerView[LocalElement <: ValueTerm] extends super.PointerTermApi with CodeValues {
-    this: PointerTerm =>
+  protected trait ArrayView[LocalElement <: ValueTerm] extends super.ArrayTermApi with CodeValues {
+    this: ArrayTerm =>
     val elementType: LocalElement#ThisType
 
     def transform(matrix1: MatrixData): ThisTerm = {
       val newMatrix: MatrixData =
         NDimensionalAffineTransform.concatenate(matrix, matrix1, originalShape.length)
-      pointerViewFactory
+      arrayViewFactory
         .newInstance(elementType, newMatrix, originalPadding, originalShape, termCode, typeCode)
         .asInstanceOf[ThisTerm]
     }
@@ -236,24 +236,24 @@ trait OpenCLKernelBuilder extends FloatPointers {
   }
 
   @inject
-  def pointerViewFactory[LocalElement <: ValueTerm]
+  def arrayViewFactory[LocalElement <: ValueTerm]
     : Factory6[LocalElement#ThisType,
                MatrixData,
                LocalElement#JvmValue,
                Array[Int],
                ClTermCode,
                ClTypeCode,
-               PointerTerm with PointerView[LocalElement] { type Element = LocalElement }]
+               ArrayTerm with ArrayView[LocalElement] { type Element = LocalElement }]
 
-  protected trait PointerParameter[LocalElement <: ValueTerm] extends super.PointerTermApi with CodeValues {
-    thisPointerParameter: PointerTerm =>
+  protected trait ArrayParameter[LocalElement <: ValueTerm] extends super.ArrayTermApi with CodeValues {
+    thisArrayParameter: ArrayTerm =>
 
     val elementType: LocalElement#ThisType
     val padding: LocalElement#JvmValue
     val shape: Array[Int]
 
     def transform(matrix: MatrixData): ThisTerm = {
-      pointerViewFactory.newInstance(elementType, matrix, padding, shape, termCode, typeCode).asInstanceOf[ThisTerm]
+      arrayViewFactory.newInstance(elementType, matrix, padding, shape, termCode, typeCode).asInstanceOf[ThisTerm]
     }
 
     def extract: Element = {
@@ -267,7 +267,7 @@ trait OpenCLKernelBuilder extends FloatPointers {
 
       val valueTermName = freshName("")
       val paddingCode = elementType.literal(padding.asInstanceOf[elementType.JvmValue]).termCode
-      val dereferenceCode = fast"(*${thisPointerParameter.termCode})${globalIndices.mkFastring}"
+      val dereferenceCode = fast"(*${thisArrayParameter.termCode})${globalIndices.mkFastring}"
       localDefinitions += fastraw"""
         const ${elementType.typeSymbol.typeCode} $valueTermName = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode;
       """
@@ -277,36 +277,36 @@ trait OpenCLKernelBuilder extends FloatPointers {
   }
 
   @inject
-  def pointerParameterFactory[LocalElement <: ValueTerm]
+  def arrayParameterFactory[LocalElement <: ValueTerm]
     : Factory5[LocalElement#ThisType,
                LocalElement#JvmValue,
                Array[Int],
                ClTermCode,
                ClTypeCode,
-               PointerTerm with PointerParameter[LocalElement] { type Element = LocalElement }]
+               ArrayTerm with ArrayParameter[LocalElement] { type Element = LocalElement }]
 
-  protected trait PointerCompanionApi extends super.PointerCompanionApi {
+  protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
     def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
                                                                                  elementType: ElementType,
                                                                                  padding: Padding,
-                                                                                 shape: Array[Int]): PointerTerm {
+                                                                                 shape: Array[Int]): ArrayTerm {
       type Element = elementType.ThisTerm
     } = {
-      val pointerDefinition = PointerDefinition(elementType.typeSymbol.firstDefinition, shape)
-      val pointerTypeSymbol = cachedSymbol(pointerDefinition)
+      val arrayDefinition = ArrayDefinition(elementType.typeSymbol.firstDefinition, shape)
+      val arrayTypeSymbol = cachedSymbol(arrayDefinition)
       val termCode = freshName(id.toString)
-      pointerParameterFactory[elementType.ThisTerm].newInstance(elementType.asInstanceOf[elementType.ThisTerm#ThisType],
+      arrayParameterFactory[elementType.ThisTerm].newInstance(elementType.asInstanceOf[elementType.ThisTerm#ThisType],
                                                               padding.asInstanceOf[elementType.ThisTerm#JvmValue],
                                                               shape,
                                                               termCode,
-                                                              pointerTypeSymbol.typeCode)
+                                                              arrayTypeSymbol.typeCode)
     }
   }
 
-  type PointerCompanion <: PointerCompanionApi
+  type ArrayCompanion <: ArrayCompanionApi
 
-  protected trait PointerFill extends super.PointerTermApi with TermApi { this: PointerTerm =>
+  protected trait ArrayFill extends super.ArrayTermApi with TermApi { this: ArrayTerm =>
 
     def termCode: ClTermCode = extract.termCode
     def typeCode: ClTypeCode = extract.typeCode
@@ -318,15 +318,15 @@ trait OpenCLKernelBuilder extends FloatPointers {
   }
 
   @inject
-  def pointerFillFactory[LocalElement <: ValueTerm]
-    : Factory1[LocalElement, PointerTerm with PointerFill { type Element = LocalElement }]
+  def arrayFillFactory[LocalElement <: ValueTerm]
+    : Factory1[LocalElement, ArrayTerm with ArrayFill { type Element = LocalElement }]
 
   protected trait ValueTermApi extends super.ValueTermApi with TermApi { thisValue: ValueTerm =>
 
     val termCode: ClTermCode
 
-    def fill: PointerTerm { type Element = thisValue.ThisTerm } = {
-      pointerFillFactory[thisValue.ThisTerm].newInstance(this.asInstanceOf[ThisTerm])
+    def fill: ArrayTerm { type Element = thisValue.ThisTerm } = {
+      arrayFillFactory[thisValue.ThisTerm].newInstance(this.asInstanceOf[ThisTerm])
     }
   }
   type ValueTerm <: (Term with Any) with ValueTermApi
