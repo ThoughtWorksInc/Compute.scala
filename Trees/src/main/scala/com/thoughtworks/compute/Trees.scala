@@ -2,10 +2,12 @@ package com.thoughtworks.compute
 
 import java.util.IdentityHashMap
 
+import com.github.ghik.silencer.silent
 import com.thoughtworks.compute.Expressions.{Arrays, FloatArrays, Floats, Values}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
 
+import scala.annotation.meta.companionObject
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.language.higherKinds
@@ -20,7 +22,7 @@ trait Trees extends Expressions {
 
   private def childHashCode(child: Any, context: HashCodeContext): Int = {
     child match {
-      case childTree: TreeApi =>
+      case childTree: TreeApi @unchecked =>
         childTree.structuralHashCode(context)
       case childArray: Array[_] =>
         arrayHashCode(childArray, context)
@@ -74,9 +76,9 @@ trait Trees extends Expressions {
 
     private def isSameChild(left: Any, right: Any, map: StructuralComparisonContext): Boolean = {
       left match {
-        case left: TreeApi =>
+        case left: TreeApi @unchecked =>
           right match {
-            case right: TreeApi =>
+            case right: TreeApi @unchecked =>
               left.isSameStructure(right, map)
             case _ =>
               false
@@ -278,6 +280,7 @@ object Trees {
 
     }
 
+    @(silent @companionObject)
     final case class FloatParameter(id: Any) extends TreeApi with Parameter { thisParameter =>
       type TermIn[C <: Category] = C#FloatTerm
       def isSameStructure(that: TreeApi, map: StructuralComparisonContext): Boolean = {
@@ -316,6 +319,7 @@ object Trees {
 
     }
 
+    @(silent @companionObject)
     final case class FloatLiteral(value: Float) extends FloatOperatorApi {
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = this
@@ -327,6 +331,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class Plus(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
 
       def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
@@ -343,6 +348,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class Minus(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
       def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
         context.asScala
@@ -358,6 +364,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class Times(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
       def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
         context.asScala
@@ -373,6 +380,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class Div(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
       def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
         context.asScala
@@ -388,6 +396,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class Percent(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
       def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
         context.asScala
@@ -403,6 +412,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class UnaryMinus(operand: FloatTree) extends FloatOperatorApi {
       def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
         context.asScala
@@ -416,6 +426,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class UnaryPlus(operand: FloatTree) extends FloatOperatorApi {
       def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
         context.asScala
@@ -465,6 +476,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends TreeApi with Operator {
       def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
         map.asScala
@@ -479,6 +491,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class Transform[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], matrix: MatrixData)
         extends TreeApi
         with Operator {
@@ -531,6 +544,7 @@ object Trees {
 
     type ArrayTerm <: (Term with Any) with ArrayTermApi
 
+    @(silent @companionObject)
     final case class Fill[LocalElement <: ValueTerm](element: TreeApi {
       type TermIn[C <: Category] = LocalElement#TermIn[C]
     }) extends TreeApi
@@ -583,6 +597,7 @@ object Trees {
 
     type ValueTerm <: (Term with Any) with ValueTermApi
 
+    @(silent @companionObject)
     final case class ArrayParameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](
         id: Any,
         elementType: ElementType,

@@ -68,6 +68,10 @@ object OpenCL {
   data: $data""")
   }
 
+  @deprecated(
+    message = "[[finalize]] method should not be invoked by users.",
+    since = "[[finalize]] is deprecated in Java 9. However, it is the only way to clean up static native resources."
+  )
   override protected def finalize(): Unit = {
     contextCallback.close()
     super.finalize()
@@ -779,6 +783,10 @@ object OpenCL {
 
   object Program {
 
+    @deprecated(
+      message = "[[finalize]] method should not be invoked by users.",
+      since = "[[finalize]] is deprecated in Java 9. However, it is the only way to clean up static native resources."
+    )
     override protected def finalize(): Unit = {
       programCallback.close()
       super.finalize()
