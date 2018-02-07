@@ -44,7 +44,7 @@ trait Tensors extends OpenCL {
           @tailrec def loop(i: Int): Unit = {
             if (i < productArity) {
               tree.productElement(i) match {
-                case child: TreeApi =>
+                case child: TreeApi @unchecked =>
                   val isNew = traversed.add(tree)
                   if (isNew) {
                     buildParameterList(child)
