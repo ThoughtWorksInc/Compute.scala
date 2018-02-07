@@ -3,7 +3,7 @@ package com.thoughtworks.compute
 import java.util.IdentityHashMap
 
 import com.github.ghik.silencer.silent
-import com.thoughtworks.compute.Expressions.{Arrays, FloatArrays, Floats, Values}
+import com.thoughtworks.compute.Expressions._
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
 
@@ -711,6 +711,23 @@ object Trees {
   /**
     * @author 杨博 (Yang Bo)
     */
+  @deprecated(message = "Use [[AllTrees]] instead", since = "0.2.0")
   trait FloatArrayTrees extends ArrayTrees with FloatTrees with FloatArrays
+
+  trait TupleTrees extends ValueTrees with Tuples {
+
+    protected trait TupleSingletonApi extends super.TupleSingletonApi {
+
+      def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, numberOfElements: Int): TupleTerm {
+        type Element = elementType.ThisTerm
+      } = ???
+
+    }
+
+    type TupleSingleton <: TupleSingletonApi
+
+  }
+
+  trait AllTrees extends TupleTrees with FloatTrees with ArrayTrees with AllExpressions
 
 }
