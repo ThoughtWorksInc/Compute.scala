@@ -418,13 +418,13 @@ trait Tensors extends OpenCL {
     def matrix: MatrixData
 
     val closure: ValueTerm = {
-      array.parameter(checkpoint, float, padding, shape).transform(matrix).extract
+      array.parameter(checkpoint, float.literal(padding), shape).transform(matrix).extract
     }
   }
 
   trait BufferedTensor extends Tensor {
     val closure: ValueTerm = {
-      array.parameter(this, float, padding, shape).extract
+      array.parameter(this, float.literal(padding), shape).extract
     }
   }
 

@@ -37,15 +37,15 @@ final class TreesSpec extends FreeSpec with Matchers {
 
     reflexive(trees.float.parameter("my_id"))
     reflexive(trees.float.literal(42.0f))
-    reflexive(trees.array.parameter("my_id", trees.float, 42.0f, Array(12, 34)))
+    reflexive(trees.array.parameter("my_id", trees.float.literal(42.0f), Array(12, 34)))
 
     sameStructuralDifferentParameterName(trees.float.parameter("my_id_1"), trees.float.parameter("my_id_2"))
-    sameStructuralDifferentParameterName(trees.array.parameter("my_id_3", trees.float, 42.0f, Array(12, 34)),
-                                         trees.array.parameter("my_id_4", trees.float, 42.0f, Array(12, 34)))
+    sameStructuralDifferentParameterName(trees.array.parameter("my_id_3", trees.float.literal(42.0f), Array(12, 34)),
+                                         trees.array.parameter("my_id_4", trees.float.literal(42.0f), Array(12, 34)))
 
     differentStructural(
-      trees.array.parameter("my_id", trees.float, 0.1f, Array(12, 34)),
-      trees.array.parameter("my_id2", trees.float, 99.9f, Array(56, 78))
+      trees.array.parameter("my_id", trees.float.literal(0.1f), Array(12, 34)),
+      trees.array.parameter("my_id2", trees.float.literal(99.9f), Array(56, 78))
     )
   }
 

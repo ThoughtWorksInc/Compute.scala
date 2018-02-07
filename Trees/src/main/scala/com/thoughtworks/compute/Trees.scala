@@ -598,25 +598,21 @@ object Trees {
     type ValueTerm <: (Term with Any) with ValueTermApi
 
     @(silent @companionObject)
-    final case class ArrayParameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](
-        id: Any,
-        elementType: ElementType,
-        padding: Padding,
-        shape: Array[Int])
+    final case class ArrayParameter[LocalElement <: ValueTerm](id: Any, padding: TreeApi {
+      type TermIn[C <: Category] = LocalElement#TermIn[C]
+    }, shape: Array[Int])
         extends TreeApi
-        with Parameter { thisParameter =>
-
+        with Parameter {
       type TermIn[C <: Category] = C#ArrayTerm {
-        type Element = elementType.TermIn[C]
+        type Element = LocalElement#TermIn[C]
       }
 
       def isSameStructure(that: TreeApi, map: StructuralComparisonContext): Boolean = {
         map.get(this) match {
           case null =>
             that match {
-              case ArrayParameter(thatId, thatElemenetType, thatPadding, thatShape)
-                  if elementType == thatElemenetType && padding == padding && java.util.Arrays.equals(shape,
-                                                                                                      thatShape) =>
+              case ArrayParameter(thatId, thatPadding, thatShape)
+                  if padding == thatPadding && java.util.Arrays.equals(shape, thatShape) =>
                 map.put(this, that)
                 true
               case _ =>
@@ -636,7 +632,7 @@ object Trees {
             MurmurHash3.finalizeHash(
               MurmurHash3.mixLast(
                 MurmurHash3.mix(
-                  MurmurHash3.mix(h, elementType.##),
+                  h,
                   padding.##
                 ),
                 MurmurHash3.arrayHash(shape)
@@ -653,24 +649,22 @@ object Trees {
           .getOrElseUpdate(
             this,
             foreignCategory.array
-              .parameter[Padding, elementType.TypeIn[foreignCategory.type]](id,
-                                                                            elementType.in(foreignCategory),
-                                                                            padding,
-                                                                            shape))
+              .parameter[padding.TermIn[foreignCategory.type]](id, padding.export(foreignCategory, map), shape))
           .asInstanceOf[TermIn[foreignCategory.type]]
-
       }
 
       def alphaConversion(context: AlphaConversionContext): TreeApi = {
         def converted = {
-          val newId = new AnyRef {
-            override val toString: String = raw"""α-converted(${thisParameter.toString})"""
-          }
-          ArrayParameter(newId, elementType, padding, shape)
+          val convertedPadding = padding
+            .alphaConversion(context)
+            .asInstanceOf[TreeApi {
+              type TermIn[C <: Category] = LocalElement#TermIn[C]
+            }]
+          ArrayParameter[LocalElement](id, convertedPadding, shape)
         }
         context.asScala.getOrElseUpdate(this, converted)
-      }
 
+      }
     }
 
     protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
@@ -685,18 +679,21 @@ object Trees {
                      type Element = LocalElement
                    }]
 
-      def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
-                                                                                   elementType: ElementType,
-                                                                                   padding: Padding,
-                                                                                   shape: Array[Int]): ArrayTerm {
-        type Element = elementType.ThisTerm
+      def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
+        type Element = Element0
       } = {
-        val parameterTree = ArrayParameter[Padding, elementType.type](id, elementType, padding, shape)
+        val parameterTree = ArrayParameter[Element0](
+          id,
+          padding.tree.asInstanceOf[TreeApi { type TermIn[C <: Category] = Element0#TermIn[C] }],
+          shape)
         array
-          .factory[elementType.ThisTerm]
+          .factory[Element0]
           .newInstance(
-            parameterTree.asInstanceOf[ArrayTree[elementType.ThisTerm]],
-            elementType.factory
+            parameterTree.asInstanceOf[ArrayTree[Element0]],
+            padding.factory.asInstanceOf[Factory1[TreeApi {
+                                                    type TermIn[C <: Category] = Element0#TermIn[C]
+                                                  },
+                                                  Element0]]
           )
       }
 
