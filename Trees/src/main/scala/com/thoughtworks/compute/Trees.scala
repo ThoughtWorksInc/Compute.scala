@@ -197,10 +197,6 @@ object Trees {
 
     protected trait ValueTypeApi extends super.ValueTypeApi {
 
-      override def equals(that: scala.Any): Boolean = {
-        that != null && that.getClass == this.getClass
-      }
-
       def in(foreignCategory: Category): TypeIn[foreignCategory.type]
 
       def factory: Factory1[Tree { type TermIn[C <: Category] = ThisTerm#TermIn[C] }, ThisTerm]
@@ -461,6 +457,11 @@ object Trees {
       override def hashCode(): Int = {
         "float".##
       }
+
+      override def equals(that: scala.Any): Boolean = {
+        that != null && that.getClass == this.getClass
+      }
+
     }
 
     type FloatType <: (ValueType with Any) with FloatTypeApi
