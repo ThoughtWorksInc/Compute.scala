@@ -151,11 +151,8 @@ object Expressions {
 
     protected trait ArrayCompanionApi {
 
-      def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
-                                                                                   elementType: ElementType,
-                                                                                   padding: ElementType#JvmValue,
-                                                                                   shape: Array[Int]): ArrayTerm {
-        type Element = elementType.ThisTerm
+      def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
+        type Element = Element0
       }
 
     }

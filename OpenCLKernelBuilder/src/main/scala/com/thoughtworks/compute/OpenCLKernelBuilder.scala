@@ -179,11 +179,11 @@ trait OpenCLKernelBuilder extends FloatArrays {
       val newMatrix: MatrixData =
         NDimensionalAffineTransform.concatenate(matrix, matrix1, originalShape.length)
       arrayViewFactory
-        .newInstance(elementType, newMatrix, originalPadding, originalShape, termCode, typeCode)
+        .newInstance(elementType, newMatrix, originalPaddingCode, originalShape, termCode, typeCode)
         .asInstanceOf[ThisTerm]
     }
 
-    val originalPadding: LocalElement#JvmValue
+    val originalPaddingCode: ClTermCode
 
     val originalShape: Array[Int]
 
@@ -215,8 +215,6 @@ trait OpenCLKernelBuilder extends FloatArrays {
         indexId -> fast"ptrdiff_t $indexId = ${products.mkFastring(" + ")};\n"
       }).unzip
 
-//      fast"
-
       val bounds = for {
         (max, indexId) <- originalShape.view.zip(indices)
       } yield fast"$indexId >= 0 && $indexId < $max"
@@ -224,12 +222,11 @@ trait OpenCLKernelBuilder extends FloatArrays {
       localDefinitions ++= indexDefinitions
 
       val termId = freshName("")
-      val paddingCode = elementType.literal(originalPadding.asInstanceOf[elementType.JvmValue]).termCode
       val dereferenceCode = fast"(*${termCode})${indices.map { i =>
         fast"[$i]"
       }.mkFastring}"
       localDefinitions += fastraw"""
-        const ${elementType.typeSymbol.typeCode} $termId = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode;
+        const ${elementType.typeSymbol.typeCode} $termId = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $originalPaddingCode;
       """
       elementType.factory.newInstance(termId).asInstanceOf[Element]
     }
@@ -239,7 +236,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
   def arrayViewFactory[LocalElement <: ValueTerm]
     : Factory6[LocalElement#ThisType,
                MatrixData,
-               LocalElement#JvmValue,
+               ClTermCode,
                Array[Int],
                ClTermCode,
                ClTypeCode,
@@ -249,11 +246,11 @@ trait OpenCLKernelBuilder extends FloatArrays {
     thisArrayParameter: ArrayTerm =>
 
     val elementType: LocalElement#ThisType
-    val padding: LocalElement#JvmValue
+    val paddingCode: ClTermCode
     val shape: Array[Int]
 
     def transform(matrix: MatrixData): ThisTerm = {
-      arrayViewFactory.newInstance(elementType, matrix, padding, shape, termCode, typeCode).asInstanceOf[ThisTerm]
+      arrayViewFactory.newInstance(elementType, matrix, paddingCode, shape, termCode, typeCode).asInstanceOf[ThisTerm]
     }
 
     def extract: Element = {
@@ -266,7 +263,6 @@ trait OpenCLKernelBuilder extends FloatArrays {
       } yield fast"get_global_id($i) >= 0 && get_global_id($i) < $max"
 
       val valueTermName = freshName("")
-      val paddingCode = elementType.literal(padding.asInstanceOf[elementType.JvmValue]).termCode
       val dereferenceCode = fast"(*${thisArrayParameter.termCode})${globalIndices.mkFastring}"
       localDefinitions += fastraw"""
         const ${elementType.typeSymbol.typeCode} $valueTermName = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode;
@@ -279,7 +275,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
   @inject
   def arrayParameterFactory[LocalElement <: ValueTerm]
     : Factory5[LocalElement#ThisType,
-               LocalElement#JvmValue,
+               ClTermCode,
                Array[Int],
                ClTermCode,
                ClTypeCode,
@@ -287,20 +283,19 @@ trait OpenCLKernelBuilder extends FloatArrays {
 
   protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
 
-    def parameter[Padding, ElementType <: ValueType { type JvmValue = Padding }](id: Any,
-                                                                                 elementType: ElementType,
-                                                                                 padding: Padding,
-                                                                                 shape: Array[Int]): ArrayTerm {
-      type Element = elementType.ThisTerm
+    def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
+      type Element = Element0
     } = {
+      val elementType = padding.valueType
       val arrayDefinition = ArrayDefinition(elementType.typeSymbol.firstDefinition, shape)
       val arrayTypeSymbol = cachedSymbol(arrayDefinition)
       val termCode = freshName(id.toString)
-      arrayParameterFactory[elementType.ThisTerm].newInstance(elementType.asInstanceOf[elementType.ThisTerm#ThisType],
-                                                              padding.asInstanceOf[elementType.ThisTerm#JvmValue],
-                                                              shape,
-                                                              termCode,
-                                                              arrayTypeSymbol.typeCode)
+      arrayParameterFactory[Element0].newInstance(elementType,
+                                                  padding.termCode,
+                                                  shape,
+                                                  termCode,
+                                                  arrayTypeSymbol.typeCode)
+
     }
   }
 
@@ -325,6 +320,10 @@ trait OpenCLKernelBuilder extends FloatArrays {
 
     val termCode: ClTermCode
 
+    def valueType: ThisType
+
+    def typeCode: ClTypeCode = valueType.typeSymbol.typeCode
+
     def fill: ArrayTerm { type Element = thisValue.ThisTerm } = {
       arrayFillFactory[thisValue.ThisTerm].newInstance(this.asInstanceOf[ThisTerm])
     }
@@ -332,7 +331,8 @@ trait OpenCLKernelBuilder extends FloatArrays {
   type ValueTerm <: (Term with Any) with ValueTermApi
 
   protected trait FloatTermApi extends super.FloatTermApi with ValueTermApi { this: FloatTerm =>
-    def typeCode: ClTypeCode = floatSymbol.typeCode
+
+    def valueType: ThisType = float
 
     def unary_- : FloatTerm = {
       val valueTermName = freshName("")
