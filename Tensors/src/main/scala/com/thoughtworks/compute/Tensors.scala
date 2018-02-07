@@ -6,10 +6,10 @@ import java.util.concurrent.Callable
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.google.common.cache._
 import com.thoughtworks.continuation._
-import com.thoughtworks.compute.Expressions.{Pointers, Floats}
+import com.thoughtworks.compute.Expressions.{Arrays, Floats}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
-import com.thoughtworks.compute.Trees.{FloatPointerTrees, StructuralTrees}
+import com.thoughtworks.compute.Trees.{FloatArrayTrees, StructuralTrees}
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
@@ -28,8 +28,8 @@ trait Tensors extends OpenCL {
 
   def concatenate(tensors: Seq[Tensor], dimension: Int): Tensor = ???
 
-  protected val trees: FloatPointerTrees with StructuralTrees { type Category = Floats with Pointers } =
-    Factory[FloatPointerTrees with StructuralTrees].newInstance()
+  protected val trees: FloatArrayTrees with StructuralTrees { type Category = Floats with Arrays } =
+    Factory[FloatArrayTrees with StructuralTrees].newInstance()
   import trees._
 
   private def upvalues(tree: TreeApi): List[Parameter] = {
@@ -418,13 +418,13 @@ trait Tensors extends OpenCL {
     def matrix: MatrixData
 
     val closure: ValueTerm = {
-      pointer.parameter(checkpoint, float, padding, shape).transform(matrix).extract
+      array.parameter(checkpoint, float, padding, shape).transform(matrix).extract
     }
   }
 
   trait BufferedTensor extends Tensor {
     val closure: ValueTerm = {
-      pointer.parameter(this, float, padding, shape).extract
+      array.parameter(this, float, padding, shape).extract
     }
   }
 
