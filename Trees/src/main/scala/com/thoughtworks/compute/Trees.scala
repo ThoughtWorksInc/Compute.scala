@@ -776,9 +776,25 @@ object Trees {
         extends Operator {
       type TermIn[C <: Category] = Element0#TermIn[C]
 
-      def export(foreignCategory: Category, context: ExportContext): Element0#TermIn[foreignCategory.type] = ???
+      def export(foreignCategory: Category, context: ExportContext): Element0#TermIn[foreignCategory.type] = {
+        context.asScala
+          .getOrElseUpdate(this, tuple.export(foreignCategory, context).split.apply(index))
+          .asInstanceOf[Element0#TermIn[foreignCategory.type]]
 
-      def alphaConversion(context: AlphaConversionContext): Tree = ???
+      }
+
+      def alphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = {
+          copy(
+            tuple = tuple
+              .alphaConversion(context)
+              .asInstanceOf[Tree {
+                type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
+              }])
+        }
+        context.asScala.getOrElseUpdate(this, converted)
+
+      }
     }
 
     protected trait TupleTreeTerm extends ValueTreeTerm with TupleTermApi {
