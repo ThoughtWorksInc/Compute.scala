@@ -707,6 +707,14 @@ object Trees {
   trait FloatArrayTrees extends ArrayTrees with FloatTrees with FloatArrays
 
   trait TupleTrees extends ValueTrees with Tuples {
+    // TODO: Rename XxxApi in this file to XxxTreeType or XxxTreeTerm
+    protected trait TupleTreeType extends super.TupleTypeApi with ValueTypeApi {
+      override def hashCode(): Int = ???
+
+      override def equals(that: scala.Any): Boolean = ???
+    }
+
+    type TupleType <: (ValueType with Any) with TupleTreeType
 
     protected trait TupleTermApi extends super[ValueTrees].ValueTermApi with super[Tuples].TupleTermApi {
       this: TupleTerm =>
