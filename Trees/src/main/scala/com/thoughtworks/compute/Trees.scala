@@ -651,7 +651,7 @@ object Trees {
   private val tupleHashSeed = "TupleType".##
 
   trait TupleTrees extends ValueTrees with Tuples {
-    // TODO: Rename XxxApi in this file to XxxTreeType or XxxTreeTerm
+
     protected trait TupleTreeType extends TupleTypeApi with ValueTreeType {
 
       @transient
