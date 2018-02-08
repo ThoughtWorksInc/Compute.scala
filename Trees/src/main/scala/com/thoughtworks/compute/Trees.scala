@@ -150,23 +150,28 @@ trait Trees extends Expressions {
   trait Tree extends Product { thisTree =>
     type TermIn[C <: Category]
 
-    def cast[TermIn0[C <: Category]]: Tree { type TermIn[C <: Category] = TermIn0[C] } = {
-      this.asInstanceOf[Tree { type TermIn[C <: Category] = TermIn0[C] }]
+    protected def erasedExport(foreignCategory: Category, context: ExportContext): Category#Term
+
+    final def export(foreignCategory: Category, context: ExportContext): TermIn[foreignCategory.type] = {
+      erasedExport(foreignCategory, context).asInstanceOf[TermIn[foreignCategory.type]]
     }
-
-    def export(foreignCategory: Category, context: ExportContext): TermIn[foreignCategory.type]
-
-    // TODO: alphaConversion
 
     def isSameStructure(that: Tree, map: StructuralComparisonContext): Boolean
 
     def structuralHashCode(context: HashCodeContext): Int
 
-    def alphaConversion(context: AlphaConversionContext): Tree
+    protected def erasedAlphaConversion(context: AlphaConversionContext): Tree
 
+    final def alphaConversion(context: AlphaConversionContext): Tree {
+      type TermIn[C <: Category] = thisTree.TermIn[C]
+    } = {
+      erasedAlphaConversion(context).asInstanceOf[Tree {
+        type TermIn[C <: Category] = thisTree.TermIn[C]
+      }]
+    }
   }
 
-  final class ExportContext extends IdentityHashMap[Tree, Any]
+  final class ExportContext extends IdentityHashMap[Tree, Category#Term]
 
   protected trait TreeTerm extends ExpressionApi with TermApi { thisTerm: Term =>
 
@@ -297,13 +302,11 @@ object Trees {
         })
       }
 
-      def export(foreignCategory: Category, map: ExportContext): foreignCategory.FloatTerm = {
-        map.asScala
-          .getOrElseUpdate(this, foreignCategory.float.parameter(id))
-          .asInstanceOf[foreignCategory.FloatTerm]
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, foreignCategory.float.parameter(id))
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
         def converted = copy(
           id = new AnyRef {
             override val toString: String = raw"""α-converted(${id.toString})"""
@@ -317,120 +320,100 @@ object Trees {
     @(silent @companionObject)
     final case class FloatLiteral(value: Float) extends FloatOperator {
 
-      def alphaConversion(context: AlphaConversionContext): Tree = this
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = this
 
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
-        context.asScala
-          .getOrElseUpdate(this, foreignCategory.float.literal(value))
-          .asInstanceOf[foreignCategory.FloatTerm]
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, foreignCategory.float.literal(value))
       }
     }
 
     @(silent @companionObject)
     final case class Plus(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
 
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) + operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
     final case class Minus(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) - operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
     final case class Times(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) * operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
     final case class Div(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) / operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
     final case class Percent(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) % operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
     final case class UnaryMinus(operand: FloatTree) extends FloatOperator {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand.export(foreignCategory, context).unary_-)
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = copy(operand.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand = operand.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
     final case class UnaryPlus(operand: FloatTree) extends FloatOperator {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
-        context.asScala
-          .getOrElseUpdate(this, operand.export(foreignCategory, context).unary_+)
-          .asInstanceOf[foreignCategory.FloatTerm]
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, operand.export(foreignCategory, context).unary_+)
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = copy(operand.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand = operand.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
@@ -471,22 +454,14 @@ object Trees {
       type TermIn[C <: Category] = C#ArrayTerm { type Element = LocalElement#TermIn[C] }
     }) extends Operator {
 
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
-        map.asScala
-          .getOrElseUpdate(this, array.export(foreignCategory, map).extract)
-          .asInstanceOf[TermIn[foreignCategory.type]]
+      protected def erasedExport(foreignCategory: Category, map: ExportContext) = {
+        map.asScala.getOrElseUpdate(this, array.export(foreignCategory, map).extract)
       }
 
       type TermIn[C <: Category] = LocalElement#TermIn[C]
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(
-            array
-              .alphaConversion(context)
-              .asInstanceOf[Tree {
-                type TermIn[C <: Category] = C#ArrayTerm { type Element = LocalElement#TermIn[C] }
-              }])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(array = array.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
@@ -500,20 +475,12 @@ object Trees {
         type Element = LocalElement#TermIn[C]
       }
 
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
-        map.asScala
-          .getOrElseUpdate(this, array.export(foreignCategory, map).transform(matrix))
-          .asInstanceOf[TermIn[foreignCategory.type]]
+      protected def erasedExport(foreignCategory: Category, map: ExportContext) = {
+        map.asScala.getOrElseUpdate(this, array.export(foreignCategory, map).transform(matrix))
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(
-            array
-              .alphaConversion(context)
-              .asInstanceOf[Tree {
-                type TermIn[C <: Category] = C#ArrayTerm { type Element = LocalElement#TermIn[C] }
-              }])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(array = array.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
@@ -551,21 +518,12 @@ object Trees {
         type Element = LocalElement#TermIn[C]
       }
 
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
-        map.asScala
-          .getOrElseUpdate(this, element.export(foreignCategory, map).fill)
-          .asInstanceOf[TermIn[foreignCategory.type]]
+      protected def erasedExport(foreignCategory: Category, map: ExportContext) = {
+        map.asScala.getOrElseUpdate(this, element.export(foreignCategory, map).fill)
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = {
-          Fill[LocalElement](
-            element
-              .alphaConversion(context)
-              .asInstanceOf[Tree {
-                type TermIn[C <: Category] = LocalElement#TermIn[C]
-              }])
-        }
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy[LocalElement](element = element.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
 
       }
@@ -634,16 +592,14 @@ object Trees {
 
       }
 
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
-        map.asScala
-          .getOrElseUpdate(
-            this,
-            foreignCategory.array
-              .parameter[padding.TermIn[foreignCategory.type]](id, padding.export(foreignCategory, map), shape))
-          .asInstanceOf[TermIn[foreignCategory.type]]
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        def foreignTerm = {
+          foreignCategory.array.parameter(id, padding.export(foreignCategory, context), shape)
+        }
+        context.asScala.getOrElseUpdate(this, foreignTerm)
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
         def converted = copy[LocalElement](
           padding = padding
             .alphaConversion(context)
@@ -747,7 +703,7 @@ object Trees {
 
       }
 
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
+      protected def erasedExport(foreignCategory: Category, map: ExportContext): foreignCategory.Term = {
         map.asScala
           .getOrElseUpdate(
             this,
@@ -756,7 +712,7 @@ object Trees {
           .asInstanceOf[TermIn[foreignCategory.type]]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
         def converted = copy(
           id = new AnyRef {
             override val toString: String = raw"""α-converted(${id.toString})"""
@@ -772,14 +728,13 @@ object Trees {
         extends Operator {
       type TermIn[C <: Category] = Element0#TermIn[C]
 
-      def export(foreignCategory: Category, context: ExportContext): Element0#TermIn[foreignCategory.type] = {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, tuple.export(foreignCategory, context).split.apply(index))
-          .asInstanceOf[Element0#TermIn[foreignCategory.type]]
 
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
         def converted = copy(
           tuple = tuple
             .alphaConversion(context)

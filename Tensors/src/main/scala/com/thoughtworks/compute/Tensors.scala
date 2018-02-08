@@ -334,6 +334,7 @@ trait Tensors extends OpenCL {
     }
 
     lazy val enqueue: Do[PendingBuffer] = {
+      val closure = this.closure // Make `closure` stable, to help Scala's type inference
       val compiledKernel = kernelCache.getIfPresent(closure) match {
         case null =>
           val alphConversionContext = new AlphaConversionContext
