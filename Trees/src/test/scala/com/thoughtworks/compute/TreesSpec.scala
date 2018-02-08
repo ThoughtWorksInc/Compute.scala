@@ -53,7 +53,7 @@ final class TreesSpec extends FreeSpec with Matchers {
   }
 
   "tuple.concatenate" - {
-    "reflexive" ignore {
+    "reflexive" in {
       reflexive(
         trees.tuple.concatenate(
           trees.float.parameter("my_id"),
@@ -63,7 +63,7 @@ final class TreesSpec extends FreeSpec with Matchers {
       )
     }
 
-    "sameStructuralDifferentParameterName" ignore {
+    "sameStructuralDifferentParameterName" in {
       sameStructuralDifferentParameterName(
         trees.tuple.concatenate(
           trees.float.parameter("my_id1"),
@@ -78,7 +78,7 @@ final class TreesSpec extends FreeSpec with Matchers {
       )
     }
 
-    "differentStructural" ignore {
+    "differentStructural" in {
       differentStructural(
         trees.tuple.concatenate(
           trees.float.literal(1.0f),

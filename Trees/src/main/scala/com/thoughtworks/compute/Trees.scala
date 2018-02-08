@@ -26,9 +26,24 @@ trait Trees extends Expressions {
         childTree.structuralHashCode(context)
       case childArray: Array[_] =>
         arrayHashCode(childArray, context)
+      case childSeq: Seq[_] =>
+        seqHashCode(childSeq, context)
       case _ =>
         child.##
     }
+  }
+
+  private def seqHashCode(childSeq: Seq[_], context: HashCodeContext): Int = {
+    val iterator = childSeq.iterator
+    @tailrec
+    def seqLoop(h: Int, i: Int): Int = {
+      if (iterator.hasNext) {
+        seqLoop(h = MurmurHash3.mix(h, childHashCode(iterator.next(), context)), i = i + 1)
+      } else {
+        MurmurHash3.finalizeHash(h, i)
+      }
+    }
+    seqLoop(MurmurHash3.seqSeed, 0)
   }
 
   private def arrayHashCode[@specialized A](childArray: Array[A], context: HashCodeContext): Int = {
@@ -102,6 +117,32 @@ trait Trees extends Expressions {
               leftLength == rightLength && arrayLoop(0)
             case _ =>
               false
+          }
+        case left: Seq[_] =>
+          right match {
+            case right: Seq[_] =>
+              val leftIterator = left.iterator
+              val rightIterator = right.iterator
+              @tailrec def seqLoop(): Boolean = {
+                if (leftIterator.hasNext) {
+                  if (rightIterator.hasNext) {
+                    if (isSameChild(leftIterator.next(), rightIterator.next(), map)) {
+                      seqLoop()
+                    } else {
+                      false
+                    }
+                  } else {
+                    false
+                  }
+                } else {
+                  if (rightIterator.hasNext) {
+                    false
+                  } else {
+                    true
+                  }
+                }
+              }
+              seqLoop()
           }
         case _ =>
           left == right
