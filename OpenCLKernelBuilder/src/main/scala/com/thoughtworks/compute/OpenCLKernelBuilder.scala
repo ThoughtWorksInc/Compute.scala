@@ -316,7 +316,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
   def arrayFillFactory[LocalElement <: ValueTerm]
     : Factory1[LocalElement, ArrayTerm with ArrayFill { type Element = LocalElement }]
 
-  protected trait ValueTermApi extends super.ValueTermApi with TermApi { thisValue: ValueTerm =>
+  protected trait ClTerm extends ElementTermApi with TermApi { thisValue: ValueTerm =>
 
     val termCode: ClTermCode
 
@@ -328,7 +328,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
       arrayFillFactory[thisValue.ThisTerm].newInstance(this.asInstanceOf[ThisTerm])
     }
   }
-  type ValueTerm <: (Term with Any) with ValueTermApi
+  type ValueTerm <: (Term with Any) with ClTerm
 
   protected trait FloatTermApi extends super.FloatTermApi with ValueTermApi { this: FloatTerm =>
 

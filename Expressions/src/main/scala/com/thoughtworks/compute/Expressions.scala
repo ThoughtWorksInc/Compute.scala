@@ -124,7 +124,7 @@ object Expressions {
   trait Arrays extends Values {
     type Category >: this.type <: Arrays
 
-    protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
+    protected trait ElementTermApi extends ValueTermApi { thisValue: ValueTerm =>
 
       // TODO: Remove this method
       def fill: ArrayTerm {
@@ -132,7 +132,7 @@ object Expressions {
       }
     }
 
-    override type ValueTerm <: (Term with Any) with ValueTermApi
+    override type ValueTerm <: (Term with Any) with ElementTermApi
 
     protected trait ArrayTermApi extends TermApi { thisArray: ArrayTerm =>
       type TermIn[C <: Category] = C#ArrayTerm {
@@ -208,6 +208,7 @@ object Expressions {
 
     }
 
+    /** @template */
     type TupleSingleton <: TupleSingletonApi
 
   }
