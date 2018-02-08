@@ -202,7 +202,7 @@ object Trees {
 
       def in(foreignCategory: Category): TypeIn[foreignCategory.type]
 
-      def ThisTerm(tree: Tree): ThisTerm
+      def term(tree: Tree): ThisTerm
 
     }
 
@@ -213,7 +213,7 @@ object Trees {
       def valueType: ThisType
 
       def alphaConversion: ThisTerm = {
-        valueType.ThisTerm(tree.alphaConversion(new AlphaConversionContext)).asInstanceOf[ThisTerm]
+        valueType.term(tree.alphaConversion(new AlphaConversionContext)).asInstanceOf[ThisTerm]
       }
     }
 
@@ -254,15 +254,15 @@ object Trees {
 
       def valueType: ThisType = float
 
-      def unary_- : FloatTerm = float.ThisTerm(UnaryMinus(tree))
+      def unary_- : FloatTerm = float.term(UnaryMinus(tree))
 
-      def unary_+ : FloatTerm = float.ThisTerm(UnaryPlus(tree))
+      def unary_+ : FloatTerm = float.term(UnaryPlus(tree))
 
-      def +(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Plus(tree, rightHandSide.tree))
-      def -(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Minus(tree, rightHandSide.tree))
-      def *(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Times(tree, rightHandSide.tree))
-      def /(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Div(tree, rightHandSide.tree))
-      def %(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Percent(tree, rightHandSide.tree))
+      def +(rightHandSide: FloatTerm): FloatTerm = float.term(Plus(tree, rightHandSide.tree))
+      def -(rightHandSide: FloatTerm): FloatTerm = float.term(Minus(tree, rightHandSide.tree))
+      def *(rightHandSide: FloatTerm): FloatTerm = float.term(Times(tree, rightHandSide.tree))
+      def /(rightHandSide: FloatTerm): FloatTerm = float.term(Div(tree, rightHandSide.tree))
+      def %(rightHandSide: FloatTerm): FloatTerm = float.term(Percent(tree, rightHandSide.tree))
     }
 
     type FloatTerm <: (ValueTerm with Any) with FloatTreeTerm
@@ -455,7 +455,7 @@ object Trees {
         termFactory.newInstance(FloatParameter(id))
       }
       @inline
-      def ThisTerm(tree: Tree): ThisTerm = termFactory.newInstance(tree)
+      def term(tree: Tree): ThisTerm = termFactory.newInstance(tree)
     }
 
     type FloatType <: (ValueType with Any) with FloatTreeType
@@ -530,7 +530,7 @@ object Trees {
       val elementType: ValueType
 
       def extract: Element = {
-        elementType.ThisTerm(Extract[Element](tree)).asInstanceOf[Element]
+        elementType.term(Extract[Element](tree)).asInstanceOf[Element]
       }
 
       def transform(matrix: MatrixData): ThisTerm = {
@@ -699,7 +699,7 @@ object Trees {
 
       override def equals(that: scala.Any): Boolean = ???
 
-      def ThisTerm(tree: Tree) = ???
+      def term(tree: Tree) = ???
 
     }
 
@@ -794,7 +794,7 @@ object Trees {
         new IndexedSeq[Element] {
           def length = thisTuple.length
           def apply(index: Int): Element = {
-            elementType.ThisTerm(Apply(tree, index)).asInstanceOf[Element]
+            elementType.term(Apply(tree, index)).asInstanceOf[Element]
           }
         }
       }
