@@ -304,12 +304,11 @@ object Trees {
       }
 
       def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = {
-          val newId = new AnyRef {
+        def converted = copy(
+          id = new AnyRef {
             override val toString: String = raw"""α-converted(${id.toString})"""
           }
-          FloatParameter(newId)
-        }
+        )
         context.asScala.getOrElseUpdate(this, converted)
       }
 
@@ -645,17 +644,16 @@ object Trees {
       }
 
       def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = {
-          val convertedPadding = padding
+        def converted = copy[LocalElement](
+          padding = padding
             .alphaConversion(context)
             .asInstanceOf[Tree {
               type TermIn[C <: Category] = LocalElement#TermIn[C]
-            }]
-          val newId = new AnyRef {
+            }],
+          id = new AnyRef {
             override val toString: String = raw"""α-converted(${id.toString})"""
           }
-          ArrayParameter[LocalElement](newId, convertedPadding, shape)
-        }
+        )
         context.asScala.getOrElseUpdate(this, converted)
 
       }
@@ -759,14 +757,12 @@ object Trees {
       }
 
       def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = {
-          val newId = new AnyRef {
+        def converted = copy(
+          id = new AnyRef {
             override val toString: String = raw"""α-converted(${id.toString})"""
           }
-          TupleParameter[ElementType](newId, elementType, length)
-        }
+        )
         context.asScala.getOrElseUpdate(this, converted)
-
       }
     }
 
@@ -784,14 +780,13 @@ object Trees {
       }
 
       def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = {
-          copy(
-            tuple = tuple
-              .alphaConversion(context)
-              .asInstanceOf[Tree {
-                type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
-              }])
-        }
+        def converted = copy(
+          tuple = tuple
+            .alphaConversion(context)
+            .asInstanceOf[Tree {
+              type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
+            }]
+        )
         context.asScala.getOrElseUpdate(this, converted)
 
       }
