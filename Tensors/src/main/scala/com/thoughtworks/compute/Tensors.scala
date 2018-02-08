@@ -334,6 +334,7 @@ trait Tensors extends OpenCL {
     }
 
     lazy val enqueue: Do[PendingBuffer] = {
+      val closure = this.closure // Make `closure` stable, to help Scala's type inference
       val compiledKernel = kernelCache.getIfPresent(closure) match {
         case null =>
           val alphConversionContext = new AlphaConversionContext
@@ -398,7 +399,7 @@ trait Tensors extends OpenCL {
               compiledKernel
             }
           }
-          kernelCache.get(float.factory.newInstance(
+          kernelCache.get(float.term(
                             convertedTree.asInstanceOf[
                               Tree { type TermIn[C <: trees.Category] = C#FloatTerm }
                             ]),

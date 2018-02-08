@@ -3,9 +3,9 @@ package com.thoughtworks.compute
 import java.util.IdentityHashMap
 
 import com.github.ghik.silencer.silent
-import com.thoughtworks.compute.Expressions.{Arrays, FloatArrays, Floats, Values}
+import com.thoughtworks.compute.Expressions._
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
-import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 
 import scala.annotation.meta.companionObject
 import scala.annotation.tailrec
@@ -26,9 +26,24 @@ trait Trees extends Expressions {
         childTree.structuralHashCode(context)
       case childArray: Array[_] =>
         arrayHashCode(childArray, context)
+      case childSeq: Seq[_] =>
+        seqHashCode(childSeq, context)
       case _ =>
         child.##
     }
+  }
+
+  private def seqHashCode(childSeq: Seq[_], context: HashCodeContext): Int = {
+    val iterator = childSeq.iterator
+    @tailrec
+    def seqLoop(h: Int, i: Int): Int = {
+      if (iterator.hasNext) {
+        seqLoop(h = MurmurHash3.mix(h, childHashCode(iterator.next(), context)), i = i + 1)
+      } else {
+        MurmurHash3.finalizeHash(h, i)
+      }
+    }
+    seqLoop(MurmurHash3.seqSeed, 0)
   }
 
   private def arrayHashCode[@specialized A](childArray: Array[A], context: HashCodeContext): Int = {
@@ -103,6 +118,32 @@ trait Trees extends Expressions {
             case _ =>
               false
           }
+        case left: Seq[_] =>
+          right match {
+            case right: Seq[_] =>
+              val leftIterator = left.iterator
+              val rightIterator = right.iterator
+              @tailrec def seqLoop(): Boolean = {
+                if (leftIterator.hasNext) {
+                  if (rightIterator.hasNext) {
+                    if (isSameChild(leftIterator.next(), rightIterator.next(), map)) {
+                      seqLoop()
+                    } else {
+                      false
+                    }
+                  } else {
+                    false
+                  }
+                } else {
+                  if (rightIterator.hasNext) {
+                    false
+                  } else {
+                    true
+                  }
+                }
+              }
+              seqLoop()
+          }
         case _ =>
           left == right
       }
@@ -150,41 +191,49 @@ trait Trees extends Expressions {
   trait Tree extends Product { thisTree =>
     type TermIn[C <: Category]
 
-    def export(foreignCategory: Category, context: ExportContext): TermIn[foreignCategory.type]
+    protected def erasedExport(foreignCategory: Category, context: ExportContext): Category#Term
 
-    // TODO: alphaConversion
+    final def export(foreignCategory: Category, context: ExportContext): TermIn[foreignCategory.type] = {
+      erasedExport(foreignCategory, context).asInstanceOf[TermIn[foreignCategory.type]]
+    }
 
     def isSameStructure(that: Tree, map: StructuralComparisonContext): Boolean
 
     def structuralHashCode(context: HashCodeContext): Int
 
-    def alphaConversion(context: AlphaConversionContext): Tree
+    protected def erasedAlphaConversion(context: AlphaConversionContext): Tree
 
+    final def alphaConversion(context: AlphaConversionContext): Tree {
+      type TermIn[C <: Category] = thisTree.TermIn[C]
+    } = {
+      erasedAlphaConversion(context).asInstanceOf[Tree {
+        type TermIn[C <: Category] = thisTree.TermIn[C]
+      }]
+    }
   }
 
-  final class ExportContext extends IdentityHashMap[Tree, Any]
+  final class ExportContext extends IdentityHashMap[Tree, Category#Term]
 
-  protected trait ExpressionApi extends super.ExpressionApi { thisExpression =>
-  }
-
-  protected trait TermApi extends ExpressionApi with super.TermApi { thisTerm: Term =>
+  protected trait TreeTerm extends ExpressionApi with TermApi { thisTerm: Term =>
 
     def alphaConversion: ThisTerm
 
-    def in(foreignCategory: Category): TermIn[foreignCategory.type] = {
+    @inline
+    final def in(foreignCategory: Category): TermIn[foreignCategory.type] = {
       tree.export(foreignCategory, new ExportContext)
     }
 
-    val tree: Tree {
-      type TermIn[C <: Category] = thisTerm.TermIn[C]
-    }
+    @inline
+    final def tree: Tree { type TermIn[C <: Category] = thisTerm.TermIn[C] } =
+      tree0.asInstanceOf[Tree {
+        type TermIn[C <: Category] = thisTerm.TermIn[C]
+      }]
+
+    protected val tree0: Tree
 
   }
 
-  type Term <: TermApi
-
-  protected trait TypeApi extends ExpressionApi with super.TypeApi
-  type Type <: TypeApi
+  type Term <: TreeTerm
 
 }
 
@@ -195,33 +244,26 @@ object Trees {
     */
   trait ValueTrees extends Values with Trees {
 
-    protected trait ValueTypeApi extends super.ValueTypeApi {
-
-      override def equals(that: scala.Any): Boolean = {
-        that != null && that.getClass == this.getClass
-      }
+    protected trait ValueTreeType extends ValueTypeApi { thisValueType =>
 
       def in(foreignCategory: Category): TypeIn[foreignCategory.type]
 
-      def factory: Factory1[Tree { type TermIn[C <: Category] = ThisTerm#TermIn[C] }, ThisTerm]
+      def term(tree: Tree): ThisTerm
 
     }
 
-    type ValueType <: (Type with Any) with ValueTypeApi
+    type ValueType <: (Type with Any) with ValueTreeType
 
-    protected trait ValueTermApi extends TermApi with super.ValueTermApi { thisValue: ValueTerm =>
+    protected trait ValueTreeTerm extends TermApi with ValueTermApi { thisValue: ValueTerm =>
 
-      def factory: Factory1[Tree { type TermIn[C <: Category] = thisValue.TermIn[C] }, ThisTerm]
+      def valueType: ThisType
 
       def alphaConversion: ThisTerm = {
-        factory.newInstance(
-          tree
-            .alphaConversion(new AlphaConversionContext)
-            .asInstanceOf[Tree { type TermIn[C <: Category] = thisValue.TermIn[C] }])
+        valueType.term(tree.alphaConversion(new AlphaConversionContext)).asInstanceOf[ThisTerm]
       }
     }
 
-    type ValueTerm <: (Term with Any) with ValueTermApi
+    type ValueTerm <: (Term with Any) with ValueTreeTerm
 
   }
 
@@ -230,14 +272,16 @@ object Trees {
     */
   trait StructuralTrees extends Trees {
 
-    protected trait TermApi extends super.TermApi { this: Term =>
-      override def hashCode(): Int = {
+    protected trait StructuralTreeTerm extends TreeTerm { this: Term =>
+
+      @transient
+      override lazy val hashCode: Int = {
         tree.structuralHashCode(new HashCodeContext)
       }
 
       override def equals(that: Any): Boolean = {
         that match {
-          case that: TermApi =>
+          case that: StructuralTreeTerm =>
             tree.isSameStructure(that.tree, new StructuralComparisonContext)
           case _ =>
             false
@@ -245,7 +289,7 @@ object Trees {
       }
     }
 
-    type Term <: TermApi
+    type Term <: StructuralTreeTerm
   }
 
   /**
@@ -253,37 +297,35 @@ object Trees {
     */
   trait FloatTrees extends Floats with ValueTrees {
 
-    protected trait FloatTermApi extends super.FloatTermApi with ValueTermApi with FloatExpressionApi {
+    protected trait FloatTreeTerm extends FloatTermApi with ValueTreeTerm with FloatExpressionApi {
       thisFloat: FloatTerm =>
 
-      def factory: Factory1[Tree { type TermIn[C <: Category] = C#FloatTerm }, ThisTerm] = {
-        float.factory
-      }
+      def valueType: ThisType = float
 
-      def unary_- : FloatTerm = factory.newInstance(UnaryMinus(tree))
+      def unary_- : FloatTerm = float.term(UnaryMinus(tree))
 
-      def unary_+ : FloatTerm = factory.newInstance(UnaryPlus(tree))
+      def unary_+ : FloatTerm = float.term(UnaryPlus(tree))
 
-      def +(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Plus(tree, rightHandSide.tree))
-      def -(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Minus(tree, rightHandSide.tree))
-      def *(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Times(tree, rightHandSide.tree))
-      def /(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Div(tree, rightHandSide.tree))
-      def %(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Percent(tree, rightHandSide.tree))
+      def +(rightHandSide: FloatTerm): FloatTerm = float.term(Plus(tree, rightHandSide.tree))
+      def -(rightHandSide: FloatTerm): FloatTerm = float.term(Minus(tree, rightHandSide.tree))
+      def *(rightHandSide: FloatTerm): FloatTerm = float.term(Times(tree, rightHandSide.tree))
+      def /(rightHandSide: FloatTerm): FloatTerm = float.term(Div(tree, rightHandSide.tree))
+      def %(rightHandSide: FloatTerm): FloatTerm = float.term(Percent(tree, rightHandSide.tree))
     }
 
-    type FloatTerm <: (ValueTerm with Any) with FloatTermApi
+    type FloatTerm <: (ValueTerm with Any) with FloatTreeTerm
 
     type FloatTree = Tree {
       type TermIn[C <: Category] = C#FloatTerm
     }
 
-    protected trait FloatOperatorApi extends Tree with Operator {
+    protected trait FloatOperator extends Operator {
       type TermIn[C <: Category] = C#FloatTerm
 
     }
 
     @(silent @companionObject)
-    final case class FloatParameter(id: Any) extends Tree with Parameter { thisParameter =>
+    final case class FloatParameter(id: Any) extends Parameter { thisParameter =>
       type TermIn[C <: Category] = C#FloatTerm
       def isSameStructure(that: Tree, map: StructuralComparisonContext): Boolean = {
         map.get(this) match {
@@ -303,167 +345,145 @@ object Trees {
         })
       }
 
-      def export(foreignCategory: Category, map: ExportContext): foreignCategory.FloatTerm = {
-        map.asScala
-          .getOrElseUpdate(this, foreignCategory.float.parameter(id))
-          .asInstanceOf[foreignCategory.FloatTerm]
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, foreignCategory.float.parameter(id))
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = {
-          val newId = new AnyRef {
-            override val toString: String = raw"""α-converted(${thisParameter.toString})"""
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(
+          id = new AnyRef {
+            override val toString: String = raw"""α-converted(${id.toString})"""
           }
-          FloatParameter(newId)
-        }
+        )
         context.asScala.getOrElseUpdate(this, converted)
       }
 
     }
 
     @(silent @companionObject)
-    final case class FloatLiteral(value: Float) extends FloatOperatorApi {
+    final case class FloatLiteral(value: Float) extends FloatOperator {
 
-      def alphaConversion(context: AlphaConversionContext): Tree = this
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = this
 
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
-        context.asScala
-          .getOrElseUpdate(this, foreignCategory.float.literal(value))
-          .asInstanceOf[foreignCategory.FloatTerm]
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, foreignCategory.float.literal(value))
       }
     }
 
     @(silent @companionObject)
-    final case class Plus(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
+    final case class Plus(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
 
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) + operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
-    final case class Minus(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+    final case class Minus(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) - operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
-    final case class Times(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+    final case class Times(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) * operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
-    final case class Div(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+    final case class Div(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) / operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
-    final case class Percent(operand0: FloatTree, operand1: FloatTree) extends FloatOperatorApi {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+    final case class Percent(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand0.export(foreignCategory, context) % operand1.export(foreignCategory, context))
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted =
-          copy(operand0.alphaConversion(context).asInstanceOf[FloatTree],
-               operand1.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
-    final case class UnaryMinus(operand: FloatTree) extends FloatOperatorApi {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
+    final case class UnaryMinus(operand: FloatTree) extends FloatOperator {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
           .getOrElseUpdate(this, operand.export(foreignCategory, context).unary_-)
-          .asInstanceOf[foreignCategory.FloatTerm]
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = copy(operand.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand = operand.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
-    final case class UnaryPlus(operand: FloatTree) extends FloatOperatorApi {
-      def export(foreignCategory: Category, context: ExportContext): foreignCategory.FloatTerm = {
-        context.asScala
-          .getOrElseUpdate(this, operand.export(foreignCategory, context).unary_+)
-          .asInstanceOf[foreignCategory.FloatTerm]
+    final case class UnaryPlus(operand: FloatTree) extends FloatOperator {
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, operand.export(foreignCategory, context).unary_+)
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = copy(operand.alphaConversion(context).asInstanceOf[FloatTree])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand = operand.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
-    protected trait FloatTypeApi extends ValueTypeApi with super.FloatTypeApi with FloatExpressionApi {
+    protected trait FloatTreeType extends ValueTreeType with FloatTypeApi {
+      @inline
       def in(foreignCategory: Category): TypeIn[foreignCategory.type] = {
         foreignCategory.float
       }
 
-      def literal(value: Float): FloatTerm = {
-        factory.newInstance(FloatLiteral(value))
-      }
-
-      def parameter(id: Any): FloatTerm = {
-        factory.newInstance(FloatParameter(id))
-      }
-
       @inject
-      def factory: Factory1[Tree { type TermIn[C <: Category] = ThisTerm#TermIn[C] }, ThisTerm]
+      protected def termFactory: Factory1[Tree, ThisTerm]
 
-      override def hashCode(): Int = {
-        "float".##
+      @inline
+      def literal(value: JvmValue): ThisTerm = {
+        termFactory.newInstance(FloatLiteral(value))
       }
+
+      @inline
+      def parameter(id: Any): ThisTerm = {
+        termFactory.newInstance(FloatParameter(id))
+      }
+      @inline
+      def term(tree: Tree): ThisTerm = termFactory.newInstance(tree)
     }
 
-    type FloatType <: (ValueType with Any) with FloatTypeApi
+    type FloatType <: (ValueType with Any) with FloatTreeType
 
   }
 
@@ -472,113 +492,87 @@ object Trees {
     */
   trait ArrayTrees extends Arrays with ValueTrees {
 
-    type ArrayTree[LocalElement <: ValueTerm] = Tree {
-      type TermIn[C <: Category] = C#ArrayTerm {
-        type Element = LocalElement#TermIn[C]
-      }
-    }
-
     @(silent @companionObject)
-    final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends Tree with Operator {
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
-        map.asScala
-          .getOrElseUpdate(this, array.export(foreignCategory, map).extract)
-          .asInstanceOf[TermIn[foreignCategory.type]]
+    final case class Extract[LocalElement <: ValueTerm](array: Tree {
+      type TermIn[C <: Category] = C#ArrayTerm { type Element = LocalElement#TermIn[C] }
+    }) extends Operator {
+
+      protected def erasedExport(foreignCategory: Category, map: ExportContext) = {
+        map.asScala.getOrElseUpdate(this, array.export(foreignCategory, map).extract)
       }
+
       type TermIn[C <: Category] = LocalElement#TermIn[C]
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = copy(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]])
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(array = array.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
     @(silent @companionObject)
-    final case class Transform[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], matrix: MatrixData)
-        extends Tree
-        with Operator {
+    final case class Transform[LocalElement <: ValueTerm](array: Tree {
+      type TermIn[C <: Category] = C#ArrayTerm { type Element = LocalElement#TermIn[C] }
+    }, matrix: MatrixData)
+        extends Operator {
       type TermIn[C <: Category] = C#ArrayTerm {
         type Element = LocalElement#TermIn[C]
       }
 
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
-        map.asScala
-          .getOrElseUpdate(this, array.export(foreignCategory, map).transform(matrix))
-          .asInstanceOf[TermIn[foreignCategory.type]]
+      protected def erasedExport(foreignCategory: Category, map: ExportContext) = {
+        map.asScala.getOrElseUpdate(this, array.export(foreignCategory, map).transform(matrix))
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = copy(array.alphaConversion(context).asInstanceOf[ArrayTree[LocalElement]], matrix)
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(array = array.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
-    protected trait ArrayTermApi extends super.ArrayTermApi with TermApi { thisArray: ArrayTerm =>
+    protected trait ArrayTreeTerm extends ArrayTermApi with TreeTerm { thisArray: ArrayTerm =>
 
       def alphaConversion: ThisTerm = {
-        array
-          .factory[Element]
-          .newInstance(tree
-                         .alphaConversion(new AlphaConversionContext)
-                         .asInstanceOf[Tree { type TermIn[C <: Category] = thisArray.TermIn[C] }],
-                       valueFactory)
+        arrayTermFactory[Element]
+          .newInstance(elementType, tree.alphaConversion(new AlphaConversionContext))
           .asInstanceOf[ThisTerm]
       }
 
-      val valueFactory: Factory1[Tree {
-                                   type TermIn[C <: Category] = thisArray.Element#TermIn[C]
-                                 },
-                                 Element]
+      val elementType: ValueType
 
       def extract: Element = {
-        valueFactory.newInstance(Extract(tree))
+        elementType.term(Extract[Element](tree)).asInstanceOf[Element]
       }
 
       def transform(matrix: MatrixData): ThisTerm = {
         val translatedTree = Transform[Element](tree, matrix)
-        array
-          .factory[Element]
-          .newInstance(
-            translatedTree,
-            valueFactory
-          )
+        arrayTermFactory[Element]
+          .newInstance(elementType, translatedTree)
           .asInstanceOf[ThisTerm]
       }
 
     }
 
-    type ArrayTerm <: (Term with Any) with ArrayTermApi
+    type ArrayTerm <: (Term with Any) with ArrayTreeTerm
 
     @(silent @companionObject)
     final case class Fill[LocalElement <: ValueTerm](element: Tree {
       type TermIn[C <: Category] = LocalElement#TermIn[C]
-    }) extends Tree
-        with Operator {
+    }) extends Operator {
       type TermIn[C <: Category] = C#ArrayTerm {
         type Element = LocalElement#TermIn[C]
       }
 
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
-        map.asScala
-          .getOrElseUpdate(this, element.export(foreignCategory, map).fill)
-          .asInstanceOf[TermIn[foreignCategory.type]]
+      protected def erasedExport(foreignCategory: Category, map: ExportContext) = {
+        map.asScala.getOrElseUpdate(this, element.export(foreignCategory, map).fill)
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = {
-          Fill[LocalElement](
-            element
-              .alphaConversion(context)
-              .asInstanceOf[Tree {
-                type TermIn[C <: Category] = LocalElement#TermIn[C]
-              }])
-        }
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy[LocalElement](element = element.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
 
       }
     }
 
-    protected trait ValueTermApi extends super[Arrays].ValueTermApi with super[ValueTrees].ValueTermApi with TermApi {
+    protected trait ElementTreeTerm extends ElementTermApi with ValueTreeTerm {
       thisValue: ValueTerm =>
 
       def fill: ArrayTerm {
@@ -586,21 +580,13 @@ object Trees {
       } = {
         val fillTree = Fill[thisValue.ThisTerm](
           tree.asInstanceOf[Tree { type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C] }])
-        array
-          .factory[ThisTerm]
-          .newInstance(
-            fillTree,
-            thisValue.factory
-              .asInstanceOf[Factory1[Tree {
-                                       type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C]
-                                     },
-                                     thisValue.ThisTerm]]
-          )
+        arrayTermFactory[ThisTerm]
+          .newInstance(thisValue.valueType, fillTree)
       }
 
     }
 
-    type ValueTerm <: (Term with Any) with ValueTermApi
+    type ValueTerm <: (Term with Any) with ElementTreeTerm
 
     @(silent @companionObject)
     final case class ArrayParameter[LocalElement <: ValueTerm](id: Any, padding: Tree {
@@ -649,40 +635,37 @@ object Trees {
 
       }
 
-      def export(foreignCategory: Category, map: ExportContext): TermIn[foreignCategory.type] = {
-        map.asScala
-          .getOrElseUpdate(
-            this,
-            foreignCategory.array
-              .parameter[padding.TermIn[foreignCategory.type]](id, padding.export(foreignCategory, map), shape))
-          .asInstanceOf[TermIn[foreignCategory.type]]
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        def foreignTerm = {
+          foreignCategory.array.parameter(id, padding.export(foreignCategory, context), shape)
+        }
+        context.asScala.getOrElseUpdate(this, foreignTerm)
       }
 
-      def alphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = {
-          val convertedPadding = padding
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy[LocalElement](
+          padding = padding
             .alphaConversion(context)
             .asInstanceOf[Tree {
               type TermIn[C <: Category] = LocalElement#TermIn[C]
-            }]
-          ArrayParameter[LocalElement](id, convertedPadding, shape)
-        }
+            }],
+          id = new AnyRef {
+            override val toString: String = raw"""α-converted(${id.toString})"""
+          }
+        )
         context.asScala.getOrElseUpdate(this, converted)
 
       }
     }
 
-    protected trait ArrayCompanionApi extends super.ArrayCompanionApi {
+    @inject
+    protected def arrayTermFactory[LocalElement <: ValueTerm]: Factory2[ValueType,
+                                                                        Tree,
+                                                                        ArrayTerm {
+                                                                          type Element = LocalElement
+                                                                        }]
 
-      @inject def factory[LocalElement <: ValueTerm]
-        : Factory2[ArrayTree[LocalElement],
-                   Factory1[Tree {
-                              type TermIn[C <: Category] = LocalElement#TermIn[C]
-                            },
-                            LocalElement],
-                   ArrayTerm {
-                     type Element = LocalElement
-                   }]
+    protected trait TreeArrayCompanion extends ArrayCompanionApi {
 
       def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
         type Element = Element0
@@ -690,26 +673,221 @@ object Trees {
         val parameterTree = ArrayParameter[Element0](
           id,
           padding.tree.asInstanceOf[Tree { type TermIn[C <: Category] = Element0#TermIn[C] }],
-          shape)
-        array
-          .factory[Element0]
-          .newInstance(
-            parameterTree.asInstanceOf[ArrayTree[Element0]],
-            padding.factory.asInstanceOf[Factory1[Tree {
-                                                    type TermIn[C <: Category] = Element0#TermIn[C]
-                                                  },
-                                                  Element0]]
-          )
+          shape
+        )
+        arrayTermFactory[Element0].newInstance(padding.valueType, parameterTree)
       }
 
     }
 
-    type ArrayCompanion <: ArrayCompanionApi
+    type ArrayCompanion <: TreeArrayCompanion
   }
 
   /**
     * @author 杨博 (Yang Bo)
     */
+  @deprecated(message = "Use [[AllTrees]] instead", since = "0.2.0")
   trait FloatArrayTrees extends ArrayTrees with FloatTrees with FloatArrays
+
+  private val tupleHashSeed = "TupleType".##
+
+  trait TupleTrees extends ValueTrees with Tuples {
+
+    protected trait TupleTreeType extends TupleTypeApi with ValueTreeType {
+
+      @transient
+      override lazy val hashCode: Int = {
+        MurmurHash3.finalizeHash(MurmurHash3.mixLast(MurmurHash3.mix(tupleHashSeed, elementType.##), length), 2)
+      }
+
+      override def equals(that: scala.Any): Boolean = {
+        that match {
+          case that: TupleType =>
+            this.elementType.equals(that.elementType) && this.length.equals(that.length)
+          case _ =>
+            false
+        }
+      }
+
+      val elementType: ValueType
+
+      val length: Int
+
+      def term(tree: Tree): ThisTerm = {
+        tupleTermFactory[Element].newInstance(elementType, length, tree).asInstanceOf[ThisTerm]
+      }
+
+      def in(foreignCategory: Category): TypeIn[foreignCategory.type] = {
+        foreignCategory.tuple.apply(elementType.in(foreignCategory), length).asInstanceOf[TypeIn[foreignCategory.type]]
+      }
+    }
+
+    type TupleType <: (ValueType with Any) with TupleTreeType
+
+    @inject
+    protected def tupleTypeFactory[LocalElement <: ValueTerm]: Factory2[ValueType,
+                                                                        Int,
+                                                                        TupleType {
+                                                                          type Element = LocalElement
+                                                                        }]
+
+    final case class TupleParameter(id: Any, elementType: ValueType, length: Int) extends Tree with Parameter {
+      type TermIn[C <: Category] = C#TupleTerm {
+        type Element = elementType.TermIn[C]
+      }
+
+      def isSameStructure(that: Tree, map: StructuralComparisonContext): Boolean = {
+        map.get(this) match {
+          case null =>
+            that match {
+              case TupleParameter(thatId, thatElementType, thatLength)
+                  if elementType == thatElementType && length == thatLength =>
+                map.put(this, that)
+                true
+              case _ =>
+                false
+            }
+          case existing =>
+            existing eq that
+        }
+      }
+
+      def structuralHashCode(context: HashCodeContext): Int = {
+        context.asScala.getOrElseUpdate(
+          this, {
+            val h = context.numberOfParameters
+            context.numberOfParameters = h + 1
+
+            MurmurHash3.finalizeHash(
+              MurmurHash3.mixLast(
+                MurmurHash3.mix(
+                  h,
+                  elementType.##
+                ),
+                length
+              ),
+              3
+            )
+          }
+        )
+
+      }
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala
+          .getOrElseUpdate(this, foreignCategory.tuple.parameter(id, elementType.in(foreignCategory), length))
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(
+          id = new AnyRef {
+            override val toString: String = raw"""α-converted(${id.toString})"""
+          }
+        )
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    final case class Concatenate[Element0 <: ValueTerm](elementTrees: Seq[Tree {
+      type TermIn[C <: Category] = Element0#TermIn[C]
+    }]) extends Operator { thisTree =>
+      type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext): Category#Term = {
+        def foreignTerm = {
+          val foreignElements = elementTrees.map(_.export(foreignCategory, context))
+          foreignCategory.tuple.concatenate(foreignElements: _*)
+        }
+        context.asScala.getOrElseUpdate(this, foreignTerm)
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        val converted = copy[Element0](
+          elementTrees = elementTrees.map(_.alphaConversion(context))
+        )
+        context.asScala.getOrElseUpdate(this, converted)
+
+      }
+    }
+    final case class Apply[Element0 <: ValueTerm](tuple: Tree {
+      type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
+    }, index: Int)
+        extends Operator {
+      type TermIn[C <: Category] = Element0#TermIn[C]
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala
+          .getOrElseUpdate(this, tuple.export(foreignCategory, context).split.apply(index))
+
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(
+          tuple = tuple
+            .alphaConversion(context)
+            .asInstanceOf[Tree {
+              type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
+            }]
+        )
+        context.asScala.getOrElseUpdate(this, converted)
+
+      }
+    }
+
+    protected trait TupleTreeTerm extends ValueTreeTerm with TupleTermApi {
+      thisTuple: TupleTerm =>
+
+      def valueType = tupleTypeFactory[Element].newInstance(elementType, length).asInstanceOf[ThisType]
+
+      val elementType: ValueType
+
+      val length: Int
+
+      def split: Seq[Element] = {
+        new IndexedSeq[Element] {
+          def length = thisTuple.length
+          def apply(index: Int): Element = {
+            elementType.term(Apply(tree, index)).asInstanceOf[Element]
+          }
+        }
+      }
+    }
+
+    type TupleTerm <: (ValueTerm with Any) with TupleTreeTerm
+
+    @inject
+    protected def tupleTermFactory[LocalElement <: ValueTerm]: Factory3[ValueType,
+                                                                        Int,
+                                                                        Tree,
+                                                                        TupleTerm {
+                                                                          type Element = LocalElement
+                                                                        }]
+
+    protected trait TreeTupleSingleton extends TupleSingletonApi {
+
+      def apply(element: ValueType, length: Int): TupleType { type Element = element.ThisTerm } = {
+        tupleTypeFactory[element.ThisTerm].newInstance(element, length)
+      }
+
+      def parameter(id: Any, element: ValueType, length: Int): TupleTerm {
+        type Element = element.ThisTerm
+      } = {
+        val parameterTree = TupleParameter(id, element, length)
+        tupleTermFactory[element.ThisTerm].newInstance(element, length, parameterTree)
+      }
+
+      def concatenate[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 } = {
+        val elementTrees = elements.map(_.tree.asInstanceOf[Tree { type TermIn[C <: Category] = Element0#TermIn[C] }])
+        val concatenateTree = Concatenate[Element0](elementTrees)
+        tupleTermFactory[Element0].newInstance(elements.head.valueType, elements.length, concatenateTree)
+      }
+
+    }
+
+    type TupleSingleton <: TreeTupleSingleton
+
+  }
+
+  trait AllTrees extends TupleTrees with FloatTrees with ArrayTrees with AllExpressions
 
 }

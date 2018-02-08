@@ -70,7 +70,9 @@ object Expressions {
     /** @template */
     type ValueTerm <: (Term with Any) with ValueTermApi
 
-    protected trait ValueTypeApi extends ValueExpressionApi {
+    protected trait ValueTypeApi extends ValueExpressionApi
+
+    protected trait ValueSingletonApi extends ValueTypeApi {
 
       def literal(value: JvmValue): ThisTerm
 
@@ -107,7 +109,7 @@ object Expressions {
 
     type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
-    protected trait FloatTypeApi extends ValueTypeApi with FloatExpressionApi {}
+    protected trait FloatTypeApi extends ValueSingletonApi with FloatExpressionApi {}
 
     type FloatType <: (ValueType with Any) with FloatTypeApi
 
@@ -122,7 +124,7 @@ object Expressions {
   trait Arrays extends Values {
     type Category >: this.type <: Arrays
 
-    protected trait ValueTermApi extends super.ValueTermApi { thisValue: ValueTerm =>
+    protected trait ElementTermApi extends ValueTermApi { thisValue: ValueTerm =>
 
       // TODO: Remove this method
       def fill: ArrayTerm {
@@ -130,7 +132,7 @@ object Expressions {
       }
     }
 
-    override type ValueTerm <: (Term with Any) with ValueTermApi
+    override type ValueTerm <: (Term with Any) with ElementTermApi
 
     protected trait ArrayTermApi extends TermApi { thisArray: ArrayTerm =>
       type TermIn[C <: Category] = C#ArrayTerm {
@@ -164,8 +166,54 @@ object Expressions {
   /**
     * @author 杨博 (Yang Bo)
     */
+  @deprecated(message = "Use [[AllExpressions]] instead", since = "0.2.0")
   trait FloatArrays extends Floats with Arrays {
     type Category >: this.type <: Floats with Arrays
+  }
+
+  trait Tuples extends Values {
+    type Category >: this.type <: Tuples
+
+    protected trait TupleExpressionApi extends ValueExpressionApi { thisTuple =>
+      type Element <: ValueTerm
+      type JvmValue = Array[Element#JvmValue]
+      type TermIn[C <: Category] = C#TupleTerm {
+        type Element = thisTuple.Element#TermIn[C]
+      }
+      type TypeIn[C <: Category] = C#TupleType {
+        type Element = thisTuple.Element#TermIn[C]
+        type JvmValue = thisTuple.JvmValue
+      }
+    }
+
+    protected trait TupleTermApi extends ValueTermApi with TupleExpressionApi { this: TupleTerm =>
+      def split: Seq[Element]
+    }
+    type TupleTerm <: (ValueTerm with Any) with TupleTermApi
+
+    protected trait TupleTypeApi extends ValueTypeApi with TupleExpressionApi {}
+
+    type TupleType <: (ValueType with Any) with TupleTypeApi
+
+    @inject
+    val tuple: Implicitly[TupleSingleton]
+
+    protected trait TupleSingletonApi {
+      def apply(element: ValueType, length: Int): TupleType { type Element = element.ThisTerm }
+
+      def parameter(id: Any, element: ValueType, length: Int): TupleTerm { type Element = element.ThisTerm }
+
+      def concatenate[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 }
+
+    }
+
+    /** @template */
+    type TupleSingleton <: TupleSingletonApi
+
+  }
+
+  trait AllExpressions extends Tuples with Floats with Arrays {
+    type Category >: this.type <: AllExpressions
   }
 
 }
