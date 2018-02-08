@@ -398,7 +398,7 @@ trait Tensors extends OpenCL {
               compiledKernel
             }
           }
-          kernelCache.get(float.factory.newInstance(
+          kernelCache.get(float.ThisTerm(
                             convertedTree.asInstanceOf[
                               Tree { type TermIn[C <: trees.Category] = C#FloatTerm }
                             ]),

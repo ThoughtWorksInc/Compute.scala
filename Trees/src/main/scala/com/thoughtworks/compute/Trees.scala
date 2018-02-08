@@ -5,7 +5,7 @@ import java.util.IdentityHashMap
 import com.github.ghik.silencer.silent
 import com.thoughtworks.compute.Expressions._
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
-import com.thoughtworks.feature.Factory.{Factory1, Factory2, inject}
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, inject}
 
 import scala.annotation.meta.companionObject
 import scala.annotation.tailrec
@@ -253,17 +253,16 @@ object Trees {
       thisFloat: FloatTerm =>
 
       def valueType: ThisType = float
-      import float._
 
-      def unary_- : FloatTerm = factory.newInstance(UnaryMinus(tree))
+      def unary_- : FloatTerm = float.ThisTerm(UnaryMinus(tree))
 
-      def unary_+ : FloatTerm = factory.newInstance(UnaryPlus(tree))
+      def unary_+ : FloatTerm = float.ThisTerm(UnaryPlus(tree))
 
-      def +(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Plus(tree, rightHandSide.tree))
-      def -(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Minus(tree, rightHandSide.tree))
-      def *(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Times(tree, rightHandSide.tree))
-      def /(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Div(tree, rightHandSide.tree))
-      def %(rightHandSide: FloatTerm): FloatTerm = factory.newInstance(Percent(tree, rightHandSide.tree))
+      def +(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Plus(tree, rightHandSide.tree))
+      def -(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Minus(tree, rightHandSide.tree))
+      def *(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Times(tree, rightHandSide.tree))
+      def /(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Div(tree, rightHandSide.tree))
+      def %(rightHandSide: FloatTerm): FloatTerm = float.ThisTerm(Percent(tree, rightHandSide.tree))
     }
 
     type FloatTerm <: (ValueTerm with Any) with FloatTreeTerm
@@ -437,23 +436,26 @@ object Trees {
       }
     }
 
-    protected trait FloatTreeType extends ValueTreeType with FloatTypeApi with FloatExpressionApi {
+    protected trait FloatTreeType extends ValueTreeType with FloatTypeApi {
+      @inline
       def in(foreignCategory: Category): TypeIn[foreignCategory.type] = {
         foreignCategory.float
       }
 
-      def literal(value: Float): FloatTerm = {
-        factory.newInstance(FloatLiteral(value))
-      }
-
-      def parameter(id: Any): FloatTerm = {
-        factory.newInstance(FloatParameter(id))
-      }
-
       @inject
-      def factory: Factory1[Tree, ThisTerm]
+      protected def termFactory: Factory1[Tree, ThisTerm]
 
-      def ThisTerm(tree: Tree) = factory.newInstance(tree)
+      @inline
+      def literal(value: JvmValue): ThisTerm = {
+        termFactory.newInstance(FloatLiteral(value))
+      }
+
+      @inline
+      def parameter(id: Any): ThisTerm = {
+        termFactory.newInstance(FloatParameter(id))
+      }
+      @inline
+      def ThisTerm(tree: Tree): ThisTerm = termFactory.newInstance(tree)
     }
 
     type FloatType <: (ValueType with Any) with FloatTreeType
@@ -520,8 +522,7 @@ object Trees {
     protected trait ArrayTreeTerm extends ArrayTermApi with TreeTerm { thisArray: ArrayTerm =>
 
       def alphaConversion: ThisTerm = {
-        array
-          .factory[Element]
+        arrayTermFactory[Element]
           .newInstance(elementType, tree.alphaConversion(new AlphaConversionContext))
           .asInstanceOf[ThisTerm]
       }
@@ -534,8 +535,7 @@ object Trees {
 
       def transform(matrix: MatrixData): ThisTerm = {
         val translatedTree = Transform[Element](tree, matrix)
-        array
-          .factory[Element]
+        arrayTermFactory[Element]
           .newInstance(elementType, translatedTree)
           .asInstanceOf[ThisTerm]
       }
@@ -580,8 +580,7 @@ object Trees {
       } = {
         val fillTree = Fill[thisValue.ThisTerm](
           tree.asInstanceOf[Tree { type TermIn[C <: Category] = thisValue.ThisTerm#TermIn[C] }])
-        array
-          .factory[ThisTerm]
+        arrayTermFactory[ThisTerm]
           .newInstance(thisValue.valueType, fillTree)
       }
 
@@ -662,13 +661,14 @@ object Trees {
       }
     }
 
-    protected trait TreeArrayCompanion extends ArrayCompanionApi {
+    @inject
+    protected def arrayTermFactory[LocalElement <: ValueTerm]: Factory2[ValueType,
+                                                                        Tree,
+                                                                        ArrayTerm {
+                                                                          type Element = LocalElement
+                                                                        }]
 
-      @inject def factory[LocalElement <: ValueTerm]: Factory2[ValueType,
-                                                               Tree,
-                                                               ArrayTerm {
-                                                                 type Element = LocalElement
-                                                               }]
+    protected trait TreeArrayCompanion extends ArrayCompanionApi {
 
       def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
         type Element = Element0
@@ -678,7 +678,7 @@ object Trees {
           padding.tree.asInstanceOf[Tree { type TermIn[C <: Category] = Element0#TermIn[C] }],
           shape
         )
-        array.factory[Element0].newInstance(padding.valueType, parameterTree)
+        arrayTermFactory[Element0].newInstance(padding.valueType, parameterTree)
       }
 
     }
@@ -786,9 +786,9 @@ object Trees {
 
       def valueType = ???
 
-      val elementType: ValueType
+      val length: Int
 
-      def length: Int = ???
+      val elementType: ValueType
 
       def split: Seq[Element] = {
         new IndexedSeq[Element] {
@@ -802,25 +802,21 @@ object Trees {
 
     type TupleTerm <: (ValueTerm with Any) with TupleTreeTerm
 
-    protected trait TreeTupleSingleton extends TupleSingletonApi {
+    @inject
+    protected def tupleTermFactory[LocalElement <: ValueTerm]: Factory3[ValueType,
+                                                                        Int,
+                                                                        Tree,
+                                                                        TupleTerm {
+                                                                          type Element = LocalElement
+                                                                        }]
 
-      @inject
-      def factory[LocalElement <: ValueTerm]: Factory2[ValueType,
-                                                       Tree,
-                                                       TupleTerm {
-                                                         type Element = LocalElement
-                                                       }]
+    protected trait TreeTupleSingleton extends TupleSingletonApi {
 
       def parameter[ElementType <: ValueType](id: Any, elementType0: ElementType, length: Int): TupleTerm {
         type Element = elementType0.ThisTerm
       } = {
         val parameterTree = TupleParameter[ElementType](id, elementType0, length)
-        tuple
-          .factory[elementType0.ThisTerm]
-          .newInstance(
-            elementType0,
-            parameterTree
-          )
+        tupleTermFactory[elementType0.ThisTerm].newInstance(elementType0, length, parameterTree)
       }
 
       def concatenate[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 } = {
