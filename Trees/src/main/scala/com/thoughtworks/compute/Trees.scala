@@ -232,7 +232,9 @@ object Trees {
   trait StructuralTrees extends Trees {
 
     protected trait StructuralTreeTerm extends TreeTerm { this: Term =>
-      override def hashCode(): Int = {
+
+      @transient
+      override lazy val hashCode: Int = {
         tree.structuralHashCode(new HashCodeContext)
       }
 
@@ -646,22 +648,49 @@ object Trees {
   @deprecated(message = "Use [[AllTrees]] instead", since = "0.2.0")
   trait FloatArrayTrees extends ArrayTrees with FloatTrees with FloatArrays
 
+  private val tupleHashSeed = "TupleType".##
+
   trait TupleTrees extends ValueTrees with Tuples {
     // TODO: Rename XxxApi in this file to XxxTreeType or XxxTreeTerm
     protected trait TupleTreeType extends TupleTypeApi with ValueTreeType {
-      override def hashCode(): Int = ???
 
-      override def equals(that: scala.Any): Boolean = ???
+      @transient
+      override lazy val hashCode: Int = {
+        MurmurHash3.finalizeHash(MurmurHash3.mixLast(MurmurHash3.mix(tupleHashSeed, elementType.##), length), 2)
+      }
 
-      def term(tree: Tree) = ???
+      override def equals(that: scala.Any): Boolean = {
+        that match {
+          case that: TupleType =>
+            this.elementType.equals(that.elementType) && this.length.equals(that.length)
+          case _ =>
+            false
+        }
+      }
 
+      val elementType: ValueType
+
+      val length: Int
+
+      def term(tree: Tree): ThisTerm = {
+        tupleTermFactory[Element].newInstance(elementType, length, tree).asInstanceOf[ThisTerm]
+      }
+
+      def in(foreignCategory: Category): TypeIn[foreignCategory.type] = {
+        foreignCategory.tuple.apply(elementType.in(foreignCategory), length).asInstanceOf[TypeIn[foreignCategory.type]]
+      }
     }
 
     type TupleType <: (ValueType with Any) with TupleTreeType
 
-    final case class TupleParameter[ElementType <: ValueType](id: Any, elementType: ElementType, length: Int)
-        extends Tree
-        with Parameter {
+    @inject
+    protected def tupleTypeFactory[LocalElement <: ValueTerm]: Factory2[ValueType,
+                                                                        Int,
+                                                                        TupleType {
+                                                                          type Element = LocalElement
+                                                                        }]
+
+    final case class TupleParameter(id: Any, elementType: ValueType, length: Int) extends Tree with Parameter {
       type TermIn[C <: Category] = C#TupleTerm {
         type Element = elementType.TermIn[C]
       }
@@ -703,13 +732,9 @@ object Trees {
 
       }
 
-      protected def erasedExport(foreignCategory: Category, map: ExportContext): foreignCategory.Term = {
-        map.asScala
-          .getOrElseUpdate(
-            this,
-            foreignCategory.tuple
-              .parameter[elementType.TypeIn[foreignCategory.type]](id, elementType.in(foreignCategory), length))
-          .asInstanceOf[TermIn[foreignCategory.type]]
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala
+          .getOrElseUpdate(this, foreignCategory.tuple.parameter(id, elementType.in(foreignCategory), length))
       }
 
       protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
@@ -722,6 +747,27 @@ object Trees {
       }
     }
 
+    final case class Concatenate[Element0 <: ValueTerm](elementTrees: Seq[Tree {
+      type TermIn[C <: Category] = Element0#TermIn[C]
+    }]) extends Operator { thisTree =>
+      type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext): Category#Term = {
+        def foreignTerm = {
+          val foreignElements = elementTrees.map(_.export(foreignCategory, context))
+          foreignCategory.tuple.concatenate(foreignElements: _*)
+        }
+        context.asScala.getOrElseUpdate(this, foreignTerm)
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        val converted = copy[Element0](
+          elementTrees = elementTrees.map(_.alphaConversion(context))
+        )
+        context.asScala.getOrElseUpdate(this, converted)
+
+      }
+    }
     final case class Apply[Element0 <: ValueTerm](tuple: Tree {
       type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
     }, index: Int)
@@ -750,11 +796,11 @@ object Trees {
     protected trait TupleTreeTerm extends ValueTreeTerm with TupleTermApi {
       thisTuple: TupleTerm =>
 
-      def valueType = ???
-
-      val length: Int
+      def valueType = tupleTypeFactory[Element].newInstance(elementType, length).asInstanceOf[ThisType]
 
       val elementType: ValueType
+
+      val length: Int
 
       def split: Seq[Element] = {
         new IndexedSeq[Element] {
@@ -778,15 +824,21 @@ object Trees {
 
     protected trait TreeTupleSingleton extends TupleSingletonApi {
 
-      def parameter[ElementType <: ValueType](id: Any, elementType0: ElementType, length: Int): TupleTerm {
-        type Element = elementType0.ThisTerm
+      def apply(element: ValueType, length: Int): TupleType { type Element = element.ThisTerm } = {
+        tupleTypeFactory[element.ThisTerm].newInstance(element, length)
+      }
+
+      def parameter(id: Any, element: ValueType, length: Int): TupleTerm {
+        type Element = element.ThisTerm
       } = {
-        val parameterTree = TupleParameter[ElementType](id, elementType0, length)
-        tupleTermFactory[elementType0.ThisTerm].newInstance(elementType0, length, parameterTree)
+        val parameterTree = TupleParameter(id, element, length)
+        tupleTermFactory[element.ThisTerm].newInstance(element, length, parameterTree)
       }
 
       def concatenate[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 } = {
-        ???
+        val elementTrees = elements.map(_.tree.asInstanceOf[Tree { type TermIn[C <: Category] = Element0#TermIn[C] }])
+        val concatenateTree = Concatenate[Element0](elementTrees)
+        tupleTermFactory[Element0].newInstance(elements.head.valueType, elements.length, concatenateTree)
       }
 
     }

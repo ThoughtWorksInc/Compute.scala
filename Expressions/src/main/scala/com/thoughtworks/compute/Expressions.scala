@@ -174,9 +174,9 @@ object Expressions {
   trait Tuples extends Values {
     type Category >: this.type <: Tuples
 
-    protected trait TupleExpressionApi extends ExpressionApi { thisTuple =>
+    protected trait TupleExpressionApi extends ValueExpressionApi { thisTuple =>
       type Element <: ValueTerm
-      type JvmValue = Array[ValueTerm#JvmValue]
+      type JvmValue = Array[Element#JvmValue]
       type TermIn[C <: Category] = C#TupleTerm {
         type Element = thisTuple.Element#TermIn[C]
       }
@@ -199,10 +199,9 @@ object Expressions {
     val tuple: Implicitly[TupleSingleton]
 
     protected trait TupleSingletonApi {
+      def apply(element: ValueType, length: Int): TupleType { type Element = element.ThisTerm }
 
-      def parameter[ElementType <: ValueType](id: Any, elementType: ElementType, numberOfElements: Int): TupleTerm {
-        type Element = elementType.ThisTerm
-      }
+      def parameter(id: Any, element: ValueType, length: Int): TupleTerm { type Element = element.ThisTerm }
 
       def concatenate[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 }
 
