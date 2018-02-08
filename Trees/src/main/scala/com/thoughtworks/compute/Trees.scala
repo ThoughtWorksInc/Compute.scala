@@ -454,14 +454,6 @@ object Trees {
       @inject
       def factory: Factory1[Tree { type TermIn[C <: Category] = ThisTerm#TermIn[C] }, ThisTerm]
 
-      override def hashCode(): Int = {
-        "float".##
-      }
-
-      override def equals(that: scala.Any): Boolean = {
-        that != null && that.getClass == this.getClass
-      }
-
     }
 
     type FloatType <: (ValueType with Any) with FloatTypeApi
