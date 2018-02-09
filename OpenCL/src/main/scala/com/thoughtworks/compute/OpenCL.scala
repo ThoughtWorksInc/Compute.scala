@@ -607,6 +607,7 @@ object OpenCL {
           }
       }
     }
+
   }
 
   final case class Kernel[Owner <: OpenCL with Singleton](handle: Long)
