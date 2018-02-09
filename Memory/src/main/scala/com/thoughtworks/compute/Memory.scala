@@ -4,7 +4,6 @@ import java.nio._
 
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.{CustomBuffer, MemoryUtil, Pointer}
-import shapeless.HNil
 
 import scala.reflect.ClassTag
 
