@@ -86,7 +86,7 @@ import com.thoughtworks.compute.OpenCLKernelBuilder._
   * @author 杨博 (Yang Bo)
   */
 trait OpenCLKernelBuilder extends FloatArrays {
-  protected val globalContext: GlobalContext
+  val globalContext: GlobalContext
   import globalContext._
 
   val localDefinitions = mutable.Buffer.empty[Fastring]
