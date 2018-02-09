@@ -583,11 +583,11 @@ object OpenCL {
       *
       * The buffer may be [[java.nio.FloatBuffer FloatBuffer]],
       * [[java.nio.DoubleBuffer DoubleBuffer]]
-      * or other buffer types according to [[Element]].
+      * or other buffer types according to `Element`.
       *
       * @note The buffer is allocated by lwjgl, not JRE.
       *       As a result, you can only use the buffer inside a `map` or `flatMap` block,
-      *       then it will be released by [[com.thoughtworks.raii.asynchronous.do.Do Do]] automatically.
+      *       then it will be released by [[com.thoughtworks.raii.asynchronous.Do Do]] automatically.
       *       Assigning the buffer to another variable used outside `map` or `flatMap` block
       *       will cause memory access error.
       *

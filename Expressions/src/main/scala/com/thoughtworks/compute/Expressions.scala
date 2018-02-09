@@ -23,10 +23,12 @@ trait Expressions {
 
   }
 
+  /** @template */
   type Term <: TermApi
 
   protected trait TypeApi extends ExpressionApi
 
+  /** @template */
   type Type <: TypeApi
 
 }
@@ -80,6 +82,7 @@ object Expressions {
 
     }
 
+    /** @template */
     type ValueType <: (Type with Any) with ValueTypeApi
   }
 
@@ -107,10 +110,12 @@ object Expressions {
       def unary_+ : FloatTerm
     }
 
+    /** @template */
     type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
     protected trait FloatTypeApi extends ValueSingletonApi with FloatExpressionApi {}
 
+    /** @template */
     type FloatType <: (ValueType with Any) with FloatTypeApi
 
     @inject
@@ -146,12 +151,10 @@ object Expressions {
       def transform(matrix: MatrixData): ThisTerm
     }
 
+    /** @template */
     type ArrayTerm <: (Term with Any) with ArrayTermApi
 
-    @inject
-    val array: Implicitly[ArrayCompanion]
-
-    protected trait ArrayCompanionApi {
+    protected trait ArraySingletonApi {
 
       def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
         type Element = Element0
@@ -159,7 +162,11 @@ object Expressions {
 
     }
 
-    type ArrayCompanion <: ArrayCompanionApi
+    /** @template */
+    type ArraySingleton <: ArraySingletonApi
+
+    @inject
+    val array: Implicitly[ArraySingleton]
 
   }
 
@@ -189,10 +196,13 @@ object Expressions {
     protected trait TupleTermApi extends ValueTermApi with TupleExpressionApi { this: TupleTerm =>
       def split: Seq[Element]
     }
+
+    /** @template */
     type TupleTerm <: (ValueTerm with Any) with TupleTermApi
 
     protected trait TupleTypeApi extends ValueTypeApi with TupleExpressionApi {}
 
+    /** @template */
     type TupleType <: (ValueType with Any) with TupleTypeApi
 
     @inject
