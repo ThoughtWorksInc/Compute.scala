@@ -683,7 +683,7 @@ object Trees {
                                                                           type Element = LocalElement
                                                                         }]
 
-    protected trait TreeArrayCompanion extends ArrayCompanionApi {
+    protected trait TreeArraySingleton extends ArraySingletonApi {
 
       def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
         type Element = Element0
@@ -698,7 +698,7 @@ object Trees {
 
     }
 
-    type ArrayCompanion <: TreeArrayCompanion
+    type ArraySingleton <: TreeArraySingleton
   }
 
   /**

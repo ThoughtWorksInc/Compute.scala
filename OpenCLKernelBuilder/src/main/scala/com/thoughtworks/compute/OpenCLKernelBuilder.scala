@@ -281,7 +281,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
                ClTypeCode,
                ArrayTerm with ArrayParameter[LocalElement] { type Element = LocalElement }]
 
-  protected trait ClArrayCompanion extends super.ArrayCompanionApi {
+  protected trait ClArraySingleton extends super.ArraySingletonApi {
 
     def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
       type Element = Element0
@@ -299,7 +299,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
     }
   }
 
-  type ArrayCompanion <: ClArrayCompanion
+  type ArraySingleton <: ClArraySingleton
 
   protected trait ArrayFill extends super.ArrayTermApi with ClTerm { this: ArrayTerm =>
 

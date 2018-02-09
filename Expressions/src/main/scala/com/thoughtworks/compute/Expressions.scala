@@ -154,7 +154,7 @@ object Expressions {
     /** @template */
     type ArrayTerm <: (Term with Any) with ArrayTermApi
 
-    protected trait ArrayCompanionApi {
+    protected trait ArraySingletonApi {
 
       def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
         type Element = Element0
@@ -163,10 +163,10 @@ object Expressions {
     }
 
     /** @template */
-    type ArrayCompanion <: ArrayCompanionApi
+    type ArraySingleton <: ArraySingletonApi
 
     @inject
-    val array: Implicitly[ArrayCompanion]
+    val array: Implicitly[ArraySingleton]
 
   }
 
