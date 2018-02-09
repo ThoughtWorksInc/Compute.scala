@@ -233,7 +233,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
   }
 
   @inject
-  def arrayViewFactory[LocalElement <: ValueTerm]
+  protected def arrayViewFactory[LocalElement <: ValueTerm]
     : Factory6[LocalElement#ThisType,
                MatrixData,
                ClTermCode,
@@ -273,7 +273,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
   }
 
   @inject
-  def arrayParameterFactory[LocalElement <: ValueTerm]
+  protected def arrayParameterFactory[LocalElement <: ValueTerm]
     : Factory5[LocalElement#ThisType,
                ClTermCode,
                Array[Int],
@@ -313,7 +313,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
   }
 
   @inject
-  def arrayFillFactory[LocalElement <: ValueTerm]
+  protected def arrayFillFactory[LocalElement <: ValueTerm]
     : Factory1[LocalElement, ArrayTerm with ArrayFill { type Element = LocalElement }]
 
   protected trait ClValueTerm extends ElementTermApi with ClTerm { thisValue: ValueTerm =>
