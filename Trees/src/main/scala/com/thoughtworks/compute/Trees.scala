@@ -702,7 +702,7 @@ object Trees {
 
       override def equals(that: scala.Any): Boolean = {
         that match {
-          case that: TupleType =>
+          case that: TupleTreeType =>
             this.elementType.equals(that.elementType) && this.length.equals(that.length)
           case _ =>
             false
@@ -730,7 +730,7 @@ object Trees {
                                                                         TupleType {
                                                                           type Element = LocalElement
                                                                         }]
-
+    @(silent @companionObject)
     final case class TupleParameter(id: Any, elementType: ValueType, length: Int) extends Tree with Parameter {
       type TermIn[C <: Category] = C#TupleTerm {
         type Element = elementType.TermIn[C]
@@ -788,6 +788,7 @@ object Trees {
       }
     }
 
+    @(silent @companionObject)
     final case class Concatenate[Element0 <: ValueTerm](elementTrees: Seq[Tree {
       type TermIn[C <: Category] = Element0#TermIn[C]
     }]) extends Operator { thisTree =>
@@ -809,6 +810,8 @@ object Trees {
 
       }
     }
+
+    @(silent @companionObject)
     final case class Apply[Element0 <: ValueTerm](tuple: Tree {
       type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
     }, index: Int)
