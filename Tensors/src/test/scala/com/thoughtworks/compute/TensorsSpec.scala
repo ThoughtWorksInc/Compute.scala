@@ -48,6 +48,24 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     }
   }.run.toScalaFuture
 
+  "tensor literal" in {
+    doTensors.map { tensors =>
+      tensors.Tensor(42.0f).toString should be("42.0")
+
+      tensors.Tensor(Array(1.0f, 2.0f)).toString should be("[1.0,2.0]")
+
+      tensors.Tensor(Array(Seq(1.0f, 2.0f), List(3.0f, 4.0f))).toString should be("[[1.0,2.0],[3.0,4.0]]")
+    }
+  }.run.toScalaFuture
+
+  "Wrong tensor shape" in {
+    doTensors.map { tensors =>
+      an[IllegalArgumentException] should be thrownBy {
+        tensors.Tensor(Seq(Array(1.0f), Array(3.0f, 4.0f)))
+      }
+    }
+  }.run.toScalaFuture
+
   "translate" in {
     doTensors.flatMap { tensors =>
       val shape = Array(2, 3, 5)

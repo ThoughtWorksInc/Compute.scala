@@ -1,23 +1,31 @@
 package com.thoughtworks.compute
 
+import java.nio.FloatBuffer
 import java.util.{Collections, IdentityHashMap}
 import java.util.concurrent.Callable
 
 import com.dongxiguo.fastring.Fastring.Implicits._
+import com.github.ghik.silencer.silent
 import com.google.common.cache._
 import com.thoughtworks.continuation._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
+import com.thoughtworks.compute.OpenCL.DeviceBuffer
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
 import com.thoughtworks.compute.Trees.{FloatArrayTrees, StructuralTrees}
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
 import com.thoughtworks.raii.covariant._
+import com.thoughtworks.tryt.covariant.TryT
+import org.lwjgl.system.MemoryUtil
+import shapeless.Witness
 
+import scala.annotation.meta.companionObject
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 import scala.language.existentials
+import scala.util.Success
 import scalaz.Tags.Parallel
 import scalaz.std.list._
 import scalaz.syntax.all._
@@ -63,16 +71,101 @@ trait Tensors extends OpenCL {
   }
 
   // The scalar data type is hard-coded Float at the moment. FIXME: Allow other types in the future
-  trait PendingBuffer {
-    def event: Event
-
+  sealed trait PendingBuffer {
     def buffer: DeviceBuffer[Float]
+    def eventOption: Option[Event]
+    def toHostBuffer(): Do[FloatBuffer]
+  }
 
-    def toHostBuffer = {
+  @(silent @companionObject)
+  final case class ReadyBuffer(buffer: DeviceBuffer[Float]) extends PendingBuffer {
+    def toHostBuffer(): Do[FloatBuffer] = {
+      buffer.toHostBuffer()(Witness(Tensors.this), Memory.FloatMemory)
+    }
+    def eventOption = None
+  }
+
+  @(silent @companionObject)
+  final case class EventBuffer(buffer: DeviceBuffer[Float], event: Event) extends PendingBuffer {
+    def eventOption = Some(event)
+    def toHostBuffer(): Do[FloatBuffer] = {
       buffer.toHostBuffer(event)
     }
   }
+
+  trait TensorBuilder[Data] {
+    type Element
+    def flatten(a: Data): Seq[Element]
+    def shape(a: Data): Seq[Int]
+  }
+
+  private[Tensors] trait LowPriorityTensorBuilder {
+
+    implicit def tensorBuilder0[Data]: TensorBuilder.Aux[Data, Data] = {
+      new TensorBuilder[Data] {
+        type Element = Data
+
+        def flatten(a: Data): Seq[Data] = Seq(a)
+
+        def shape(a: Data): Seq[Int] = Nil
+      }
+    }
+
+  }
+  object TensorBuilder extends LowPriorityTensorBuilder {
+    type Aux[Data, Element0] = TensorBuilder[Data] {
+      type Element = Element0
+    }
+
+    implicit def nDimensionalSeqToNDimensionalSeq[Data, Nested, Element0](
+        implicit asSeq: Data => Seq[Nested],
+        nestedBuilder: TensorBuilder.Aux[Nested, Element0]): TensorBuilder.Aux[Data, Element0] = {
+      new TensorBuilder[Data] {
+        type Element = Element0
+
+        def flatten(a: Data): Seq[Element] = a.flatMap { nested =>
+          nestedBuilder.flatten(nested)
+        }
+
+        def shape(a: Data): Seq[Int] = {
+          val nestedSeq = asSeq(a)
+          if (nestedSeq.isEmpty) {
+            0 :: Nil
+          } else {
+            nestedSeq.length +: nestedSeq.map(nestedBuilder.shape).reduce { (a0, a1) =>
+              if (a0 == a1) {
+                a0
+              } else {
+                throw new IllegalArgumentException
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   object Tensor {
+    def apply[A](elements: A, padding: Float = 0.0f)(implicit tensorBuilder: TensorBuilder.Aux[A, Float]): Tensor = {
+      val padding0 = padding
+      new BufferedTensor {
+        def padding: Float = padding0
+
+        val shape: Array[Int] = tensorBuilder.shape(elements).toArray
+
+        val enqueue: Do[PendingBuffer] = {
+          Do(TryT(ResourceT(UnitContinuation.delay {
+            val data = tensorBuilder.flatten(elements).toArray
+            val hostBuffer = MemoryUtil.memAllocFloat(data.length)
+            hostBuffer.duplicate().put(data)
+            Resource(value = Success(hostBuffer), release = UnitContinuation.delay { MemoryUtil.memFree(hostBuffer) })
+          }))).intransitiveFlatMap { hostBuffer =>
+            allocateBufferFrom(hostBuffer).map(ReadyBuffer)
+          }
+        }
+      }
+    }
+
     def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f) = {
       val padding0 = padding
       new InlineTensor {
@@ -113,12 +206,18 @@ trait Tensors extends OpenCL {
                   }
                   fast"[${groups.mkFastring(",")}]"
                 }
+              case _ if floatArray.length == 1 =>
+                fast"${floatArray(0)}"
+              case _ =>
+                throw new IllegalArgumentException(
+                  raw"""shape${shape.mkString("(", ",", ")")} does not match the data size (${floatArray.length})""")
             }
           }
 
           toFastring(shape.view, floatArray).toString
-        }.blockingAwait
-     }
+        }
+        .blockingAwait
+    }
 
     def broadcast(newShape: Array[Int]): Tensor = {
       val newLength = newShape.length
@@ -419,12 +518,9 @@ trait Tensors extends OpenCL {
                           kernel(arguments.length) = outputBuffer
                           kernel
                             .enqueue(globalWorkSize = shape.view.map(_.toLong),
-                                     waitingEvents = arguments.view.map(_.event.handle))
+                                     waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle)))
                             .map { event0 =>
-                              new PendingBuffer {
-                                val event: Event = event0
-                                val buffer: DeviceBuffer[Float] = outputBuffer
-                              }
+                              EventBuffer(outputBuffer, event0)
                             }
                         }
                       }

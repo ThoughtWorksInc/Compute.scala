@@ -19,4 +19,8 @@ val lwjglNatives: String = {
 
 libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.5" % Test).classifier(lwjglNatives).jar()
 
+addCompilerPlugin("com.github.ghik" %% "silencer-plugin" % "0.6")
+
+libraryDependencies += "com.github.ghik" %% "silencer-lib" % "0.6"
+
 fork in Test := true
