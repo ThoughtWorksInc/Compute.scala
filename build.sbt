@@ -27,3 +27,5 @@ crossScalaVersions in ThisBuild := {
       .??(defaultCrossTypeLevelScalaVersions)
       .value
 }
+
+publishArtifact := false
