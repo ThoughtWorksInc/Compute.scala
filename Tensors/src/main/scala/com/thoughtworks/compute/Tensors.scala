@@ -84,6 +84,42 @@ trait Tensors extends OpenCL {
   }
 
   sealed trait Tensor { thisTensor =>
+
+    override def toString: String = {
+      enqueue
+        .intransitiveFlatMap { pendingBuffer =>
+          pendingBuffer.toHostBuffer.intransitiveMap { floatBuffer =>
+            val floatArray = Array.ofDim[Float](floatBuffer.capacity())
+            floatBuffer.asReadOnlyBuffer().get(floatArray)
+            floatArray
+          }
+        }
+        .run
+        .map { floatArray =>
+          def toFastring(shape: Seq[Int], floatArray: Seq[Float]): Fastring = {
+            shape match {
+              case headSize +: tailShape =>
+                val length = floatArray.length
+                if (tailShape.isEmpty) {
+                  if (headSize == length) {
+                    fast"[${floatArray.mkFastring(",")}]"
+                  } else {
+                    throw new IllegalArgumentException
+                  }
+                } else {
+                  val groupSize = length / headSize
+                  def groups = for (i <- (0 until headSize).view) yield {
+                    toFastring(tailShape, floatArray.view(i * groupSize, (i + 1) * groupSize))
+                  }
+                  fast"[${groups.mkFastring(",")}]"
+                }
+            }
+          }
+
+          toFastring(shape.view, floatArray).toString
+        }.blockingAwait
+     }
+
     def broadcast(newShape: Array[Int]): Tensor = {
       val newLength = newShape.length
       val length = shape.length

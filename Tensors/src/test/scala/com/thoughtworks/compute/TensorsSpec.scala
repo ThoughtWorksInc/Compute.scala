@@ -54,6 +54,20 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
       val element = 42.0f
       val padding = 99.0f
       val translated = tensors.Tensor.fill(element, shape, padding = padding).translate(Array(1, 2, -3))
+      translated.toString should be(
+        "[" +
+          "[" +
+          "[99.0,99.0,99.0,99.0,99.0]," +
+          "[99.0,99.0,99.0,99.0,99.0]," +
+          "[99.0,99.0,99.0,99.0,99.0]" +
+          "]," +
+          "[" +
+          "[99.0,99.0,99.0,99.0,99.0]," +
+          "[99.0,99.0,99.0,99.0,99.0]," +
+          "[42.0,42.0,99.0,99.0,99.0]" +
+          "]" +
+          "]")
+
       for {
         pendingBuffer <- translated.enqueue
         floatBuffer <- pendingBuffer.toHostBuffer
