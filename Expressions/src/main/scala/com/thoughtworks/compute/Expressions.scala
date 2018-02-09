@@ -154,9 +154,6 @@ object Expressions {
     /** @template */
     type ArrayTerm <: (Term with Any) with ArrayTermApi
 
-    @inject
-    val array: Implicitly[ArrayCompanion]
-
     protected trait ArrayCompanionApi {
 
       def parameter[Element0 <: ValueTerm](id: Any, padding: Element0, shape: Array[Int]): ArrayTerm {
@@ -167,6 +164,9 @@ object Expressions {
 
     /** @template */
     type ArrayCompanion <: ArrayCompanionApi
+
+    @inject
+    val array: Implicitly[ArrayCompanion]
 
   }
 

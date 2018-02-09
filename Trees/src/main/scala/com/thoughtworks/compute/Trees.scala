@@ -64,6 +64,7 @@ trait Trees extends Expressions {
     }
   }
 
+  /** @group AST */
   trait Operator extends Tree { thisOperator =>
 
     def structuralHashCode(context: HashCodeContext): Int = {
@@ -176,6 +177,7 @@ trait Trees extends Expressions {
     }
   }
 
+  /** @group AST */
   trait Parameter extends Tree { thisParameter =>
 
     val id: Any
@@ -188,6 +190,7 @@ trait Trees extends Expressions {
 
   final class AlphaConversionContext extends IdentityHashMap[Tree, Tree]
 
+  /** @group AST */
   trait Tree extends Product { thisTree =>
     type TermIn[C <: Category]
 
@@ -315,15 +318,18 @@ object Trees {
 
     type FloatTerm <: (ValueTerm with Any) with FloatTreeTerm
 
-    type FloatTree = Tree {
+    /** @group AST */
+    protected type FloatTree = Tree {
       type TermIn[C <: Category] = C#FloatTerm
     }
 
+    /** @group AST */
     protected trait FloatOperator extends Operator {
       type TermIn[C <: Category] = C#FloatTerm
 
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class FloatParameter(id: Any) extends Parameter { thisParameter =>
       type TermIn[C <: Category] = C#FloatTerm
@@ -360,6 +366,7 @@ object Trees {
 
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class FloatLiteral(value: Float) extends FloatOperator {
 
@@ -370,6 +377,7 @@ object Trees {
       }
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class Plus(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
 
@@ -384,6 +392,7 @@ object Trees {
       }
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class Minus(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
@@ -397,6 +406,7 @@ object Trees {
       }
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class Times(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
@@ -410,6 +420,7 @@ object Trees {
       }
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class Div(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
@@ -423,6 +434,7 @@ object Trees {
       }
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class Percent(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
@@ -436,6 +448,7 @@ object Trees {
       }
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class UnaryMinus(operand: FloatTree) extends FloatOperator {
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
@@ -449,6 +462,7 @@ object Trees {
       }
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class UnaryPlus(operand: FloatTree) extends FloatOperator {
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
@@ -492,10 +506,14 @@ object Trees {
     */
   trait ArrayTrees extends Arrays with ValueTrees {
 
-    @(silent @companionObject)
-    final case class Extract[LocalElement <: ValueTerm](array: Tree {
+    /** @group AST */
+    type ArrayTree[LocalElement <: ValueTerm] = Tree {
       type TermIn[C <: Category] = C#ArrayTerm { type Element = LocalElement#TermIn[C] }
-    }) extends Operator {
+    }
+
+    /** @group AST */
+    @(silent @companionObject)
+    final case class Extract[LocalElement <: ValueTerm](array: ArrayTree[LocalElement]) extends Operator {
 
       protected def erasedExport(foreignCategory: Category, map: ExportContext) = {
         map.asScala.getOrElseUpdate(this, array.export(foreignCategory, map).extract)
@@ -509,10 +527,9 @@ object Trees {
       }
     }
 
+    /** @group AST */
     @(silent @companionObject)
-    final case class Transform[LocalElement <: ValueTerm](array: Tree {
-      type TermIn[C <: Category] = C#ArrayTerm { type Element = LocalElement#TermIn[C] }
-    }, matrix: MatrixData)
+    final case class Transform[LocalElement <: ValueTerm](array: ArrayTree[LocalElement], matrix: MatrixData)
         extends Operator {
       type TermIn[C <: Category] = C#ArrayTerm {
         type Element = LocalElement#TermIn[C]
@@ -553,6 +570,7 @@ object Trees {
 
     type ArrayTerm <: (Term with Any) with ArrayTreeTerm
 
+    /** @group AST */
     @(silent @companionObject)
     final case class Fill[LocalElement <: ValueTerm](element: Tree {
       type TermIn[C <: Category] = LocalElement#TermIn[C]
@@ -588,12 +606,12 @@ object Trees {
 
     type ValueTerm <: (Term with Any) with ElementTreeTerm
 
+    /** @group AST */
     @(silent @companionObject)
     final case class ArrayParameter[LocalElement <: ValueTerm](id: Any, padding: Tree {
       type TermIn[C <: Category] = LocalElement#TermIn[C]
     }, shape: Array[Int])
-        extends Tree
-        with Parameter {
+        extends Parameter {
       type TermIn[C <: Category] = C#ArrayTerm {
         type Element = LocalElement#TermIn[C]
       }
@@ -730,8 +748,10 @@ object Trees {
                                                                         TupleType {
                                                                           type Element = LocalElement
                                                                         }]
+
+    /** @group AST */
     @(silent @companionObject)
-    final case class TupleParameter(id: Any, elementType: ValueType, length: Int) extends Tree with Parameter {
+    final case class TupleParameter(id: Any, elementType: ValueType, length: Int) extends Parameter {
       type TermIn[C <: Category] = C#TupleTerm {
         type Element = elementType.TermIn[C]
       }
@@ -788,6 +808,7 @@ object Trees {
       }
     }
 
+    /** @group AST */
     @(silent @companionObject)
     final case class Concatenate[Element0 <: ValueTerm](elementTrees: Seq[Tree {
       type TermIn[C <: Category] = Element0#TermIn[C]
@@ -811,12 +832,15 @@ object Trees {
       }
     }
 
+    /** @group AST */
+    type TupleTree[LocalElement <: ValueTerm] = Tree {
+      type TermIn[C <: Category] = C#TupleTerm { type Element = LocalElement#TermIn[C] }
+    }
+
+    /** @group AST */
     @(silent @companionObject)
-    final case class Apply[Element0 <: ValueTerm](tuple: Tree {
-      type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
-    }, index: Int)
-        extends Operator {
-      type TermIn[C <: Category] = Element0#TermIn[C]
+    final case class Apply[LocalElement <: ValueTerm](tuple: TupleTree[LocalElement], index: Int) extends Operator {
+      type TermIn[C <: Category] = LocalElement#TermIn[C]
 
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
@@ -825,13 +849,7 @@ object Trees {
       }
 
       protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
-        def converted = copy(
-          tuple = tuple
-            .alphaConversion(context)
-            .asInstanceOf[Tree {
-              type TermIn[C <: Category] = C#TupleTerm { type Element = Element0#TermIn[C] }
-            }]
-        )
+        def converted = copy(tuple = tuple.alphaConversion(context))
         context.asScala.getOrElseUpdate(this, converted)
 
       }
