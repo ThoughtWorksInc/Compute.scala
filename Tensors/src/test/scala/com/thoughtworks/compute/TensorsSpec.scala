@@ -18,13 +18,23 @@ import org.scalatest._
 class TensorsSpec extends AsyncFreeSpec with Matchers {
   private def doTensors: Do[Tensors] =
     Do.monadicCloseable(Factory[
-      OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors]
+      OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
       .newInstance(
         handleOpenCLNotification = handleOpenCLNotification,
         numberOfCommandQueuesForDevice = { (deviceId: Long, capabilities: CLCapabilities) =>
           5
         }
       ))
+
+  "repeatedly toString" in {
+    doTensors.map { tensors =>
+      val tensor = tensors.Tensor(42.0f)
+      for (i <- 0 until 1000) {
+        tensor.toString should be("42.0")
+      }
+      succeed
+    }
+  }.run.toScalaFuture
 
   "create a tensor of a constant" in {
     doTensors.flatMap { tensors =>

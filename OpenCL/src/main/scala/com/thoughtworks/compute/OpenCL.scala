@@ -17,8 +17,8 @@ import org.lwjgl.system.MemoryStack._
 import org.lwjgl.system.Pointer._
 
 import scala.collection.mutable
-import com.thoughtworks.compute.Memory.Box
-import com.thoughtworks.compute.OpenCL.checkErrorCode
+import com.thoughtworks.compute.Memory.{Aux, Box}
+import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}
 import org.lwjgl.system.jni.JNINativeInterface
 import org.lwjgl.system._
 
@@ -40,6 +40,7 @@ import com.thoughtworks.tryt.covariant._
 import shapeless.Witness
 import simulacrum.typeclass
 
+import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.language.higherKinds
 
@@ -451,6 +452,13 @@ object OpenCL {
   final case class Event[Owner <: Singleton with OpenCL](handle: Long)
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
+    def release(): Unit = {
+      checkErrorCode(clReleaseEvent(handle))
+    }
+
+    def retain(): Unit = {
+      checkErrorCode(clRetainEvent(handle))
+    }
 
     def referenceCount: Int = {
       val stack = stackPush()
@@ -485,7 +493,7 @@ object OpenCL {
 
     def monadicClose: UnitContinuation[Unit] = {
       UnitContinuation.delay {
-        checkErrorCode(clReleaseEvent(handle))
+        release()
       }
     }
   }
@@ -554,47 +562,6 @@ object OpenCL {
 
     def length(implicit memory: Memory[Element]): Int = numberOfBytes / memory.numberOfBytesPerElement
 
-    private def enqueueReadBuffer[Destination](hostBuffer: Destination, preconditionEvents: Event[Owner]*)(
-        implicit
-        witnessOwner: Witness.Aux[Owner],
-        memory: Memory.Aux[Element, Destination]): Do[Event[Owner]] = {
-
-      witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
-        Do.monadicCloseable {
-          val outputEvent = {
-            val stack = stackPush()
-            try {
-              val (inputEventBufferSize, inputEventBufferAddress) = if (preconditionEvents.isEmpty) {
-                (0, NULL)
-              } else {
-                val inputEventBuffer = stack.pointers(preconditionEvents.view.map(_.handle): _*)
-                (preconditionEvents.length, inputEventBuffer.address())
-              }
-              val outputEventBuffer = stack.pointers(0L)
-              checkErrorCode(
-                nclEnqueueReadBuffer(
-                  commandQueue,
-                  deviceBuffer.handle,
-                  CL_FALSE,
-                  0,
-                  memory.remainingBytes(hostBuffer),
-                  memory.address(hostBuffer),
-                  inputEventBufferSize,
-                  inputEventBufferAddress,
-                  outputEventBuffer.address()
-                )
-              )
-              Event[Owner](outputEventBuffer.get(0))
-            } finally {
-              stack.close()
-            }
-          }
-          checkErrorCode(clFlush(commandQueue))
-          outputEvent
-        }
-      }
-    }
-
     /** Returns an asynchronous operation of a buffer on host.
       *
       * The buffer may be [[java.nio.FloatBuffer FloatBuffer]],
@@ -614,7 +581,11 @@ object OpenCL {
         val hostBuffer = memory.allocate(length)
         Resource(value = Success(hostBuffer), release = UnitContinuation.delay { memory.free(hostBuffer) })
       }))).flatMap { hostBuffer =>
-        enqueueReadBuffer[memory.HostBuffer](hostBuffer, preconditionEvents: _*)(witnessOwner, memory)
+        witnessOwner.value
+          .enqueueReadBuffer[Element, memory.HostBuffer](
+            this.asInstanceOf[witnessOwner.value.DeviceBuffer[Element]],
+            hostBuffer,
+            preconditionEvents.asInstanceOf[Seq[witnessOwner.value.Event]]: _*)(memory)
           .intransitiveFlatMap { event =>
             Do.garbageCollected(event.waitForComplete()).map { _: Unit =>
               hostBuffer
@@ -821,6 +792,83 @@ object OpenCL {
 
   }
 
+  private[OpenCL] sealed trait EarlyEventState
+
+  private[OpenCL] case object EarlyEventClosed extends EarlyEventState
+  private[OpenCL] sealed trait EarlyEventList extends EarlyEventState
+  private[OpenCL] case object EarlyEventNil extends EarlyEventList
+  private[OpenCL] type AnyEvent = Event[_ <: Singleton with OpenCL]
+  private[OpenCL] final case class EarlyEventCons(head: AnyEvent, tail: EarlyEventList) extends EarlyEventList
+
+  /**
+    * @note This is a workaround for https://github.com/ThoughtWorksInc/Compute.scala/issues/51
+    */
+  trait DontReleaseEventTooEarly extends OpenCL {
+    override protected def enqueueReadBuffer[Element, Destination](
+        deviceBuffer: DeviceBuffer[Element],
+        hostBuffer: Destination,
+        preconditionEvents: Event*)(implicit memory: Aux[Element, Destination]): Do[Event] =
+      super.enqueueReadBuffer(deviceBuffer, hostBuffer, preconditionEvents: _*).map { event =>
+        @tailrec
+        def enqueueEvent(): Unit = {
+          newlyCreatedEvents.get() match {
+            case oldState: EarlyEventList =>
+              if (newlyCreatedEvents.compareAndSet(oldState, EarlyEventCons(event, oldState))) {
+                event.retain()
+              } else {
+                enqueueEvent()
+              }
+            case EarlyEventClosed =>
+              throw new IllegalStateException()
+          }
+        }
+        enqueueEvent()
+        event
+      }
+
+    // TODO: specialize the List[Event]
+    private val newlyCreatedEvents = new AtomicReference[EarlyEventState](EarlyEventNil)
+
+    @volatile
+    private var shuttingDownHandler: Option[Unit => Unit] = None
+    private val earlyEventThread = new Thread {
+      setDaemon(true)
+
+      override def run(): Unit = {
+
+        @tailrec
+        def releaseAll(state: EarlyEventState): Unit = {
+          state match {
+            case EarlyEventNil =>
+            case EarlyEventCons(head, tail) =>
+              head.release()
+              releaseAll(tail)
+            case EarlyEventClosed =>
+              throw new IllegalStateException()
+          }
+        }
+        Thread.sleep(1000L)
+        while (shuttingDownHandler.isEmpty) {
+          val state = newlyCreatedEvents.getAndSet(EarlyEventNil)
+          Thread.sleep(1000L)
+
+          releaseAll(state)
+        }
+        val state = newlyCreatedEvents.getAndSet(EarlyEventClosed)
+        releaseAll(state)
+        shuttingDownHandler.get(())
+      }
+    }
+
+    earlyEventThread.start()
+
+    override def monadicClose: UnitContinuation[Unit] = {
+      UnitContinuation.async[Unit] { continue =>
+        shuttingDownHandler = Some(continue)
+      } >> super.monadicClose
+    }
+  }
+
 }
 
 trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton with DefaultCloseable {
@@ -828,6 +876,47 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
 
   type Program = OpenCL.Program[this.type]
   type Event = OpenCL.Event[this.type]
+
+  protected def enqueueReadBuffer[Element, Destination](deviceBuffer: DeviceBuffer[Element],
+                                                        hostBuffer: Destination,
+                                                        preconditionEvents: Event*)(
+      implicit
+      memory: Memory.Aux[Element, Destination]): Do[Event] = {
+    acquireCommandQueue.flatMap { commandQueue =>
+      Do.monadicCloseable {
+        val outputEvent = {
+          val stack = stackPush()
+          try {
+            val (inputEventBufferSize, inputEventBufferAddress) = if (preconditionEvents.isEmpty) {
+              (0, NULL)
+            } else {
+              val inputEventBuffer = stack.pointers(preconditionEvents.view.map(_.handle): _*)
+              (preconditionEvents.length, inputEventBuffer.address())
+            }
+            val outputEventBuffer = stack.pointers(0L)
+            checkErrorCode(
+              nclEnqueueReadBuffer(
+                commandQueue,
+                deviceBuffer.handle,
+                CL_FALSE,
+                0,
+                memory.remainingBytes(hostBuffer),
+                memory.address(hostBuffer),
+                inputEventBufferSize,
+                inputEventBufferAddress,
+                outputEventBuffer.address()
+              )
+            )
+            new Event(outputEventBuffer.get(0))
+          } finally {
+            stack.close()
+          }
+        }
+        checkErrorCode(clFlush(commandQueue))
+        outputEvent
+      }
+    }
+  }
 
   protected def waitForStatus(event: Event, callbackType: Status): UnitContinuation[Status] = UnitContinuation.async {
     (continue: Status => Unit) =>
