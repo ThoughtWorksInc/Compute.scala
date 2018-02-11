@@ -154,14 +154,17 @@ trait Tensors extends OpenCL {
         val shape: Array[Int] = tensorBuilder.shape(elements).toArray
 
         val enqueue: Do[PendingBuffer] = {
-          Do(TryT(ResourceT(UnitContinuation.delay {
+          val resourceContinuation = UnitContinuation.delay {
             val data = tensorBuilder.flatten(elements).toArray
             val hostBuffer = MemoryUtil.memAllocFloat(data.length)
             hostBuffer.duplicate().put(data)
-            Resource(value = Success(hostBuffer), release = UnitContinuation.delay { MemoryUtil.memFree(hostBuffer) })
-          }))).intransitiveFlatMap { hostBuffer =>
-            allocateBufferFrom(hostBuffer).map(ReadyBuffer)
+            Resource(value = Success(hostBuffer), release = UnitContinuation.delay {
+              MemoryUtil.memFree(hostBuffer)
+            })
           }
+          Do(TryT(ResourceT(resourceContinuation)))
+            .intransitiveFlatMap(allocateBufferFrom(_))
+            .map(ReadyBuffer)
         }
       }
     }
@@ -180,15 +183,15 @@ trait Tensors extends OpenCL {
 
     override def toString: String = {
       enqueue
-        .intransitiveFlatMap { pendingBuffer =>
-          pendingBuffer.toHostBuffer.intransitiveMap { floatBuffer =>
+        .flatMap { pendingBuffer: PendingBuffer =>
+          pendingBuffer.toHostBuffer().map { floatBuffer: FloatBuffer =>
             val floatArray = Array.ofDim[Float](floatBuffer.capacity())
             floatBuffer.asReadOnlyBuffer().get(floatArray)
             floatArray
           }
         }
         .run
-        .map { floatArray =>
+        .map { floatArray: Array[Float] =>
           def toFastring(shape: Seq[Int], floatArray: Seq[Float]): Fastring = {
             shape match {
               case headSize +: tailShape =>
