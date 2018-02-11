@@ -177,7 +177,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
 
     def transform(matrix1: MatrixData): ThisTerm = {
       val newMatrix: MatrixData =
-        NDimensionalAffineTransform.concatenate(matrix, matrix1, originalShape.length)
+        NDimensionalAffineTransform.zip(matrix, matrix1, originalShape.length)
       arrayViewFactory
         .newInstance(elementType, newMatrix, originalPaddingCode, originalShape, termCode, typeCode)
         .asInstanceOf[ThisTerm]

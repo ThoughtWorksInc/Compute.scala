@@ -30,22 +30,22 @@ object NDimensionalAffineTransform {
     val length1 = matrix01.length / (length0 + 1)
     val length2 = matrix12.length / (length1 + 1)
     val matrix02 = Array.ofDim[Double]((length0 + 1) * length2)
-    concatenate(matrix01, matrix12, matrix02, length0, length1, length2)
+    zip(matrix01, matrix12, matrix02, length0, length1, length2)
     matrix02
   }
 
   @inline
-  def concatenate(matrix12: MatrixData, matrix01: MatrixData, length2: Int): MatrixData = {
+  def zip(matrix12: MatrixData, matrix01: MatrixData, length2: Int): MatrixData = {
 
     val length1 = matrix12.length / length2 - 1
     val length0 = matrix01.length / length1 - 1
 
     val matrix02 = Array.ofDim[Double]((length0 + 1) * length2)
-    concatenate(matrix01, matrix12, matrix02, length0, length1, length2)
+    zip(matrix01, matrix12, matrix02, length0, length1, length2)
     matrix02
   }
 
-  private def concatenate(matrix01: MatrixData,
+  private def zip(matrix01: MatrixData,
                           matrix12: MatrixData,
                           matrix02: MatrixData,
                           length0: Int,

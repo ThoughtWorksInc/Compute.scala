@@ -194,7 +194,7 @@ object Expressions {
     }
 
     protected trait TupleTermApi extends ValueTermApi with TupleExpressionApi { this: TupleTerm =>
-      def split: Seq[Element]
+      def unzip: Seq[Element]
     }
 
     /** @template */
@@ -213,7 +213,7 @@ object Expressions {
 
       def parameter(id: Any, element: ValueType, length: Int): TupleTerm { type Element = element.ThisTerm }
 
-      def concatenate[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 }
+      def zip[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 }
 
     }
 
