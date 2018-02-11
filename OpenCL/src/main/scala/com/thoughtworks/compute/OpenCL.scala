@@ -604,11 +604,10 @@ object OpenCL {
         Resource(value = Success(hostBuffer), release = UnitContinuation.delay { memory.free(hostBuffer) })
       }))).flatMap { hostBuffer =>
         enqueueReadBuffer[memory.HostBuffer](hostBuffer, preconditionEvents: _*)(witnessOwner, memory)
-          .flatMap { event =>
-            Do.garbageCollected(event.waitForComplete())
-          }
-          .intransitiveMap { _: Unit =>
-            hostBuffer
+          .intransitiveFlatMap { event =>
+            Do.garbageCollected(event.waitForComplete()).map { _: Unit =>
+              hostBuffer
+            }
           }
       }
     }
