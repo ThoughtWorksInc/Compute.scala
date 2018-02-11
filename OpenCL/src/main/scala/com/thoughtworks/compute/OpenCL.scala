@@ -452,6 +452,17 @@ object OpenCL {
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
 
+    def referenceCount: Int = {
+      val stack = stackPush()
+      try {
+        val intBuffer = stack.mallocInt(1)
+        checkErrorCode(clGetEventInfo(handle, CL_EVENT_REFERENCE_COUNT, intBuffer, null))
+        intBuffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
+
     def waitFor(callbackType: Status)(implicit
                                       witnessOwner: Witness.Aux[Owner]): Future[Unit] = {
       // The cast is a workaround for https://github.com/milessabin/shapeless/issues/753
