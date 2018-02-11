@@ -26,6 +26,16 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         }
       ))
 
+  "repeatedly toString" in {
+    doTensors.map { tensors =>
+      val tensor = tensors.Tensor(42.0f)
+      for (i <- 0 until 1000) {
+        tensor.toString should be("42.0")
+      }
+      succeed
+    }
+  }.run.toScalaFuture
+
   "create a tensor of a constant" in {
     doTensors.flatMap { tensors =>
       val shape = Array(2, 3, 5)
