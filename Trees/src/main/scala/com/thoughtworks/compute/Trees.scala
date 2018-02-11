@@ -818,7 +818,7 @@ object Trees {
       protected def erasedExport(foreignCategory: Category, context: ExportContext): Category#Term = {
         def foreignTerm = {
           val foreignElements = elementTrees.map(_.export(foreignCategory, context))
-          foreignCategory.tuple.concatenate(foreignElements: _*)
+          foreignCategory.tuple.zip(foreignElements: _*)
         }
         context.asScala.getOrElseUpdate(this, foreignTerm)
       }
@@ -844,7 +844,7 @@ object Trees {
 
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
         context.asScala
-          .getOrElseUpdate(this, tuple.export(foreignCategory, context).split.apply(index))
+          .getOrElseUpdate(this, tuple.export(foreignCategory, context).unzip.apply(index))
 
       }
 
@@ -864,7 +864,7 @@ object Trees {
 
       val length: Int
 
-      def split: Seq[Element] = {
+      def unzip: Seq[Element] = {
         new IndexedSeq[Element] {
           def length = thisTuple.length
           def apply(index: Int): Element = {
@@ -897,10 +897,10 @@ object Trees {
         tupleTermFactory[element.ThisTerm].newInstance(element, length, parameterTree)
       }
 
-      def concatenate[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 } = {
+      def zip[Element0 <: ValueTerm](elements: Element0*): TupleTerm { type Element = Element0 } = {
         val elementTrees = elements.map(_.tree.asInstanceOf[Tree { type TermIn[C <: Category] = Element0#TermIn[C] }])
-        val concatenateTree = Concatenate[Element0](elementTrees)
-        tupleTermFactory[Element0].newInstance(elements.head.valueType, elements.length, concatenateTree)
+        val zipTree = Concatenate[Element0](elementTrees)
+        tupleTermFactory[Element0].newInstance(elements.head.valueType, elements.length, zipTree)
       }
 
     }

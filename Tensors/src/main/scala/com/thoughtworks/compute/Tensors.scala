@@ -34,7 +34,7 @@ import scalaz.syntax.tag._
 // TODO: Rename to VirtualTensors, like virtual-dom
 trait Tensors extends OpenCL {
 
-  def concatenate(tensors: Seq[Tensor], dimension: Int): Tensor = ???
+  def zip(tensors: Seq[Tensor], dimension: Int): Tensor = ???
 
   protected val trees: FloatArrayTrees with StructuralTrees { type Category = Floats with Arrays } =
     Factory[FloatArrayTrees with StructuralTrees].newInstance()
@@ -332,7 +332,7 @@ trait Tensors extends OpenCL {
         case thisTensor: TransformedTensor =>
           new TransformedTensor {
             val matrix: MatrixData = {
-              NDimensionalAffineTransform.concatenate(thisTensor.matrix, matrix1, thisTensor.shape.length)
+              NDimensionalAffineTransform.zip(thisTensor.matrix, matrix1, thisTensor.shape.length)
             }
             val checkpoint: Tensor = thisTensor.checkpoint
             val shape: Array[Int] = thisTensor.shape
@@ -372,7 +372,7 @@ trait Tensors extends OpenCL {
       transform(newShape, matrix)
     }
 
-    def split(dimension: Int): IndexedSeq[Tensor] = {
+    def unzip(dimension: Int): IndexedSeq[Tensor] = {
       // TODO: override map/reduce to produce less OpenCL C code
       new IndexedSeq[Tensor] {
 

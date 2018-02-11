@@ -110,7 +110,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
   "convolution" ignore {
     doTensors.flatMap { tensors =>
       import tensors.Tensor
-      import tensors.concatenate
+      import tensors.zip
       def convolute(input: Tensor /* batchSize × height × width × depth */,
                     weight: Tensor /* kernelHeight × kernelWidth × depth × filterSize */,
                     bias: Tensor /* filterSize*/ ): Tensor = {
@@ -120,14 +120,14 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
               case Array(kernelHeight, kernelWidth, `depth`, filterSize) =>
                 bias.shape match {
                   case Array(`filterSize`) =>
-                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.split(dimension = 3)
+                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.unzip(dimension = 3)
 
                     val weightSeq: Seq[Seq[Seq[Seq[Tensor]]]] /* filterSize × kernelHeight × kernelWidth × depth */ =
                       weight
-                        .split(dimension = 3)
-                        .map(_.split(dimension = 0).map(_.split(dimension = 0).map(_.split(dimension = 0))))
+                        .unzip(dimension = 3)
+                        .map(_.unzip(dimension = 0).map(_.unzip(dimension = 0).map(_.unzip(dimension = 0))))
 
-                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.split(dimension = 0)
+                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
 
                     val outputChannels: Seq[Tensor] = weightSeq.view.zip(biasSeq).map {
                       case (weightPerFilter, biasPerFilter) =>
@@ -145,7 +145,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
 
                         biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
                     }
-                    concatenate(outputChannels, dimension = 3)
+                    zip(outputChannels, dimension = 3)
                   case _ =>
                     throw new IllegalArgumentException
                 }

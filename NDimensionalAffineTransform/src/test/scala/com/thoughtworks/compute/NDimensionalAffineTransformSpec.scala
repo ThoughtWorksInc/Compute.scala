@@ -32,12 +32,12 @@ final class NDimensionalAffineTransformSpec extends FreeSpec with Matchers {
     locally {
       val at = arrayToAffineTransform(matrix1)
       at.concatenate(arrayToAffineTransform(matrix0))
-      val expected = arrayToAffineTransform(NDimensionalAffineTransform.concatenate(matrix1, matrix0, 2))
+      val expected = arrayToAffineTransform(NDimensionalAffineTransform.zip(matrix1, matrix0, 2))
       at should be(expected)
     }
   }
 
-  "concatenate 2D" in {
+  "zip 2D" in {
     checkConcatenate2D(
       Array(
         1.0, 0.0, 3.5, //
