@@ -2,9 +2,10 @@ package com.thoughtworks.compute
 
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.compute.OpenCLKernelBuilder.ClTypeDefinition._
-import com.thoughtworks.compute.Expressions.FloatArrays
+import com.thoughtworks.compute.Expressions.{AllExpressions, FloatArrays}
 import com.thoughtworks.compute.NDimensionalAffineTransform._
-import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory5, Factory6, inject}
+import com.thoughtworks.feature.Factory
+import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Factory5, Factory6, inject}
 
 import scala.collection.mutable
 object OpenCLKernelBuilder {
@@ -20,6 +21,19 @@ object OpenCLKernelBuilder {
 
   object ClTypeDefinition {
     private val Noop: ClTypeDefineHandler = Function.const(())
+
+    final case class TupleDefinition(element: ClTypeDefinition, length: Int) extends ClTypeDefinition {
+      def define(globalContext: GlobalContext): (ClTypeCode, ClTypeDefineHandler) = {
+        val elementTypeCode = globalContext.cachedSymbol(element).typeCode
+        val tupleTypeCode = globalContext.freshName(raw"""${elementTypeCode}_tuple""")
+        val typeDefineHandler: ClTypeDefineHandler = { typeSymbol =>
+          globalContext.globalDefinitions += fastraw"""typedef struct ${typeSymbol.typeCode} {
+            ${elementTypeCode}[$length] tuple_data;
+          } ${typeSymbol.typeCode};"""
+        }
+        tupleTypeCode -> typeDefineHandler
+      }
+    }
 
     final case class ArrayDefinition(element: ClTypeDefinition, shape: Array[Int]) extends ClTypeDefinition {
       def define(globalContext: GlobalContext): (ClTypeCode, ClTypeDefineHandler) = {
@@ -85,7 +99,7 @@ import com.thoughtworks.compute.OpenCLKernelBuilder._
 /**
   * @author 杨博 (Yang Bo)
   */
-trait OpenCLKernelBuilder extends FloatArrays {
+trait OpenCLKernelBuilder extends AllExpressions {
   val globalContext: GlobalContext
   import globalContext._
 
@@ -136,17 +150,21 @@ trait OpenCLKernelBuilder extends FloatArrays {
     val typeCode: ClTypeCode
   }
 
-  protected trait ClType extends super.ValueTypeApi {
+  protected trait ClValueType extends super.ValueTypeApi {
 
     def typeSymbol: ClTypeSymbol
 
-    @inject def factory: Factory1[ClTermCode, ThisTerm]
+    def term(code: ClTermCode): ThisTerm
 
   }
 
-  type ValueType <: (Type with Any) with ClType
+  type ValueType <: (Type with Any) with ClValueType
 
-  protected trait ClFloatType extends super.FloatTypeApi with FloatExpressionApi with ClType {
+  protected trait ClFloatType extends super.FloatTypeApi with FloatExpressionApi with ClValueType {
+    @inject def termFactory: Factory1[ClTermCode, ThisTerm]
+
+    def term(code: ClTermCode) = termFactory.newInstance(code)
+
     def typeSymbol: ClTypeSymbol = floatSymbol
     def literal(value: Float): ThisTerm = {
       val floatString = if (value.isNaN) {
@@ -160,12 +178,12 @@ trait OpenCLKernelBuilder extends FloatArrays {
       } else {
         raw"""${value}f"""
       }
-      factory.newInstance(floatString)
+      termFactory.newInstance(floatString)
     }
 
     def parameter(id: Any): ThisTerm = {
       val termSymbol = freshName(id.toString)
-      factory.newInstance(termSymbol)
+      termFactory.newInstance(termSymbol)
     }
   }
 
@@ -228,7 +246,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
       localDefinitions += fastraw"""
         const ${elementType.typeSymbol.typeCode} $termId = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $originalPaddingCode;
       """
-      elementType.factory.newInstance(termId).asInstanceOf[Element]
+      elementType.term(termId).asInstanceOf[Element]
     }
   }
 
@@ -268,7 +286,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
         const ${elementType.typeSymbol.typeCode} $valueTermName = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode;
       """
 
-      elementType.factory.newInstance(valueTermName).asInstanceOf[Element]
+      elementType.term(valueTermName).asInstanceOf[Element]
     }
   }
 
@@ -339,11 +357,11 @@ trait OpenCLKernelBuilder extends FloatArrays {
       localDefinitions += fastraw"""
         const $typeCode $valueTermName = -$termCode;
       """
-      float.factory.newInstance(valueTermName)
+      float.termFactory.newInstance(valueTermName)
     }
 
     def unary_+ : FloatTerm = {
-      float.factory.newInstance(termCode)
+      float.termFactory.newInstance(termCode)
     }
 
     def +(rightHandSide: FloatTerm): FloatTerm = {
@@ -351,7 +369,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
       localDefinitions += fastraw"""
         const $typeCode $valueTermName = $termCode + ${rightHandSide.termCode};
       """
-      float.factory.newInstance(valueTermName)
+      float.termFactory.newInstance(valueTermName)
     }
 
     def -(rightHandSide: FloatTerm): FloatTerm = {
@@ -359,7 +377,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
       localDefinitions += fastraw"""
         const $typeCode $valueTermName = $termCode - ${rightHandSide.termCode};
       """
-      float.factory.newInstance(valueTermName)
+      float.termFactory.newInstance(valueTermName)
     }
 
     def *(rightHandSide: FloatTerm): FloatTerm = {
@@ -367,7 +385,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
       localDefinitions += fastraw"""
         const $typeCode $valueTermName = $termCode * ${rightHandSide.termCode};
       """
-      float.factory.newInstance(valueTermName)
+      float.termFactory.newInstance(valueTermName)
     }
 
     def /(rightHandSide: FloatTerm): FloatTerm = {
@@ -375,7 +393,7 @@ trait OpenCLKernelBuilder extends FloatArrays {
       localDefinitions += fastraw"""
         const $typeCode $valueTermName = $termCode / ${rightHandSide.termCode};
       """
-      float.factory.newInstance(valueTermName)
+      float.termFactory.newInstance(valueTermName)
     }
 
     def %(rightHandSide: FloatTerm): FloatTerm = {
@@ -383,9 +401,92 @@ trait OpenCLKernelBuilder extends FloatArrays {
       localDefinitions += fastraw"""
         const $typeCode $valueTermName = $termCode % ${rightHandSide.termCode};
       """
-      float.factory.newInstance(valueTermName)
+      float.termFactory.newInstance(valueTermName)
     }
   }
   type FloatTerm <: (ValueTerm with Any) with ClFloatTerm
+
+  trait ClTupleTerm extends TupleTermApi with ClValueTerm { thisTupleTerm: TupleTerm =>
+    def unzip: Seq[Element] = new IndexedSeq[Element] {
+
+      def length: Int = thisTupleTerm.length
+
+      def apply(index: Int): Element = {
+        val elementTermName = freshName("")
+        localDefinitions += fastraw"""
+          const ${elementType.typeSymbol.typeCode} $elementTermName = $termCode.tuple_data[$index];
+        """
+        valueType.term(elementTermName).asInstanceOf[Element]
+      }
+    }
+
+    def valueType: ThisType = clTupleTypeFactory[Element].newInstance(elementType, length).asInstanceOf[ThisType]
+
+    val elementType: ValueType
+
+    val length: Int
+
+  }
+  type TupleTerm <: (ValueTerm with Any) with ClTupleTerm
+
+  @inject
+  protected def tupleTermFactory[LocalElement <: ValueTerm]
+    : Factory3[ValueType, Int, ClTermCode, TupleTerm { type Element = LocalElement }]
+
+  protected trait ClTupleType extends TupleTypeApi with ClValueType { thisTupleType: TupleType =>
+    def typeSymbol: ClTypeSymbol = {
+      val tupleDefinition = TupleDefinition(elementType.typeSymbol.firstDefinition, length)
+      cachedSymbol(tupleDefinition)
+    }
+
+    def term(code: ClTermCode): ThisTerm = {
+      tupleTermFactory.newInstance(elementType, length, code)
+    }
+
+    val elementType: ValueType
+
+    val length: Int
+  }
+
+  type TupleType <: (ValueType with Any) with ClTupleType
+
+  @inject protected def clTupleTypeFactory[LocalElement <: ValueTerm]
+    : Factory2[ValueType, Int, TupleType { type Element = LocalElement }]
+
+  protected trait ClTupleSingleton extends TupleSingletonApi {
+
+    def apply(element: ValueType, length: Int): TupleType { type Element = element.ThisTerm } = {
+      clTupleTypeFactory[element.ThisTerm].newInstance(element, length)
+    }
+
+    def parameter(id: Any, element: ValueType, length: Int): TupleTerm { type Element = element.ThisTerm } = {
+      val termCode = freshName(id.toString)
+      tupleTermFactory[element.ThisTerm].newInstance(element, length, termCode)
+    }
+
+    def zip[Element0 <: ValueTerm](elements: Element0*): TupleTerm {
+      type Element = Element0
+    } = {
+      val elementType = elements.head.valueType
+
+      val tupleType = clTupleTypeFactory[Element0].newInstance(elementType, elements.length)
+
+      val tupleTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${tupleType.typeSymbol.typeCode} $tupleTermName = {
+          ${elements.map(_.termCode).mkFastring(""",
+          """)}
+        };
+      """
+
+      tupleType
+        .term(tupleTermName)
+        .asInstanceOf[TupleTerm {
+          type Element = Element0
+        }]
+    }
+  }
+
+  type TupleSingleton <: ClTupleSingleton
 
 }
