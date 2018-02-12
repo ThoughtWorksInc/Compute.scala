@@ -1,6 +1,6 @@
 package com.thoughtworks.compute
 
-import com.thoughtworks.compute.Trees.{AllTrees, FloatArrayTrees}
+import com.thoughtworks.compute.Trees.AllTrees
 import com.thoughtworks.feature.Factory
 import org.scalatest.{Assertion, FreeSpec, Matchers}
 

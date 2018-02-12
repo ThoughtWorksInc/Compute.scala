@@ -1,21 +1,19 @@
 package com.thoughtworks.compute
 
-import java.nio.{ByteBuffer, FloatBuffer}
-import java.util.{Collections, IdentityHashMap}
+import java.nio.ByteBuffer
 import java.util.concurrent.Callable
+import java.util.{Collections, IdentityHashMap}
 
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.github.ghik.silencer.silent
 import com.google.common.cache._
-import com.thoughtworks.continuation._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats, Tuples}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
-import com.thoughtworks.compute.OpenCL.DeviceBuffer
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
 import com.thoughtworks.compute.Tensors.MemoryTrees
-import com.thoughtworks.compute.Trees.{AllTrees, FloatArrayTrees, StructuralTrees}
+import com.thoughtworks.compute.Trees.{AllTrees, StructuralTrees}
+import com.thoughtworks.continuation._
 import com.thoughtworks.feature.Factory
-import com.thoughtworks.feature.Factory.inject
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
 import com.thoughtworks.raii.covariant._

@@ -2,9 +2,8 @@ package com.thoughtworks.compute
 
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.compute.OpenCLKernelBuilder.ClTypeDefinition._
-import com.thoughtworks.compute.Expressions.{AllExpressions, FloatArrays}
+import com.thoughtworks.compute.Expressions.AllExpressions
 import com.thoughtworks.compute.NDimensionalAffineTransform._
-import com.thoughtworks.feature.Factory
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Factory5, Factory6, inject}
 
 import scala.collection.mutable

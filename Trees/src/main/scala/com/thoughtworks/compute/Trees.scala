@@ -701,12 +701,6 @@ object Trees {
     type ArraySingleton <: TreeArraySingleton
   }
 
-  /**
-    * @author 杨博 (Yang Bo)
-    */
-  @deprecated(message = "Use [[AllTrees]] instead", since = "0.2.0")
-  trait FloatArrayTrees extends ArrayTrees with FloatTrees with FloatArrays
-
   private val tupleHashSeed = "TupleType".##
 
   trait TupleTrees extends ValueTrees with Tuples {
