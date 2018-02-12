@@ -1,9 +1,9 @@
 package com.thoughtworks.compute
 
 import com.dongxiguo.fastring.Fastring
-import com.thoughtworks.compute.Expressions.{Arrays, Floats}
+import com.thoughtworks.compute.Expressions.{Arrays, Floats, Tuples}
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
-import com.thoughtworks.compute.Trees.FloatArrayTrees
+import com.thoughtworks.compute.Trees.AllTrees
 import com.thoughtworks.feature.Factory
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -14,11 +14,11 @@ class OpenCLKernelBuilderSpec extends FreeSpec with Matchers {
 
   "id" in {
     val category1 = {
-      Factory[FloatArrayTrees].newInstance()
+      Factory[AllTrees].newInstance()
     }
 
     val category2 = {
-      Factory[FloatArrayTrees].newInstance()
+      Factory[AllTrees].newInstance()
     }
 
     def foo(e1: category1.FloatTerm): category2.FloatTerm = {
@@ -34,12 +34,12 @@ class OpenCLKernelBuilderSpec extends FreeSpec with Matchers {
 
   "opencl" in {
 
-    val trees2: FloatArrayTrees { type Category = Floats with Arrays } = {
-      Factory[FloatArrayTrees].newInstance()
+    val trees2: AllTrees { type Category = Tuples with Floats with Arrays } = {
+      Factory[AllTrees].newInstance()
     }
 
-    val trees: FloatArrayTrees { type Category = Floats with Arrays } = {
-      Factory[FloatArrayTrees].newInstance()
+    val trees: AllTrees { type Category = Tuples with Floats with Arrays } = {
+      Factory[AllTrees].newInstance()
     }
 
     val x: trees.ArrayTerm { type Element = trees.FloatTerm } =

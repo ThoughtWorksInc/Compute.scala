@@ -170,14 +170,6 @@ object Expressions {
 
   }
 
-  /**
-    * @author 杨博 (Yang Bo)
-    */
-  @deprecated(message = "Use [[AllExpressions]] instead", since = "0.2.0")
-  trait FloatArrays extends Floats with Arrays {
-    type Category >: this.type <: Floats with Arrays
-  }
-
   trait Tuples extends Values {
     type Category >: this.type <: Tuples
 
@@ -223,7 +215,7 @@ object Expressions {
   }
 
   trait AllExpressions extends Tuples with Floats with Arrays {
-    type Category >: this.type <: AllExpressions
+    type Category >: this.type <: Tuples with Floats with Arrays
   }
 
 }

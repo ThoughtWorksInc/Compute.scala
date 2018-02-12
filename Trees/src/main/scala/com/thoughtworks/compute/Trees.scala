@@ -701,12 +701,6 @@ object Trees {
     type ArraySingleton <: TreeArraySingleton
   }
 
-  /**
-    * @author 杨博 (Yang Bo)
-    */
-  @deprecated(message = "Use [[AllTrees]] instead", since = "0.2.0")
-  trait FloatArrayTrees extends ArrayTrees with FloatTrees with FloatArrays
-
   private val tupleHashSeed = "TupleType".##
 
   trait TupleTrees extends ValueTrees with Tuples {
@@ -743,11 +737,11 @@ object Trees {
     type TupleType <: (ValueType with Any) with TupleTreeType
 
     @inject
-    protected def tupleTypeFactory[LocalElement <: ValueTerm]: Factory2[ValueType,
-                                                                        Int,
-                                                                        TupleType {
-                                                                          type Element = LocalElement
-                                                                        }]
+    protected def tupleTreeTypeFactory[LocalElement <: ValueTerm]: Factory2[ValueType,
+                                                                            Int,
+                                                                            TupleType {
+                                                                              type Element = LocalElement
+                                                                            }]
 
     /** @group AST */
     @(silent @companionObject)
@@ -858,7 +852,7 @@ object Trees {
     protected trait TupleTreeTerm extends ValueTreeTerm with TupleTermApi {
       thisTuple: TupleTerm =>
 
-      def valueType = tupleTypeFactory[Element].newInstance(elementType, length).asInstanceOf[ThisType]
+      def valueType = tupleTreeTypeFactory[Element].newInstance(elementType, length).asInstanceOf[ThisType]
 
       val elementType: ValueType
 
@@ -887,7 +881,7 @@ object Trees {
     protected trait TreeTupleSingleton extends TupleSingletonApi {
 
       def apply(element: ValueType, length: Int): TupleType { type Element = element.ThisTerm } = {
-        tupleTypeFactory[element.ThisTerm].newInstance(element, length)
+        tupleTreeTypeFactory[element.ThisTerm].newInstance(element, length)
       }
 
       def parameter(id: Any, element: ValueType, length: Int): TupleTerm {
