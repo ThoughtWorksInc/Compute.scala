@@ -251,10 +251,12 @@ trait Tensors extends OpenCL {
   object Tensor {
     def apply[A](elements: A, padding: Float = 0.0f)(implicit tensorBuilder: TensorBuilder.Aux[A, Float]) = {
       val padding0 = padding
-      new BufferedTensor {
-        def padding: Float = padding0
+      new {
 
         val shape: Array[Int] = tensorBuilder.shape(elements).toArray
+
+      } with BufferedTensor {
+        def padding: Float = padding0
 
         val enqueue = {
           Do(TryT(ResourceT(UnitContinuation.delay {
@@ -434,7 +436,7 @@ trait Tensors extends OpenCL {
               NDimensionalAffineTransform.concatenate(thisTensor.matrix, matrix1, thisTensor.shape.length)
             }
             val checkpoint: Tensor = thisTensor.checkpoint
-            val shape: Array[Int] = thisTensor.shape
+            val shape: Array[Int] = newShape
             //          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
             val padding: Float = thisTensor.padding
           }
@@ -473,9 +475,8 @@ trait Tensors extends OpenCL {
 
     def unzip(dimension: Int): IndexedSeq[Tensor] = {
       // TODO: override map/reduce to produce less OpenCL C code
+      val newShape = shape.patch(dimension, Nil, 1)
       new IndexedSeq[Tensor] {
-
-        private val newShape = shape.patch(dimension, Nil, 1)
 
         val length: Int = shape(dimension)
 
@@ -649,13 +650,17 @@ trait Tensors extends OpenCL {
     def matrix: MatrixData
 
     val closure: FloatTerm = {
-      array.parameter(checkpoint, float.literal(padding), shape).transform(matrix).extract
+      array.parameter(checkpoint, float.literal(padding), checkpoint.shape).transform(matrix).extract
     }
   }
 
   trait BufferedTensor extends Tensor {
     // TODO: Allow other types
-    val closure: FloatTerm = {
+    @transient
+    lazy val closure: FloatTerm = {
+      if (shape == null) {
+        throw new IllegalArgumentException
+      }
       array.parameter(this, float.literal(padding), shape).extract
     }
   }

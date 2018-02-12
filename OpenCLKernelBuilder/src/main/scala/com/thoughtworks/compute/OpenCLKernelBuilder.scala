@@ -209,32 +209,38 @@ trait OpenCLKernelBuilder extends AllExpressions {
     def extract: Element = {
       val numberOfRows = originalShape.length
       val numberOfColumns = matrix.length / numberOfRows
+      if (matrix.length % numberOfRows != 0) {
+        throw new IllegalStateException()
+      }
 
-      val (indices, indexDefinitions) = (for {
+      val (indices, indexDefinitions, bounds) = (for {
         y <- 0 until numberOfRows
       } yield {
         val products = for {
           x <- 0 until numberOfColumns
           if matrix(y * numberOfColumns + x) != 0.0
         } yield {
-          if (x < originalShape.length) {
-            matrix(y * numberOfColumns + x) match {
+          val scale = matrix(y * numberOfColumns + x)
+          if (x < numberOfColumns - 1) {
+            scale match {
               case 1.0 =>
                 fast"get_global_id($x)"
               case scale =>
                 fast"get_global_id($x) * $scale"
             }
           } else {
-            fast"${matrix(y * numberOfColumns + x)}"
+            fast"$scale"
           }
         }
         val indexId = freshName("index")
-        indexId -> fast"ptrdiff_t $indexId = ${products.mkFastring(" + ")};\n"
-      }).unzip
-
-      val bounds = for {
-        (max, indexId) <- originalShape.view.zip(indices)
-      } yield fast"$indexId >= 0 && $indexId < $max"
+        val (indexDefinition, bounds) = if (products.isEmpty) {
+          (fast"const ptrdiff_t $indexId = 0;\n", Nil)
+        } else {
+          (fast"const ptrdiff_t $indexId = (ptrdiff_t)(${products.mkFastring(" + ")});\n",
+           Seq(fast"$indexId >= 0", fast"$indexId < ${originalShape(y)}"))
+        }
+        (indexId, indexDefinition, bounds)
+      }).unzip3
 
       localDefinitions ++= indexDefinitions
 
@@ -242,8 +248,16 @@ trait OpenCLKernelBuilder extends AllExpressions {
       val dereferenceCode = fast"(*${termCode})${indices.map { i =>
         fast"[$i]"
       }.mkFastring}"
+      val checkedDereference = {
+        val flatBounds = bounds.flatten
+        if (flatBounds.isEmpty) {
+          dereferenceCode
+        } else {
+          fast"(${bounds.flatten.mkFastring(" && ")}) ? $dereferenceCode : $originalPaddingCode"
+        }
+      }
       localDefinitions += fastraw"""
-        const ${elementType.typeSymbol.typeCode} $termId = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $originalPaddingCode;
+        const ${elementType.typeSymbol.typeCode} $termId = $checkedDereference;
       """
       elementType.term(termId).asInstanceOf[Element]
     }
