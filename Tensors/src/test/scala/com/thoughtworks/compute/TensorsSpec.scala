@@ -155,7 +155,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
 
                         biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
                     }
-                    zip(outputChannels, dimension = 3)
+                    zip(outputChannels)
                   case _ =>
                     throw new IllegalArgumentException
                 }

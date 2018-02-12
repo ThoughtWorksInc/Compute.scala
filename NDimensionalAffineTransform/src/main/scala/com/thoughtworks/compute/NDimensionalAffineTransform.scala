@@ -35,7 +35,7 @@ object NDimensionalAffineTransform {
   }
 
   @inline
-  def zip(matrix12: MatrixData, matrix01: MatrixData, length2: Int): MatrixData = {
+  def concatenate(matrix12: MatrixData, matrix01: MatrixData, length2: Int): MatrixData = {
 
     val length1 = matrix12.length / length2 - 1
     val length0 = matrix01.length / length1 - 1

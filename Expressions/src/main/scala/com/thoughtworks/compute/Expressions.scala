@@ -223,7 +223,7 @@ object Expressions {
   }
 
   trait AllExpressions extends Tuples with Floats with Arrays {
-    type Category >: this.type <: AllExpressions
+    type Category >: this.type <: Tuples with Floats with Arrays
   }
 
 }

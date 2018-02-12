@@ -195,7 +195,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
 
     def transform(matrix1: MatrixData): ThisTerm = {
       val newMatrix: MatrixData =
-        NDimensionalAffineTransform.zip(matrix, matrix1, originalShape.length)
+        NDimensionalAffineTransform.concatenate(matrix, matrix1, originalShape.length)
       arrayViewFactory
         .newInstance(elementType, newMatrix, originalPaddingCode, originalShape, termCode, typeCode)
         .asInstanceOf[ThisTerm]
