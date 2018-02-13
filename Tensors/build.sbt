@@ -4,7 +4,7 @@ libraryDependencies += "com.google.guava" % "guava" % "23.6-jre"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % Test
 
-val lwjglNatives: String = {
+libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.5" % Test).jar().classifier {
   import scala.util.Properties._
   if (isMac) {
     "natives-macos"
@@ -16,8 +16,6 @@ val lwjglNatives: String = {
     throw new MessageOnlyException(s"lwjgl does not support $osName")
   }
 }
-
-libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.5" % Test).classifier(lwjglNatives).jar()
 
 addCompilerPlugin("com.github.ghik" %% "silencer-plugin" % "0.6")
 

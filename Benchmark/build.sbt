@@ -1,6 +1,6 @@
 enablePlugins(JmhPlugin)
 
-val lwjglNatives: String = {
+libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.5").jar().classifier {
   import scala.util.Properties._
   if (isMac) {
     "natives-macos"
@@ -12,10 +12,6 @@ val lwjglNatives: String = {
     throw new MessageOnlyException(s"lwjgl does not support $osName")
   }
 }
-
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5" classifier lwjglNatives
-
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.5"
 
 libraryDependencies += "com.dongxiguo" %% "fastring" % "0.3.1"
 
