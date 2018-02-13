@@ -17,13 +17,13 @@ libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M8"
 
 libraryDependencies += "com.thoughtworks.raii" %% "asynchronouspool" % "3.0.0-M8"
 
-libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.3.0-M7"
+libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.3.0-M8"
 
-libraryDependencies += "com.thoughtworks.feature" %% "implicitapply" % "2.3.0-M7"
+libraryDependencies += "com.thoughtworks.feature" %% "implicitapply" % "2.3.0-M8"
 
-libraryDependencies += "com.thoughtworks.feature" %% "mixins-implicitssingleton" % "2.3.0-M7"
+libraryDependencies += "com.thoughtworks.feature" %% "mixins-implicitssingleton" % "2.3.0-M8"
 
-libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.3.0-M7"
+libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.3.0-M8"
 
 libraryDependencies += "com.chuusai" %%% "shapeless" % "2.3.3"
 
