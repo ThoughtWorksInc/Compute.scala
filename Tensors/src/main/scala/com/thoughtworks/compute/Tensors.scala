@@ -441,14 +441,15 @@ trait Tensors extends OpenCL {
             val padding: Float = thisTensor.padding
           } with TransformedTensor
         case _ =>
-          new TransformedTensor {
-            def checkpoint: Tensor = thisTensor
+          new {
+            val checkpoint: Tensor = thisTensor
 
-            def shape: Array[Int] = newShape
+            val shape: Array[Int] = newShape
 
             //          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
-            def matrix: MatrixData = matrix1
+            val matrix: MatrixData = matrix1
 
+          } with TransformedTensor {
             def padding: Float = checkpoint.padding
           }
       }
@@ -526,7 +527,7 @@ trait Tensors extends OpenCL {
 
     def padding: Float
 
-    val arrayTerm = {
+    @transient lazy val arrayTerm = {
       if (shape == null) {
         throw new IllegalArgumentException
       }
@@ -644,7 +645,7 @@ trait Tensors extends OpenCL {
     * @see [[buffered]] to create a tensor that will cache the result.
     */
   trait InlineTensor extends Tensor {
-    lazy val enqueue: Do[PendingBuffer[closure.JvmValue]] = {
+    val enqueue: Do[PendingBuffer[closure.JvmValue]] = {
       enqueueClosure(closure, shape)
     }
   }
@@ -659,15 +660,15 @@ trait Tensors extends OpenCL {
       */
     def matrix: MatrixData
 
-    val closure: FloatTerm = {
+    @transient lazy val closure: FloatTerm = {
       checkpoint.arrayTerm.transform(matrix).extract
     }
+
   }
 
   trait BufferedTensor extends Tensor {
     // TODO: Allow other types
-    @transient
-    lazy val closure: FloatTerm = {
+    @transient lazy val closure: FloatTerm = {
       arrayTerm.extract
     }
   }
