@@ -66,7 +66,11 @@ object OpenCLKernelBuilder {
         case c if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') => c
         case _                                                                               => '_'
       }
-      val name = raw"""${encodedPrefix}_${seed}"""
+      val name = if (encodedPrefix.headOption.forall(_.isDigit)) {
+        raw"""_${encodedPrefix}_${seed}"""
+      } else {
+        raw"""${encodedPrefix}_${seed}"""
+      }
       seed += 1
       name
     }
