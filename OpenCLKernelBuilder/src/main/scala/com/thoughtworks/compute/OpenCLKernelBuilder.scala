@@ -42,7 +42,7 @@ object OpenCLKernelBuilder {
         val arrayTypeCode = globalContext.freshName(raw"""${elementTypeCode}_array""")
         val typeDefineHandler: ClTypeDefineHandler = { typeSymbol =>
           val dimensions = for (size <- shape) yield fast"[$size]"
-          globalContext.globalDefinitions += fast"typedef global ${elementTypeCode} (* ${typeSymbol.typeCode})${dimensions.mkFastring};"
+          globalContext.globalDefinitions += fast"typedef global const ${elementTypeCode} (* ${typeSymbol.typeCode})${dimensions.mkFastring};\n"
         }
         arrayTypeCode -> typeDefineHandler
       }
@@ -115,14 +115,14 @@ trait OpenCLKernelBuilder extends AllExpressions {
                                parameters: Seq[Term],
                                outputs: Seq[Term]): Fastring = {
     val parameterDeclarations = for (parameter <- parameters) yield {
-      fast"const ${parameter.typeCode} ${parameter.termCode}"
+      fast"${parameter.typeCode} const restrict ${parameter.termCode}"
     }
 
     val (outputParameters, outputAssignments) = outputs.map { output =>
       val outputTermCode = output.termCode
       val outputTypeCode = output.typeCode
       val outputId = freshName("output")
-      val outputParameter = fast"global $outputTypeCode *$outputId"
+      val outputParameter = fast"global $outputTypeCode * const restrict $outputId"
       def outputIndex(dimension: Int): Fastring = {
         if (dimension == 0) {
           fast"get_global_id(0)"
