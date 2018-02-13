@@ -5,6 +5,7 @@ import java.nio.{ByteBuffer, IntBuffer}
 import java.util.concurrent.{ConcurrentHashMap, Executors}
 import java.util.concurrent.atomic.AtomicReference
 
+import com.typesafe.scalalogging.{CanLog, Logger, StrictLogging}
 import org.lwjgl.opencl._
 import CL10._
 import CL12._
@@ -37,8 +38,8 @@ import com.thoughtworks.raii.AsynchronousPool
 import com.thoughtworks.raii.asynchronous._
 import com.thoughtworks.raii.covariant._
 import com.thoughtworks.tryt.covariant._
+import org.slf4j.MDC
 import shapeless.Witness
-import simulacrum.typeclass
 
 import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
@@ -866,6 +867,41 @@ object OpenCL {
       UnitContinuation.async[Unit] { continue =>
         shuttingDownHandler = Some(continue)
       } >> super.monadicClose
+    }
+  }
+
+  private implicit object CanLogPrivateInfo extends CanLog[ByteBuffer] {
+
+    private def toHexString(buffer: ByteBuffer): String = {
+      if (buffer.remaining > 0) {
+        val hexText = for (i <- (buffer.position() until buffer.limit).view) yield {
+          f"${buffer.get(i)}%02X"
+        }
+        hexText.mkString(" ")
+      } else {
+        ""
+      }
+    }
+
+    private final val mdcKey = "pfn_notify.private_info"
+
+    def logMessage(originalMessage: String, privateInfo: ByteBuffer): String = {
+      MDC.put(mdcKey, toHexString(privateInfo))
+      originalMessage
+    }
+
+    override def afterLog(privateInfo: ByteBuffer): Unit = {
+      MDC.remove(mdcKey)
+      super.afterLog(privateInfo)
+    }
+  }
+
+  trait LogContextNotification extends OpenCL {
+
+    protected val logger: Logger
+
+    protected def handleOpenCLNotification(errorInfo: String, privateInfo: ByteBuffer): Unit = {
+      Logger.takingImplicit[ByteBuffer](logger.underlying).error(errorInfo)(privateInfo)
     }
   }
 

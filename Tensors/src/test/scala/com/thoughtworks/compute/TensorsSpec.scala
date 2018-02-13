@@ -3,9 +3,9 @@ package com.thoughtworks.compute
 import java.nio.{ByteBuffer, FloatBuffer}
 
 import com.thoughtworks.feature.Factory
-import TensorsSpec._
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
+import com.typesafe.scalalogging.StrictLogging
 import org.lwjgl.opencl.CLCapabilities
 
 import scalaz.syntax.all._
@@ -18,9 +18,8 @@ import org.scalatest._
 class TensorsSpec extends AsyncFreeSpec with Matchers {
   private def doTensors: Do[Tensors] =
     Do.monadicCloseable(Factory[
-      OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
+      StrictLogging with OpenCL.LogContextNotification with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
       .newInstance(
-        handleOpenCLNotification = handleOpenCLNotification,
         numberOfCommandQueuesForDevice = { (deviceId: Long, capabilities: CLCapabilities) =>
           5
         }
@@ -170,20 +169,4 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
       ??? : Do[Assertion]
     }
   }.run.toScalaFuture
-}
-
-object TensorsSpec {
-
-  private val handleOpenCLNotification = { (errorInfo: String, buffer: ByteBuffer) =>
-    if (buffer.remaining > 0) {
-      val hexText = for (i <- (buffer.position() until buffer.limit).view) yield {
-        f"${buffer.get(i)}%02X"
-      }
-      Console.err.println(hexText.mkString(errorInfo, " ", ""))
-      Console.err.flush()
-    } else {
-      Console.err.println(errorInfo)
-      Console.err.flush()
-    }
-  }
 }
