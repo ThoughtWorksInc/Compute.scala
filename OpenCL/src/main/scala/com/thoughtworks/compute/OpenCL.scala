@@ -278,86 +278,55 @@ object OpenCL {
     }
   }
 
-  private def deviceIdsByType(platformId: Long, deviceType: Int): Seq[Long] = {
-    val Array(numberOfDevices) = {
-      val a = Array(0)
-      checkErrorCode(clGetDeviceIDs(platformId, deviceType, null, a))
-      a
-    }
-    val stack = stackPush()
-    try {
-      val deviceIds = stack.mallocPointer(numberOfDevices)
-      checkErrorCode(clGetDeviceIDs(platformId, deviceType, deviceIds, null: IntBuffer))
-      for (i <- 0 until deviceIds.capacity()) yield {
-        val deviceId = deviceIds.get(i)
-        deviceId
-      }
-    } finally {
-      stack.close()
-    }
-  }
-
-  trait UseAllDevices {
-
-    protected val platformId: Long
+  trait UseAllDevices extends OpenCL {
 
     @transient
     protected lazy val deviceIds: Seq[Long] = {
-      deviceIdsByType(platformId, CL_DEVICE_TYPE_ALL)
+      deviceIdsByType(CL_DEVICE_TYPE_ALL)
     }
 
   }
 
-  trait UseFirstDevice {
-
-    protected val platformId: Long
+  trait UseFirstDevice extends OpenCL {
 
     @transient
     protected lazy val deviceIds: Seq[Long] = {
-      val allDeviceIds = deviceIdsByType(platformId, CL_DEVICE_TYPE_ALL)
+      val allDeviceIds = deviceIdsByType(CL_DEVICE_TYPE_ALL)
       Seq(allDeviceIds.head)
     }
 
   }
 
-  trait UseAllGpuDevices {
-
-    protected val platformId: Long
+  trait UseAllGpuDevices extends OpenCL {
 
     @transient
     protected lazy val deviceIds: Seq[Long] = {
-      deviceIdsByType(platformId, CL_DEVICE_TYPE_GPU)
+      deviceIdsByType(CL_DEVICE_TYPE_GPU)
     }
   }
 
-  trait UseFirstGpuDevice {
-
-    protected val platformId: Long
+  trait UseFirstGpuDevice extends OpenCL {
 
     @transient
     protected lazy val deviceIds: Seq[Long] = {
-      val allDeviceIds = deviceIdsByType(platformId, CL_DEVICE_TYPE_GPU)
+      val allDeviceIds = deviceIdsByType(CL_DEVICE_TYPE_GPU)
       Seq(allDeviceIds.head)
     }
   }
-  trait UseFirstCpuDevice {
-
-    protected val platformId: Long
+  trait UseFirstCpuDevice extends OpenCL {
 
     @transient
     protected lazy val deviceIds: Seq[Long] = {
-      val allDeviceIds = deviceIdsByType(platformId, CL_DEVICE_TYPE_CPU)
+      val allDeviceIds = deviceIdsByType(CL_DEVICE_TYPE_CPU)
       Seq(allDeviceIds.head)
     }
   }
 
-  trait UseAllCpuDevices {
-
-    protected val platformId: Long
+  trait UseAllCpuDevices extends OpenCL {
 
     @transient
     protected lazy val deviceIds: Seq[Long] = {
-      deviceIdsByType(platformId, CL_DEVICE_TYPE_CPU)
+      deviceIdsByType(CL_DEVICE_TYPE_CPU)
     }
   }
 
@@ -876,6 +845,25 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
 
   type Program = OpenCL.Program[this.type]
   type Event = OpenCL.Event[this.type]
+
+  protected final def deviceIdsByType(deviceType: Int): Seq[Long] = {
+    val Array(numberOfDevices) = {
+      val a = Array(0)
+      checkErrorCode(clGetDeviceIDs(platformId, deviceType, null, a))
+      a
+    }
+    val stack = stackPush()
+    try {
+      val deviceIds = stack.mallocPointer(numberOfDevices)
+      checkErrorCode(clGetDeviceIDs(platformId, deviceType, deviceIds, null: IntBuffer))
+      for (i <- 0 until deviceIds.capacity()) yield {
+        val deviceId = deviceIds.get(i)
+        deviceId
+      }
+    } finally {
+      stack.close()
+    }
+  }
 
   protected def enqueueReadBuffer[Element, Destination](deviceBuffer: DeviceBuffer[Element],
                                                         hostBuffer: Destination,
