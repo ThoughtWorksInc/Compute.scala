@@ -26,9 +26,11 @@ object OpenCLKernelBuilder {
         val elementTypeCode = globalContext.cachedSymbol(element).typeCode
         val tupleTypeCode = globalContext.freshName(raw"""${elementTypeCode}_tuple""")
         val typeDefineHandler: ClTypeDefineHandler = { typeSymbol =>
-          globalContext.globalDefinitions += fastraw"""typedef struct ${typeSymbol.typeCode} {
-            ${elementTypeCode}[$length] tuple_data;
-          } ${typeSymbol.typeCode};"""
+          globalContext.globalDefinitions += fastraw"""
+            typedef struct ${typeSymbol.typeCode} {
+              ${elementTypeCode} tuple_data[$length];
+            } ${typeSymbol.typeCode};
+          """
         }
         tupleTypeCode -> typeDefineHandler
       }
