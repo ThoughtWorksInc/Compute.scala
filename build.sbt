@@ -2,7 +2,7 @@ organization in ThisBuild := "com.thoughtworks.compute"
 
 lazy val Memory = project
 
-lazy val OpenCL = project.dependsOn(Memory)
+lazy val OpenCL = project.dependsOn(Memory, RootProject(file("scala-logging")))
 
 lazy val Benchmark = project.dependsOn(OpenCL)
 
