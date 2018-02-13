@@ -865,7 +865,7 @@ object OpenCL {
     protected val logger: Logger
 
     protected def handleOpenCLNotification(errorInfo: String, privateInfo: ByteBuffer): Unit = {
-      Logger.takingImplicit[ByteBuffer](logger.underlying).error(errorInfo)(privateInfo)
+      Logger.takingImplicit[ByteBuffer](logger.underlying).info(errorInfo)(privateInfo)
     }
   }
 
