@@ -139,7 +139,7 @@ trait Tensors extends OpenCL {
 
   import trees._
 
-  private def upvalues(tree: Tree): List[Parameter] = {
+  private def parameterDescendants(tree: Tree): List[Parameter] = {
     val traversed: java.util.Set[Tree] = Collections.newSetFromMap(new IdentityHashMap)
     val builder = List.newBuilder[Parameter]
     def buildParameterList(tree: Tree): Unit = {
@@ -273,11 +273,11 @@ trait Tensors extends OpenCL {
 
     def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f) = {
       val padding0 = padding
-      new InlineTensor {
+      new {
         val padding: Float = padding0
         val shape: shape0.type = shape0
         val closure: trees.FloatTerm = float.literal(value)
-      }
+      } with InlineTensor
     }
   }
 
@@ -433,7 +433,7 @@ trait Tensors extends OpenCL {
         case thisTensor: TransformedTensor =>
           new {
             val matrix: MatrixData = {
-              NDimensionalAffineTransform.concatenate(thisTensor.matrix, matrix1, thisTensor.shape.length)
+              NDimensionalAffineTransform.preConcatenate(matrix1, thisTensor.matrix, newShape.length)
             }
             val checkpoint: Tensor = thisTensor.checkpoint
             val shape: Array[Int] = newShape
@@ -441,14 +441,15 @@ trait Tensors extends OpenCL {
             val padding: Float = thisTensor.padding
           } with TransformedTensor
         case _ =>
-          new TransformedTensor {
-            def checkpoint: Tensor = thisTensor
+          new {
+            val checkpoint: Tensor = thisTensor
 
-            def shape: Array[Int] = newShape
+            val shape: Array[Int] = newShape
 
             //          val debuggingInformation: Implicitly[DebuggingInformation] = debuggingInformation0
-            def matrix: MatrixData = matrix1
+            val matrix: MatrixData = matrix1
 
+          } with TransformedTensor {
             def padding: Float = checkpoint.padding
           }
       }
@@ -526,6 +527,13 @@ trait Tensors extends OpenCL {
 
     def padding: Float
 
+    @transient lazy val arrayTerm = {
+      if (shape == null) {
+        throw new IllegalArgumentException
+      }
+
+      array.parameter(this, float.literal(padding), shape)
+    }
   }
 
   trait CompiledKernel extends MonadicCloseable[UnitContinuation] {
@@ -570,8 +578,11 @@ trait Tensors extends OpenCL {
               val exportContext = new ExportContext
               val kernelBody = convertedTree.export(functionContext, exportContext).asInstanceOf[functionContext.Term]
 
-              val kernelParameters = upvalues(closure.tree).map { upvalue: Parameter =>
-                exportContext.get(alphConversionContext.get(upvalue)).asInstanceOf[functionContext.Term]
+              val upvalues = parameterDescendants(convertedTree)
+              val kernelParameters = upvalues.map { upvalue: Parameter =>
+                val term = exportContext.get(upvalue)
+                assert(term != null)
+                term.asInstanceOf[functionContext.Term]
               }
               fastraw"""
               $globalContext
@@ -624,7 +635,7 @@ trait Tensors extends OpenCL {
         compiledKernel
     }
 
-    compiledKernel.run(upvalues(closure.tree)).asInstanceOf[Do[PendingBuffer[closure.JvmValue]]].shared
+    compiledKernel.run(parameterDescendants(closure.tree)).asInstanceOf[Do[PendingBuffer[closure.JvmValue]]].shared
   }
 
   /** An intermediate expression of tensor that can be composed into a more complex expression.
@@ -634,7 +645,7 @@ trait Tensors extends OpenCL {
     * @see [[buffered]] to create a tensor that will cache the result.
     */
   trait InlineTensor extends Tensor {
-    lazy val enqueue: Do[PendingBuffer[closure.JvmValue]] = {
+    val enqueue: Do[PendingBuffer[closure.JvmValue]] = {
       enqueueClosure(closure, shape)
     }
   }
@@ -649,19 +660,16 @@ trait Tensors extends OpenCL {
       */
     def matrix: MatrixData
 
-    val closure: FloatTerm = {
-      array.parameter(checkpoint, float.literal(padding), checkpoint.shape).transform(matrix).extract
+    @transient lazy val closure: FloatTerm = {
+      checkpoint.arrayTerm.transform(matrix).extract
     }
+
   }
 
   trait BufferedTensor extends Tensor {
     // TODO: Allow other types
-    @transient
-    lazy val closure: FloatTerm = {
-      if (shape == null) {
-        throw new IllegalArgumentException
-      }
-      array.parameter(this, float.literal(padding), shape).extract
+    @transient lazy val closure: FloatTerm = {
+      arrayTerm.extract
     }
   }
 

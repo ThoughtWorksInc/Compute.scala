@@ -124,6 +124,23 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     }
   }.run.toScalaFuture
 
+  "plus" in {
+    doTensors.map { tensors =>
+      import tensors._
+      val tensor = Tensor(Seq(Seq(Seq(1.0f, 5.0f))))
+      (tensor + tensor).toString should be("[[[2.0,10.0]]]")
+    }
+  }.run.toScalaFuture
+
+  "plus and multiplication" in {
+    doTensors.map { tensors =>
+      import tensors._
+      val tensor = Tensor(Seq(Seq(Seq(1.0f, 5.0f))))
+      val tensor2 = tensor + tensor
+      (tensor2 * tensor2).toString should be("[[[4.0,100.0]]]")
+    }
+  }.run.toScalaFuture
+
   "convolution" ignore {
     doTensors.flatMap { tensors =>
       import tensors.Tensor

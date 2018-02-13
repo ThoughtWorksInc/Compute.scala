@@ -26,9 +26,11 @@ object OpenCLKernelBuilder {
         val elementTypeCode = globalContext.cachedSymbol(element).typeCode
         val tupleTypeCode = globalContext.freshName(raw"""${elementTypeCode}_tuple""")
         val typeDefineHandler: ClTypeDefineHandler = { typeSymbol =>
-          globalContext.globalDefinitions += fastraw"""typedef struct ${typeSymbol.typeCode} {
-            ${elementTypeCode}[$length] tuple_data;
-          } ${typeSymbol.typeCode};"""
+          globalContext.globalDefinitions += fastraw"""
+            typedef struct ${typeSymbol.typeCode} {
+              ${elementTypeCode} tuple_data[$length];
+            } ${typeSymbol.typeCode};
+          """
         }
         tupleTypeCode -> typeDefineHandler
       }
@@ -40,7 +42,7 @@ object OpenCLKernelBuilder {
         val arrayTypeCode = globalContext.freshName(raw"""${elementTypeCode}_array""")
         val typeDefineHandler: ClTypeDefineHandler = { typeSymbol =>
           val dimensions = for (size <- shape) yield fast"[$size]"
-          globalContext.globalDefinitions += fast"typedef global ${elementTypeCode} (* ${typeSymbol.typeCode})${dimensions.mkFastring};"
+          globalContext.globalDefinitions += fast"typedef global const ${elementTypeCode} (* ${typeSymbol.typeCode})${dimensions.mkFastring};\n"
         }
         arrayTypeCode -> typeDefineHandler
       }
@@ -64,7 +66,11 @@ object OpenCLKernelBuilder {
         case c if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') => c
         case _                                                                               => '_'
       }
-      val name = raw"""${encodedPrefix}_${seed}"""
+      val name = if (encodedPrefix.headOption.forall(_.isDigit)) {
+        raw"""_${encodedPrefix}_${seed}"""
+      } else {
+        raw"""${encodedPrefix}_${seed}"""
+      }
       seed += 1
       name
     }
@@ -109,14 +115,14 @@ trait OpenCLKernelBuilder extends AllExpressions {
                                parameters: Seq[Term],
                                outputs: Seq[Term]): Fastring = {
     val parameterDeclarations = for (parameter <- parameters) yield {
-      fast"const ${parameter.typeCode} ${parameter.termCode}"
+      fast"${parameter.typeCode} const restrict ${parameter.termCode}"
     }
 
     val (outputParameters, outputAssignments) = outputs.map { output =>
       val outputTermCode = output.termCode
       val outputTypeCode = output.typeCode
       val outputId = freshName("output")
-      val outputParameter = fast"global $outputTypeCode *$outputId"
+      val outputParameter = fast"global $outputTypeCode * const restrict $outputId"
       def outputIndex(dimension: Int): Fastring = {
         if (dimension == 0) {
           fast"get_global_id(0)"
@@ -291,7 +297,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
 
       val bounds = for {
         (max, i) <- shape.view.zipWithIndex
-      } yield fast"get_global_id($i) >= 0 && get_global_id($i) < $max"
+      } yield fast"get_global_id($i) < $max"
 
       val valueTermName = freshName("")
       val dereferenceCode = fast"(*${thisArrayParameter.termCode})${globalIndices.mkFastring}"
