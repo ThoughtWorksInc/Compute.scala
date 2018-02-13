@@ -433,7 +433,7 @@ trait Tensors extends OpenCL {
         case thisTensor: TransformedTensor =>
           new {
             val matrix: MatrixData = {
-              NDimensionalAffineTransform.concatenate(thisTensor.matrix, matrix1, thisTensor.shape.length)
+              NDimensionalAffineTransform.preConcatenate(matrix1, thisTensor.matrix, newShape.length)
             }
             val checkpoint: Tensor = thisTensor.checkpoint
             val shape: Array[Int] = newShape
