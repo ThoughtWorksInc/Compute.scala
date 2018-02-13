@@ -116,6 +116,14 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     }
   }.run.toScalaFuture
 
+  "unzip" in {
+    doTensors.map { tensors =>
+      import tensors._
+      val tensor = Tensor(Seq(Seq(Seq(Seq(1.0f, 5.0f)))))
+      tensor.unzip(dimension = 3).map(_.toString) should be(Seq("[[[1.0]]]", "[[[5.0]]]"))
+    }
+  }.run.toScalaFuture
+
   "convolution" ignore {
     doTensors.flatMap { tensors =>
       import tensors.Tensor
@@ -131,23 +139,42 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
                   case Array(`filterSize`) =>
                     val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.unzip(dimension = 3)
 
+                    inputSeq.size should be(depth)
+                    inputSeq.head.shape should be(Array(batchSize, height, width))
+
                     val weightSeq: Seq[Seq[Seq[Seq[Tensor]]]] /* filterSize × kernelHeight × kernelWidth × depth */ =
-                      weight
-                        .unzip(dimension = 3)
-                        .map(_.unzip(dimension = 0).map(_.unzip(dimension = 0).map(_.unzip(dimension = 0))))
+                      weight.unzip(dimension = 3).map { khKwD =>
+                        khKwD.shape should be(Array(kernelHeight, kernelWidth, depth))
+
+                        khKwD.unzip(dimension = 0).map { kwD =>
+                          kwD.shape should be(Array(kernelWidth, depth))
+                          kwD.unzip(dimension = 0).map { d =>
+                            d.shape should be(Array(depth))
+                            d.unzip(dimension = 0)
+                          }
+                        }
+                      }
+
+                    weightSeq.length should be(filterSize)
+                    weightSeq.head.length should be(kernelHeight)
+                    weightSeq.head.head.length should be(kernelWidth)
+                    weightSeq.head.head.head.length should be(depth)
 
                     val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
 
-                    val outputChannels: Seq[Tensor] = weightSeq.view.zip(biasSeq).map {
+                    val outputChannels: Seq[Tensor] = weightSeq /*.view*/.zip(biasSeq).map {
                       case (weightPerFilter, biasPerFilter) =>
                         val summands: Seq[Tensor] = for {
-                          (offsetY, weightPerRow) <- (-1 to 1).view.zip(weightPerFilter)
-                          (offsetX, weightPerPixel) <- (-1 to 1).view.zip(weightPerRow)
+                          (offsetY, weightPerRow) <- (-1 to 1) /*.view*/.zip(weightPerFilter)
+                          (offsetX, weightPerPixel) <- (-1 to 1) /*.view*/.zip(weightPerRow)
                           (
                             inputPerChannel /* batchSize × height × width */,
                             weightPerChannel /* scalar */
-                          ) <- inputSeq.view.zip(weightPerPixel)
+                          ) <- inputSeq /*.view*/.zip(weightPerPixel)
                         } yield {
+
+                          weightPerChannel.shape should be(empty)
+
                           inputPerChannel.translate(Array(0, offsetY, offsetX)) *
                             weightPerChannel.broadcast(Array(batchSize, height, width))
                         }
@@ -166,7 +193,23 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         }
       }
 
-      ??? : Do[Assertion]
+      convolute(
+        input = Tensor(
+          for (b <- 0 until 2)
+            yield
+              for (h <- 0 until 4)
+                yield for (w <- 0 until 4) yield for (d <- 0 until 8) yield (b * 1000 + h * 100 + w * 10 + d).toFloat),
+        weight = Tensor(
+          for (kh <- 0 until 3)
+            yield
+              for (kw <- 0 until 3)
+                yield
+                  for (d <- 0 until 8) yield for (f <- 0 until 2) yield (kh * 1000 + kw * 100 + d * 10 + f).toFloat),
+        bias = Tensor(for { f <- 0 until 2 } yield f.toFloat)
+      ).flatArray.map {
+        _.toString should be("xx")
+      }
+
     }
   }.run.toScalaFuture
 }
