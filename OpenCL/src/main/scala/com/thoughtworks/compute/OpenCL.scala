@@ -397,11 +397,6 @@ object OpenCL {
   }
 
   trait CommandQueuePool extends OpenCL {
-    // TODO: write buffer
-    // TODO: read buffer
-
-    // TODO: enqueue kernel
-    // TODO: TDD
 
     protected val numberOfCommandQueuesForDevice: (Long, CLCapabilities) => Int
 
