@@ -297,7 +297,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
 
       val bounds = for {
         (max, i) <- shape.view.zipWithIndex
-      } yield fast"get_global_id($i) >= 0 && get_global_id($i) < $max"
+      } yield fast"get_global_id($i) < $max"
 
       val valueTermName = freshName("")
       val dereferenceCode = fast"(*${thisArrayParameter.termCode})${globalIndices.mkFastring}"
