@@ -188,7 +188,9 @@ trait Trees extends Expressions {
     var numberOfParameters = 0
   }
 
-  final class AlphaConversionContext extends IdentityHashMap[Tree, Tree]
+  final class AlphaConversionContext extends IdentityHashMap[Tree, Tree] {
+    var seed: Int = 0
+  }
 
   /** @group AST */
   trait Tree extends Product { thisTree =>
@@ -667,12 +669,14 @@ object Trees {
             .asInstanceOf[Tree {
               type TermIn[C <: Category] = LocalElement#TermIn[C]
             }],
-          id = new AnyRef {
-            override val toString: String = raw"""α-converted(${id.toString})"""
+          id = {
+            val id = context.seed
+            context.seed = id + 1
+            id
           }
         )
-        context.asScala.getOrElseUpdate(this, converted)
 
+        context.asScala.getOrElseUpdate(this, converted)
       }
     }
 
