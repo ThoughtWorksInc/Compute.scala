@@ -248,7 +248,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
           (fast"const ptrdiff_t $indexId = 0;\n", Nil)
         } else {
           (fast"const ptrdiff_t $indexId = (ptrdiff_t)(${products.mkFastring(" + ")});\n",
-           Seq(fast"$indexId >= 0", fast"$indexId < ${originalShape(y)}"))
+           Seq(fast"(bool)($indexId >= 0)", fast"(bool)($indexId < ${originalShape(y)})"))
         }
         (indexId, indexDefinition, bounds)
       }).unzip3
