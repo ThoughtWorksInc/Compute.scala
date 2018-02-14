@@ -152,7 +152,7 @@ trait Tensors extends OpenCL {
             if (i < productArity) {
               tree.productElement(i) match {
                 case child: Tree @unchecked =>
-                  val isNew = traversed.add(tree)
+                  val isNew = traversed.add(child)
                   if (isNew) {
                     buildParameterList(child)
                   }
