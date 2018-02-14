@@ -140,32 +140,25 @@ trait Tensors extends OpenCL {
   import trees._
 
   private def parameterDescendants(tree: Tree): List[Parameter] = {
-    val traversed: java.util.Set[Tree] = Collections.newSetFromMap(new IdentityHashMap)
+    val traversed: java.util.Set[Any] = Collections.newSetFromMap(new IdentityHashMap)
     val builder = List.newBuilder[Parameter]
-    def buildParameterList(tree: Tree): Unit = {
-      tree match {
-        case tree: Parameter =>
-          builder += tree
-        case _ =>
-          val productArity = tree.productArity
-          @tailrec def loop(i: Int): Unit = {
-            if (i < productArity) {
-              tree.productElement(i) match {
-                case child: Tree @unchecked =>
-                  val isNew = traversed.add(child)
-                  if (isNew) {
-                    buildParameterList(child)
-                  }
-                case _ =>
-              }
-              loop(i + 1)
-            }
-          }
-          loop(0)
+    def appendParameters(node: Any): Unit = {
+      val isNew = traversed.add(node)
+      if (isNew) {
+        node match {
+          case parameter: Parameter =>
+            builder += parameter
+          case tree: Tree =>
+            tree.productIterator.foreach(appendParameters)
+          case seq: Seq[_] =>
+            seq.foreach(appendParameters)
+          case array: Array[_] =>
+            array.foreach(appendParameters)
+          case _ =>
+        }
       }
-
     }
-    buildParameterList(tree)
+    appendParameters(tree)
     builder.result()
   }
 
