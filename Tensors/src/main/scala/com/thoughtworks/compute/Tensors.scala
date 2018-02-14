@@ -568,7 +568,7 @@ trait Tensors extends OpenCL {
     val compiledKernel = kernelCache.getIfPresent(closure) match {
       case null =>
         val alphConversionContext = new AlphaConversionContext
-        val convertedTree = closure.tree.alphaConversion(alphConversionContext)
+        val convertedTerm: ValueTerm = closure.alphaConversion
         val loader = new Callable[CompiledKernel] {
           def call(): CompiledKernel = {
             val sourceCode = {
@@ -576,7 +576,9 @@ trait Tensors extends OpenCL {
               val functionContext = Factory[OpenCLKernelBuilder].newInstance(globalContext)
 
               val exportContext = new ExportContext
-              val kernelBody = convertedTree.export(functionContext, exportContext).asInstanceOf[functionContext.Term]
+
+              val convertedTree = convertedTerm.tree
+              val kernelBody = convertedTree.export(functionContext, exportContext)
 
               val upvalues = parameterDescendants(convertedTree)
               val kernelParameters = upvalues.map { upvalue: Parameter =>
@@ -597,7 +599,7 @@ trait Tensors extends OpenCL {
 
               def monadicClose: UnitContinuation[Unit] = program.monadicClose
 
-              def run(upvalues: List[Parameter]): Do[PendingBuffer[closure.JvmValue]] = {
+              def run(upvalues: List[Parameter]): Do[PendingBuffer[convertedTerm.JvmValue]] = {
                 // TODO: Manage life cycle of upvalues more delicately
                 // e.g. a buffer should be release as soon as possible if it is a dependency of another buffer,
                 // e.g. however, it can be hold longer time if it is dependencies of many other buffers.
@@ -609,8 +611,9 @@ trait Tensors extends OpenCL {
                   .unwrap
                   .intransitiveFlatMap { arguments: List[PendingBuffer[_]] =>
                     Do.monadicCloseable(program.createFirstKernel()).intransitiveFlatMap { kernel: Kernel =>
-                      allocateBuffer[closure.JvmValue](shape.product)(
-                        closure.valueType.memory.asInstanceOf[Memory[closure.JvmValue]]).flatMap { outputBuffer =>
+                      val valueType = convertedTerm.valueType.asInstanceOf[ValueType]
+                      val memory = valueType.memory.asInstanceOf[Memory[convertedTerm.JvmValue]]
+                      allocateBuffer[convertedTerm.JvmValue](shape.product)(memory).flatMap { outputBuffer =>
                         for ((arugment, i) <- arguments.view.zipWithIndex) {
                           kernel(i) = arugment.buffer
                         }
@@ -619,7 +622,7 @@ trait Tensors extends OpenCL {
                           .enqueue(globalWorkSize = shape.view.map(_.toLong),
                                    waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle)))
                           .map { event0 =>
-                            EventBuffer[closure.JvmValue](outputBuffer, event0)
+                            EventBuffer[convertedTerm.JvmValue](outputBuffer, event0)
                           }
                       }
                     }
@@ -630,7 +633,7 @@ trait Tensors extends OpenCL {
             compiledKernel
           }
         }
-        kernelCache.get(closure.valueType.term(convertedTree).asInstanceOf[ValueTerm], loader)
+        kernelCache.get(convertedTerm, loader)
       case compiledKernel =>
         compiledKernel
     }
