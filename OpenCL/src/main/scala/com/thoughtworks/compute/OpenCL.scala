@@ -692,9 +692,13 @@ object OpenCL {
         deviceIds.view.map { deviceId =>
           checkErrorCode(
             clGetProgramBuildInfo(this.handle, deviceId, CL_PROGRAM_BUILD_LOG, null: PointerBuffer, sizeBuffer))
-          val logBuffer = stack.malloc(sizeBuffer.get(0).toInt)
-          checkErrorCode(clGetProgramBuildInfo(this.handle, deviceId, CL_PROGRAM_BUILD_LOG, logBuffer, sizeBuffer))
-          (deviceId, decodeString(logBuffer))
+          val logBuffer = MemoryUtil.memAlloc(sizeBuffer.get(0).toInt) //stack.malloc()
+          try {
+            checkErrorCode(clGetProgramBuildInfo(this.handle, deviceId, CL_PROGRAM_BUILD_LOG, logBuffer, null))
+            (deviceId, decodeString(logBuffer))
+          } finally {
+            MemoryUtil.memFree(logBuffer)
+          }
         }.toMap
       } finally {
         stack.close()
