@@ -129,7 +129,7 @@ object OpenCL {
           buildLogs.view
             .map {
               case (deviceId, buildLog) =>
-                s"device $deviceId log:\n$buildLog"
+                s"CL_BUILD_PROGRAM_FAILURE on device $deviceId:\n$buildLog"
             }
             .mkString("\n")
         })
