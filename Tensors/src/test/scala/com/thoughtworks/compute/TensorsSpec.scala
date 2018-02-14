@@ -179,25 +179,28 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
 
                     val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
 
-                    val outputChannels: Seq[Tensor] = weightSeq /*.view*/.zip(biasSeq).map {
-                      case (weightPerFilter, biasPerFilter) =>
-                        val summands: Seq[Tensor] = for {
-                          (offsetY, weightPerRow) <- (-1 to 1) /*.view*/.zip(weightPerFilter)
-                          (offsetX, weightPerPixel) <- (-1 to 1) /*.view*/.zip(weightPerRow)
-                          (
-                            inputPerChannel /* batchSize × height × width */,
-                            weightPerChannel /* scalar */
-                          ) <- inputSeq /*.view*/.zip(weightPerPixel)
-                        } yield {
+                    val outputChannels: Seq[Tensor] = weightSeq.view
+                      .zip(biasSeq)
+                      .map {
+                        case (weightPerFilter, biasPerFilter) =>
+                          val summands: Seq[Tensor] = for {
+                            (offsetY, weightPerRow) <- (-1 to 1).view.zip(weightPerFilter)
+                            (offsetX, weightPerPixel) <- (-1 to 1).view.zip(weightPerRow)
+                            (
+                              inputPerChannel /* batchSize × height × width */,
+                              weightPerChannel /* scalar */
+                            ) <- inputSeq.view.zip(weightPerPixel)
+                          } yield {
 
-                          weightPerChannel.shape should be(empty)
+                            weightPerChannel.shape should be(empty)
 
-                          inputPerChannel.translate(Array(0, offsetY, offsetX)) *
-                            weightPerChannel.broadcast(Array(batchSize, height, width))
-                        }
+                            inputPerChannel.translate(Array(0, offsetY, offsetX)) *
+                              weightPerChannel.broadcast(Array(batchSize, height, width))
+                          }
 
-                        biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
-                    }
+                          biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
+                      }
+
                     zip(outputChannels)
                   case _ =>
                     throw new IllegalArgumentException

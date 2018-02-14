@@ -23,6 +23,7 @@ import shapeless.Witness
 
 import scala.annotation.meta.companionObject
 import scala.annotation.tailrec
+import scala.collection.SeqView
 import scala.concurrent.ExecutionContext
 import scala.language.existentials
 import scala.reflect.ClassTag
@@ -117,7 +118,16 @@ object Tensors {
 // TODO: Rename to VirtualTensors, like virtual-dom
 trait Tensors extends OpenCL {
 
-  def zip(tensors: Seq[Tensor]): BufferedTensor = {
+  def zip(tensors0: Seq[Tensor]): BufferedTensor = {
+    def force[A](seq: Seq[A]) = {
+      seq match {
+        case seqView: SeqView[A, _] @unchecked =>
+          seqView.force[A, Seq[A]](collection.breakOut)
+        case _ =>
+          seq
+      }
+    }
+    val tensors = force(tensors0)
     val headTensor = tensors.head
 
     val shape0 = headTensor.shape :+ tensors.length
