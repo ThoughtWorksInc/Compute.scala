@@ -23,6 +23,7 @@ import shapeless.Witness
 
 import scala.annotation.meta.companionObject
 import scala.annotation.tailrec
+import scala.collection.SeqView
 import scala.concurrent.ExecutionContext
 import scala.language.existentials
 import scala.reflect.ClassTag
@@ -117,7 +118,16 @@ object Tensors {
 // TODO: Rename to VirtualTensors, like virtual-dom
 trait Tensors extends OpenCL {
 
-  def zip(tensors: Seq[Tensor]): BufferedTensor = {
+  def zip(tensors0: Seq[Tensor]): BufferedTensor = {
+    def force[A](seq: Seq[A]) = {
+      seq match {
+        case seqView: SeqView[A, _] @unchecked =>
+          seqView.force[A, Seq[A]](collection.breakOut)
+        case _ =>
+          seq
+      }
+    }
+    val tensors = force(tensors0)
     val headTensor = tensors.head
 
     val shape0 = headTensor.shape :+ tensors.length
@@ -140,32 +150,25 @@ trait Tensors extends OpenCL {
   import trees._
 
   private def parameterDescendants(tree: Tree): List[Parameter] = {
-    val traversed: java.util.Set[Tree] = Collections.newSetFromMap(new IdentityHashMap)
+    val traversed: java.util.Set[Any] = Collections.newSetFromMap(new IdentityHashMap)
     val builder = List.newBuilder[Parameter]
-    def buildParameterList(tree: Tree): Unit = {
-      tree match {
-        case tree: Parameter =>
-          builder += tree
-        case _ =>
-          val productArity = tree.productArity
-          @tailrec def loop(i: Int): Unit = {
-            if (i < productArity) {
-              tree.productElement(i) match {
-                case child: Tree @unchecked =>
-                  val isNew = traversed.add(tree)
-                  if (isNew) {
-                    buildParameterList(child)
-                  }
-                case _ =>
-              }
-              loop(i + 1)
-            }
-          }
-          loop(0)
+    def appendParameters(node: Any): Unit = {
+      val isNew = traversed.add(node)
+      if (isNew) {
+        node match {
+          case parameter: Parameter =>
+            builder += parameter
+          case tree: Tree =>
+            tree.productIterator.foreach(appendParameters)
+          case seq: Seq[_] =>
+            seq.foreach(appendParameters)
+          case array: Array[_] =>
+            array.foreach(appendParameters)
+          case _ =>
+        }
       }
-
     }
-    buildParameterList(tree)
+    appendParameters(tree)
     builder.result()
   }
 
@@ -564,11 +567,12 @@ trait Tensors extends OpenCL {
     clearCache >> super.monadicClose
   }
 
-  private def enqueueClosure(closure: ValueTerm, shape: Array[Int]): Do[PendingBuffer[closure.JvmValue]] = {
+  private def enqueueClosure(closure: ValueTerm, shape: Array[Int]): Do[PendingBuffer[closure.JvmValue]] = Do.suspend {
+
     val compiledKernel = kernelCache.getIfPresent(closure) match {
       case null =>
         val alphConversionContext = new AlphaConversionContext
-        val convertedTree = closure.tree.alphaConversion(alphConversionContext)
+        val convertedTerm: ValueTerm = closure.alphaConversion
         val loader = new Callable[CompiledKernel] {
           def call(): CompiledKernel = {
             val sourceCode = {
@@ -576,7 +580,9 @@ trait Tensors extends OpenCL {
               val functionContext = Factory[OpenCLKernelBuilder].newInstance(globalContext)
 
               val exportContext = new ExportContext
-              val kernelBody = convertedTree.export(functionContext, exportContext).asInstanceOf[functionContext.Term]
+
+              val convertedTree = convertedTerm.tree
+              val kernelBody = convertedTree.export(functionContext, exportContext)
 
               val upvalues = parameterDescendants(convertedTree)
               val kernelParameters = upvalues.map { upvalue: Parameter =>
@@ -597,7 +603,7 @@ trait Tensors extends OpenCL {
 
               def monadicClose: UnitContinuation[Unit] = program.monadicClose
 
-              def run(upvalues: List[Parameter]): Do[PendingBuffer[closure.JvmValue]] = {
+              def run(upvalues: List[Parameter]): Do[PendingBuffer[convertedTerm.JvmValue]] = {
                 // TODO: Manage life cycle of upvalues more delicately
                 // e.g. a buffer should be release as soon as possible if it is a dependency of another buffer,
                 // e.g. however, it can be hold longer time if it is dependencies of many other buffers.
@@ -609,8 +615,9 @@ trait Tensors extends OpenCL {
                   .unwrap
                   .intransitiveFlatMap { arguments: List[PendingBuffer[_]] =>
                     Do.monadicCloseable(program.createFirstKernel()).intransitiveFlatMap { kernel: Kernel =>
-                      allocateBuffer[closure.JvmValue](shape.product)(
-                        closure.valueType.memory.asInstanceOf[Memory[closure.JvmValue]]).flatMap { outputBuffer =>
+                      val valueType = convertedTerm.valueType.asInstanceOf[ValueType]
+                      val memory = valueType.memory.asInstanceOf[Memory[convertedTerm.JvmValue]]
+                      allocateBuffer[convertedTerm.JvmValue](shape.product)(memory).flatMap { outputBuffer =>
                         for ((arugment, i) <- arguments.view.zipWithIndex) {
                           kernel(i) = arugment.buffer
                         }
@@ -619,7 +626,7 @@ trait Tensors extends OpenCL {
                           .enqueue(globalWorkSize = shape.view.map(_.toLong),
                                    waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle)))
                           .map { event0 =>
-                            EventBuffer[closure.JvmValue](outputBuffer, event0)
+                            EventBuffer[convertedTerm.JvmValue](outputBuffer, event0)
                           }
                       }
                     }
@@ -630,7 +637,7 @@ trait Tensors extends OpenCL {
             compiledKernel
           }
         }
-        kernelCache.get(closure.valueType.term(convertedTree).asInstanceOf[ValueTerm], loader)
+        kernelCache.get(convertedTerm, loader)
       case compiledKernel =>
         compiledKernel
     }

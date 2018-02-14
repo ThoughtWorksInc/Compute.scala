@@ -141,13 +141,13 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     }
   }.run.toScalaFuture
 
-  "convolution" ignore {
+  "convolution" in {
     doTensors.flatMap { tensors =>
       import tensors.Tensor
       import tensors.zip
       def convolute(input: Tensor /* batchSize × height × width × depth */,
                     weight: Tensor /* kernelHeight × kernelWidth × depth × filterSize */,
-                    bias: Tensor /* filterSize*/ ): Tensor = {
+                    bias: Tensor /* filterSize */ ): Tensor = {
         input.shape match {
           case Array(batchSize, height, width, depth) =>
             weight.shape match {
@@ -179,25 +179,28 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
 
                     val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
 
-                    val outputChannels: Seq[Tensor] = weightSeq /*.view*/.zip(biasSeq).map {
-                      case (weightPerFilter, biasPerFilter) =>
-                        val summands: Seq[Tensor] = for {
-                          (offsetY, weightPerRow) <- (-1 to 1) /*.view*/.zip(weightPerFilter)
-                          (offsetX, weightPerPixel) <- (-1 to 1) /*.view*/.zip(weightPerRow)
-                          (
-                            inputPerChannel /* batchSize × height × width */,
-                            weightPerChannel /* scalar */
-                          ) <- inputSeq /*.view*/.zip(weightPerPixel)
-                        } yield {
+                    val outputChannels: Seq[Tensor] = weightSeq.view
+                      .zip(biasSeq)
+                      .map {
+                        case (weightPerFilter, biasPerFilter) =>
+                          val summands: Seq[Tensor] = for {
+                            (offsetY, weightPerRow) <- (-1 to 1).view.zip(weightPerFilter)
+                            (offsetX, weightPerPixel) <- (-1 to 1).view.zip(weightPerRow)
+                            (
+                              inputPerChannel /* batchSize × height × width */,
+                              weightPerChannel /* scalar */
+                            ) <- inputSeq.view.zip(weightPerPixel)
+                          } yield {
 
-                          weightPerChannel.shape should be(empty)
+                            weightPerChannel.shape should be(empty)
 
-                          inputPerChannel.translate(Array(0, offsetY, offsetX)) *
-                            weightPerChannel.broadcast(Array(batchSize, height, width))
-                        }
+                            inputPerChannel.translate(Array(0, offsetY, offsetX)) *
+                              weightPerChannel.broadcast(Array(batchSize, height, width))
+                          }
 
-                        biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
-                    }
+                          biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
+                      }
+
                     zip(outputChannels)
                   case _ =>
                     throw new IllegalArgumentException
@@ -210,21 +213,40 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         }
       }
 
-      convolute(
-        input = Tensor(
-          for (b <- 0 until 2)
-            yield
-              for (h <- 0 until 4)
-                yield for (w <- 0 until 4) yield for (d <- 0 until 8) yield (b * 1000 + h * 100 + w * 10 + d).toFloat),
-        weight = Tensor(
-          for (kh <- 0 until 3)
-            yield
-              for (kw <- 0 until 3)
-                yield
-                  for (d <- 0 until 8) yield for (f <- 0 until 2) yield (kh * 1000 + kw * 100 + d * 10 + f).toFloat),
-        bias = Tensor(for { f <- 0 until 2 } yield f.toFloat)
-      ).flatArray.map {
-        _.toString should be("xx")
+      val inputArray = Array.ofDim[Float](2, 4, 5, 3) /* batchSize × height × width × depth */
+
+      inputArray(0)(0)(0)(0) = 1.0f
+      inputArray(0)(1)(0)(0) = 10.0f
+      inputArray(1)(0)(0)(0) = 100.0f
+
+      val weightArray = Array.ofDim[Float](3, 3, 3, 2) /* kernelHeight × kernelWidth × depth × filterSize */
+      weightArray(1)(1)(0)(0) = 3.0f
+      weightArray(1)(1)(0)(1) = 4.0f
+      weightArray(0)(1)(0)(0) = 5.0f
+      weightArray(2)(2)(0)(1) = 6.0f
+
+      val biasArray = Array[Float](100000.0f, 200000.0f) /* filterSize */
+
+      val inputTensor = Tensor(inputArray)
+      inputTensor.shape should be(Array(2, 4, 5, 3))
+      val outputTensor = convolute(
+        input = inputTensor,
+        weight = Tensor(weightArray),
+        bias = Tensor(biasArray)
+      )
+      outputTensor.shape should be(Array(2, 4, 5, 2)) /* batchSize × height × width × filterSize */
+
+      outputTensor.flatArray.map { a =>
+        val outputArray = a.grouped(2).toArray.grouped(5).toArray.grouped(4).toArray
+        outputArray.length should be(2)
+
+        outputArray(0)(0)(0)(0) should be(100053.0f)
+        outputArray(0)(1)(1)(1) should be(200006.0f)
+        outputArray(1)(1)(1)(1) should be(200600.0f)
+        outputArray(0)(2)(1)(1) should be(200060.0f)
+        outputArray(0)(0)(0)(1) should be(200004.0f)
+        outputArray(0)(1)(0)(0) should be(100030.0f)
+        outputArray(1)(0)(0)(0) should be(100300.0f)
       }
 
     }

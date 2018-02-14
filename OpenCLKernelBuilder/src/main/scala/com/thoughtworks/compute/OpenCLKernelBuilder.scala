@@ -123,17 +123,22 @@ trait OpenCLKernelBuilder extends AllExpressions {
       val outputTypeCode = output.typeCode
       val outputId = freshName("output")
       val outputParameter = fast"global $outputTypeCode * const restrict $outputId"
-      def outputIndex(dimension: Int): Fastring = {
-        if (dimension == 0) {
-          fast"get_global_id(0)"
-        } else {
-          fast"(${outputIndex(dimension - 1)} * get_global_size($dimension) + get_global_id($dimension))"
+      val outputAssignment = if (numberOfDimensions > 0) {
+        def outputIndex(dimension: Int): Fastring = {
+          if (dimension == 0) {
+            fast"get_global_id(0)"
+          } else {
+            // FIXME: use constant value instead of call to get_global_size
+            fast"(${outputIndex(dimension - 1)} * get_global_size($dimension) + get_global_id($dimension))"
+          }
         }
+        val index = outputIndex(numberOfDimensions - 1)
+        fast"$outputId[$index] = $outputTermCode;\n"
+      } else {
+        fast"*$outputId = $outputTermCode;\n"
       }
-
-      val index = outputIndex(numberOfDimensions - 1)
-      val outputAssignment = fast"$outputId[$index] = $outputTermCode;\n"
       (outputParameter, outputAssignment)
+
     }.unzip
     fastraw"""
       kernel void $functionName(${(parameterDeclarations.view ++ outputParameters).mkFastring(", ")}) {
@@ -243,7 +248,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
           (fast"const ptrdiff_t $indexId = 0;\n", Nil)
         } else {
           (fast"const ptrdiff_t $indexId = (ptrdiff_t)(${products.mkFastring(" + ")});\n",
-           Seq(fast"$indexId >= 0", fast"$indexId < ${originalShape(y)}"))
+           Seq(fast"(bool)($indexId >= 0)", fast"(bool)($indexId < ${originalShape(y)})"))
         }
         (indexId, indexDefinition, bounds)
       }).unzip3
@@ -492,10 +497,10 @@ trait OpenCLKernelBuilder extends AllExpressions {
 
       val tupleTermName = freshName("")
       localDefinitions += fastraw"""
-        const ${tupleType.typeSymbol.typeCode} $tupleTermName = {
+        const ${tupleType.typeSymbol.typeCode} $tupleTermName = {{
           ${elements.map(_.termCode).mkFastring(""",
           """)}
-        };
+        }};
       """
 
       tupleType
