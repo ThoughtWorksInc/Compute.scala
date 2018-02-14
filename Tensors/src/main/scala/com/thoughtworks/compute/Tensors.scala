@@ -564,7 +564,8 @@ trait Tensors extends OpenCL {
     clearCache >> super.monadicClose
   }
 
-  private def enqueueClosure(closure: ValueTerm, shape: Array[Int]): Do[PendingBuffer[closure.JvmValue]] = {
+  private def enqueueClosure(closure: ValueTerm, shape: Array[Int]): Do[PendingBuffer[closure.JvmValue]] = Do.suspend {
+
     val compiledKernel = kernelCache.getIfPresent(closure) match {
       case null =>
         val alphConversionContext = new AlphaConversionContext
