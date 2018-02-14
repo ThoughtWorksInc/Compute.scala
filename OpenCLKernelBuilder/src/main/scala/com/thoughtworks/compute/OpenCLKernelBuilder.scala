@@ -128,6 +128,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
           if (dimension == 0) {
             fast"get_global_id(0)"
           } else {
+            // FIXME: use constant value instead of call to get_global_size
             fast"(${outputIndex(dimension - 1)} * get_global_size($dimension) + get_global_id($dimension))"
           }
         }
