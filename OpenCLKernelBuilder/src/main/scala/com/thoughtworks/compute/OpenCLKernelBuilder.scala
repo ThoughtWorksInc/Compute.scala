@@ -497,10 +497,10 @@ trait OpenCLKernelBuilder extends AllExpressions {
 
       val tupleTermName = freshName("")
       localDefinitions += fastraw"""
-        const ${tupleType.typeSymbol.typeCode} $tupleTermName = {
+        const ${tupleType.typeSymbol.typeCode} $tupleTermName = {{
           ${elements.map(_.termCode).mkFastring(""",
           """)}
-        };
+        }};
       """
 
       tupleType
