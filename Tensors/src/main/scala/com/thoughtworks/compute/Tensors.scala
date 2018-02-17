@@ -355,6 +355,17 @@ trait Tensors extends OpenCL {
       } with InlineTensor
     }
 
+    def reshape(newShape: Array[Int]): Tensor = {
+      if (newShape.product != shape.product) {
+        throw new IllegalArgumentException
+      }
+      new {
+        val padding: Float = thisTensor.padding
+        val shape: Array[Int] = newShape
+        val enqueue: Do[PendingBuffer[Float]] = thisTensor.enqueue
+      } with BufferedTensor
+    }
+
     def unary_- : Tensor = {
       derivedTensor(closure.asInstanceOf[FloatTerm].unary_-)
     }
