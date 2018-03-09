@@ -281,32 +281,32 @@ trait Tensors extends OpenCL {
     private lazy val randomNormalProgram: Program = {
 
       val program = createProgramWithSource(fast"""
-    $hashSourceCode
+        $hashSourceCode
 
-    static inline uint xorshift(uint seed) {
-      const uint tmp1 = seed ^ (seed << 13);
-      const uint tmp2 = tmp1 ^ (tmp1 >> 17);
-      return tmp2 ^ (tmp2 << 5);
-    }
+        static inline uint xorshift(uint seed) {
+          const uint tmp1 = seed ^ (seed << 13);
+          const uint tmp2 = tmp1 ^ (tmp1 >> 17);
+          return tmp2 ^ (tmp2 << 5);
+        }
 
-    kernel void random_normal(global float * const restrict buffer, const uint seed) {
-      const uint i = get_global_id(0);
-      const uint r1 = hash(i ^ seed);
-      const uint r2 = xorshift(r1);
-      const float u1 = r1 / 4294967296.0f;
-      const float u2 = r2 / 4294967296.0f;
+        kernel void random_normal(global float * const restrict buffer, const uint seed) {
+          const uint i = get_global_id(0);
+          const uint r1 = hash(i ^ seed);
+          const uint r2 = xorshift(r1);
+          const float u1 = r1 / 4294967296.0f;
+          const float u2 = r2 / 4294967296.0f;
 
-      const float r = sqrt(-2 * log(u1));
-      const float theta = 2 * M_PI_F * u2;
+          const float r = sqrt(-2 * log(u1));
+          const float theta = 2 * M_PI_F * u2;
 
-      const float z0 = r * cos(theta);
-      const float z1 = r * sin(theta);
+          const float z0 = r * cos(theta);
+          const float z1 = r * sin(theta);
 
 
-      buffer[i * 2] = z0;
-      buffer[i * 2 + 1] = z1;
-    }
-    """)
+          buffer[i * 2] = z0;
+          buffer[i * 2 + 1] = z1;
+        }
+      """)
       program.build()
       program
     }
