@@ -761,18 +761,25 @@ object OpenCL {
 
   }
 
-  private[OpenCL] sealed trait EarlyEventState
+  private[OpenCL] object DontReleaseEventTooEarly {
 
-  private[OpenCL] case object EarlyEventClosed extends EarlyEventState
-  private[OpenCL] sealed trait EarlyEventList extends EarlyEventState
-  private[OpenCL] case object EarlyEventNil extends EarlyEventList
-  private[OpenCL] type AnyEvent = Event[_ <: Singleton with OpenCL]
-  private[OpenCL] final case class EarlyEventCons(head: AnyEvent, tail: EarlyEventList) extends EarlyEventList
+    private[DontReleaseEventTooEarly] sealed trait EarlyEventState
 
-  /**
+    private[DontReleaseEventTooEarly] case object EarlyEventClosed extends EarlyEventState
+    private[DontReleaseEventTooEarly] sealed trait EarlyEventList extends EarlyEventState
+    private[DontReleaseEventTooEarly] case object EarlyEventNil extends EarlyEventList
+    private[DontReleaseEventTooEarly] type AnyEvent = Event[_ <: Singleton with OpenCL]
+    private[DontReleaseEventTooEarly] final case class EarlyEventCons(head: AnyEvent, tail: EarlyEventList)
+        extends EarlyEventList
+  }
+
+  /** A plug-in that retains every [[Event]] created by `clEnqueueReadBuffer`
+    * and waiting at least one second before releasing it.
+    *
     * @note This is a workaround for https://github.com/ThoughtWorksInc/Compute.scala/issues/51
     */
   trait DontReleaseEventTooEarly extends OpenCL {
+    import DontReleaseEventTooEarly._
     override protected def enqueueReadBuffer[Element, Destination](
         deviceBuffer: DeviceBuffer[Element],
         hostBuffer: Destination,
