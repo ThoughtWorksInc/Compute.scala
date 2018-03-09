@@ -18,7 +18,7 @@ import org.scalatest._
 class TensorsSpec extends AsyncFreeSpec with Matchers {
   private def doTensors: Do[Tensors] =
     Do.monadicCloseable(Factory[
-      StrictLogging with OpenCL.LogContextNotification with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
+      Tensors.WangHashingRandomNumberGenerator with StrictLogging with OpenCL.LogContextNotification with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
       .newInstance(
         numberOfCommandQueuesForDevice = { (deviceId: Long, capabilities: CLCapabilities) =>
           5
@@ -251,4 +251,39 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
 
     }
   }.run.toScalaFuture
+
+  "random" in doTensors
+    .map { tensors =>
+      import tensors._
+      Tensor.random(Array(3, 3), seed = 12345).toString should be(
+        "[[0.48931676,0.2949697,0.14271837],[0.9694414,0.26660874,0.07228618],[0.8779875,0.7046564,0.018829918]]")
+    }
+    .run
+    .toScalaFuture
+
+  "randomNormal" in doTensors
+    .map { tensors =>
+      import tensors._
+      Tensor.randomNormal(Array(3, 3, 3), seed = 54321).toString should be(
+        "[" +
+          "[" +
+          "[1.4561316,-0.8711971,-0.7223376]," +
+          "[-2.232667,-0.24489015,-0.41490105]," +
+          "[-1.0286478,-1.392045,0.08673929]" +
+          "]," +
+          "[" +
+          "[-0.37037173,0.5294154,-0.5261399]," +
+          "[-0.88834476,-0.66154,0.7035836]," +
+          "[-1.1797824,-0.93145895,-1.0812063]" +
+          "]," +
+          "[" +
+          "[-1.881317,0.20438789,-2.5961785]," +
+          "[1.3082669,0.58748704,-0.01997061]," +
+          "[-1.7090794,1.0162057,0.33355764]" +
+          "]" +
+          "]")
+    }
+    .run
+    .toScalaFuture
+
 }
