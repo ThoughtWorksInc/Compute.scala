@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.util.concurrent.Callable
 import java.util.{Collections, IdentityHashMap}
 
+import com.dongxiguo.fastring.Fastring
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.github.ghik.silencer.silent
 import com.google.common.cache._
@@ -23,17 +24,38 @@ import shapeless.Witness
 
 import scala.annotation.meta.companionObject
 import scala.annotation.tailrec
-import scala.collection.SeqView
+import scala.collection.{SeqView, mutable}
 import scala.concurrent.ExecutionContext
 import scala.language.existentials
 import scala.reflect.ClassTag
-import scala.util.Success
+import scala.util.{Random, Success}
 import scalaz.Tags.Parallel
 import scalaz.std.list._
 import scalaz.syntax.all._
 import scalaz.syntax.tag._
 
 object Tensors {
+
+  trait LcgRandomNumberGenerator extends Tensors {
+    protected def hashSourceCode: Fastring = fast"""
+      static inline uint hash(uint value) {
+        return 1103515245 * value + 12345;
+      }
+    """
+  }
+
+  trait WangHashingRandomNumberGenerator extends Tensors {
+    protected def hashSourceCode: Fastring = fast"""
+      static inline uint hash(uint value) {
+        value = (value ^ 61) ^ (value >> 16);
+        value *= 9;
+        value ^= value << 4;
+        value *= 0x27d4eb2d;
+        value ^= value >> 15;
+        return value;
+      }
+    """
+  }
 
   private[Tensors] final class ArrayMemory[Element](length: Int)(implicit val elementMemory: Memory[Element],
                                                                  classTag: ClassTag[Element])
@@ -156,7 +178,7 @@ trait Tensors extends OpenCL {
       val isNew = traversed.add(node)
       if (isNew) {
         node match {
-          case parameter: Parameter =>
+          case parameter: Parameter @unchecked =>
             builder += parameter
           case tree: Tree =>
             tree.productIterator.foreach(appendParameters)
@@ -251,7 +273,58 @@ trait Tensors extends OpenCL {
     }
   }
 
+  protected def hashSourceCode: Fastring
+
   object Tensor {
+
+    @transient
+    private lazy val randomNormalProgram: Program = {
+
+      val program = createProgramWithSource(fast"""
+    $hashSourceCode
+
+    static inline uint xorshift(uint seed) {
+      const uint tmp1 = seed ^ (seed << 13);
+      const uint tmp2 = tmp1 ^ (tmp1 >> 17);
+      return tmp2 ^ (tmp2 << 5);
+    }
+
+    kernel void random_normal(global float * const restrict buffer, const uint seed) {
+      const uint i = get_global_id(0);
+      const uint r1 = hash(i ^ seed);
+      const uint r2 = xorshift(r1);
+      const float u1 = r1 / 4294967296.0f;
+      const float u2 = r2 / 4294967296.0f;
+
+      const float r = sqrt(-2 * log(u1));
+      const float theta = 2 * M_PI_F * u2;
+
+      const float z0 = r * cos(theta);
+      const float z1 = r * sin(theta);
+
+
+      buffer[i * 2] = z0;
+      buffer[i * 2 + 1] = z1;
+    }
+    """)
+      program.build()
+      program
+    }
+
+    @transient
+    private lazy val randomProgram: Program = {
+      val program = createProgramWithSource(fast"""
+    $hashSourceCode
+
+    kernel void random(global float * const restrict buffer, const uint seed) {
+      const uint i = get_global_id(0);
+      buffer[i] = hash(i ^ seed) / 4294967296.0f;
+    }
+    """)
+      program.build()
+      program
+    }
+
     def apply[A](elements: A, padding: Float = 0.0f)(implicit tensorBuilder: TensorBuilder.Aux[A, Float]) = {
       val padding0 = padding
       new {
@@ -282,6 +355,83 @@ trait Tensors extends OpenCL {
         val closure: trees.FloatTerm = float.literal(value)
       } with InlineTensor
     }
+
+    def random(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): Tensor = {
+      val shape0 = shape
+      val padding0 = padding
+      new {
+        val padding = padding0
+        val shape = shape0
+      } with BufferedTensor {
+        def enqueue: Do[PendingBuffer[Float]] = {
+          val size = shape.product
+          allocateBuffer[Float](size).flatMap { buffer =>
+            Do.monadicCloseable(randomProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
+              kernel(0) = buffer
+              kernel(1) = seed
+              kernel.enqueue(Array(size.toLong)).map { event: Event =>
+                EventBuffer[Float](buffer, event)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    /** Generate random numbers in normal distribution. */
+    def randomNormal(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): Tensor = {
+      val shape0 = shape
+      val padding0 = padding
+      new {
+        val padding = padding0
+        val shape = shape0
+      } with BufferedTensor {
+        def enqueue: Do[PendingBuffer[Float]] = {
+          val size = shape.product
+          val paddingSize = if (size % 2 == 1) {
+            size + 1
+          } else {
+            size
+          }
+
+          allocateBuffer[Float](paddingSize).flatMap { buffer =>
+            Do.monadicCloseable(randomNormalProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
+              kernel(0) = buffer
+              kernel(1) = seed
+              kernel.enqueue(Array((paddingSize / 2).toLong)).map { event: Event =>
+                EventBuffer[Float](buffer, event)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    def zip(tensors0: Seq[Tensor]): BufferedTensor = {
+      def force[A](seq: Seq[A]) = {
+        seq match {
+          case seqView: SeqView[A, _] @unchecked =>
+            seqView.force[A, Seq[A]](collection.breakOut)
+          case _ =>
+            seq
+        }
+      }
+      val tensors = force(tensors0)
+      val headTensor = tensors.head
+
+      val shape0 = headTensor.shape :+ tensors.length
+      val padding0: Float = headTensor.padding
+      val enqueue0 = {
+        val elements = tensors.map(_.closure)
+        enqueueClosure(trees.tuple.zip(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]]
+      }
+      new BufferedTensor {
+        def shape: Array[Int] = shape0
+        def enqueue: Do[PendingBuffer[Float]] = enqueue0
+        def padding: Float = padding0
+      }
+    }
+
   }
 
   sealed trait Tensor { thisTensor =>
