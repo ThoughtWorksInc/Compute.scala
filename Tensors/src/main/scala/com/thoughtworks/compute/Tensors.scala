@@ -118,31 +118,6 @@ object Tensors {
 // TODO: Rename to VirtualTensors, like virtual-dom
 trait Tensors extends OpenCL {
 
-  def zip(tensors0: Seq[Tensor]): BufferedTensor = {
-    def force[A](seq: Seq[A]) = {
-      seq match {
-        case seqView: SeqView[A, _] @unchecked =>
-          seqView.force[A, Seq[A]](collection.breakOut)
-        case _ =>
-          seq
-      }
-    }
-    val tensors = force(tensors0)
-    val headTensor = tensors.head
-
-    val shape0 = headTensor.shape :+ tensors.length
-    val padding0: Float = headTensor.padding
-    val enqueue0 = {
-      val elements = tensors.map(_.closure)
-      enqueueClosure(trees.tuple.zip(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]]
-    }
-    new BufferedTensor {
-      def shape: Array[Int] = shape0
-      def enqueue: Do[PendingBuffer[Float]] = enqueue0
-      def padding: Float = padding0
-    }
-  }
-
   protected val trees
     : AllTrees with MemoryTrees with StructuralTrees { type Category = Tuples with Floats with Arrays } =
     Factory[AllTrees with MemoryTrees with StructuralTrees].newInstance()

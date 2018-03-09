@@ -144,7 +144,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
   "convolution" in {
     doTensors.flatMap { tensors =>
       import tensors.Tensor
-      import tensors.zip
+      import tensors.Tensor.zip
       def convolute(input: Tensor /* batchSize × height × width × depth */,
                     weight: Tensor /* kernelHeight × kernelWidth × depth × filterSize */,
                     bias: Tensor /* filterSize */ ): Tensor = {
