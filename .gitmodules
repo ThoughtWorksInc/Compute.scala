@@ -1,3 +1,0 @@
-[submodule "scala-logging"]
-	path = scala-logging
-	url = https://github.com/ThoughtWorksInc/scala-logging.git
