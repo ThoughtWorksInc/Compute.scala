@@ -309,7 +309,7 @@ trait Tensors extends OpenCL {
       } with BufferedTensor {
         def padding: Float = padding0
 
-        val enqueue = {
+        val doBuffer = {
           Do(TryT(ResourceT(UnitContinuation.delay {
             val data = tensorBuilder.flatten(elements).toArray
             val hostBuffer = MemoryUtil.memAllocFloat(data.length)
@@ -338,7 +338,7 @@ trait Tensors extends OpenCL {
         val padding = padding0
         val shape = shape0
       } with BufferedTensor {
-        def enqueue: Do[PendingBuffer[Float]] = {
+        def doBuffer: Do[PendingBuffer[Float]] = {
           val size = shape.product
           allocateBuffer[Float](size).flatMap { buffer =>
             Do.monadicCloseable(randomProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
@@ -361,7 +361,7 @@ trait Tensors extends OpenCL {
         val padding = padding0
         val shape = shape0
       } with BufferedTensor {
-        def enqueue: Do[PendingBuffer[Float]] = {
+        def doBuffer: Do[PendingBuffer[Float]] = {
           val size = shape.product
           val paddingSize = if (size % 2 == 1) {
             size + 1
@@ -402,7 +402,7 @@ trait Tensors extends OpenCL {
       }
       new BufferedTensor {
         def shape: Array[Int] = shape0
-        def enqueue: Do[PendingBuffer[Float]] = enqueue0
+        def doBuffer: Do[PendingBuffer[Float]] = enqueue0
         def padding: Float = padding0
       }
     }
@@ -412,7 +412,7 @@ trait Tensors extends OpenCL {
   sealed trait Tensor { thisTensor =>
 
     override def toString: String = {
-      enqueue
+      doBuffer
         .intransitiveFlatMap { pendingBuffer =>
           pendingBuffer.toArray()(closure.valueType.memory)
         }
@@ -487,7 +487,7 @@ trait Tensors extends OpenCL {
       new {
         val padding: Float = thisTensor.padding
         val shape: Array[Int] = newShape
-        val enqueue: Do[PendingBuffer[Float]] = thisTensor.enqueue
+        val doBuffer: Do[PendingBuffer[Float]] = thisTensor.doBuffer
       } with BufferedTensor
     }
 
@@ -657,11 +657,10 @@ trait Tensors extends OpenCL {
 
     val closure: FloatTerm // FIXME: Allow element types other than float
 
-    // TODO: rename to make buffer
-    def enqueue: Do[PendingBuffer[closure.JvmValue]]
+    def doBuffer: Do[PendingBuffer[closure.JvmValue]]
 
     def flatArray: Do[Array[closure.JvmValue]] = {
-      enqueue.intransitiveFlatMap(_.toArray()(closure.valueType.memory))
+      doBuffer.intransitiveFlatMap(_.toArray()(closure.valueType.memory))
     }
 
     def padding: Float
@@ -746,7 +745,7 @@ trait Tensors extends OpenCL {
 
                 upvalues
                   .traverse[ParallelDo, PendingBuffer[_]] { tree =>
-                    Parallel(tree.id.asInstanceOf[Tensor].enqueue)
+                    Parallel(tree.id.asInstanceOf[Tensor].doBuffer)
                   }
                   .unwrap
                   .intransitiveFlatMap { arguments: List[PendingBuffer[_]] =>
@@ -788,7 +787,7 @@ trait Tensors extends OpenCL {
     * @see [[buffered]] to create a tensor that will cache the result.
     */
   trait InlineTensor extends Tensor {
-    val enqueue: Do[PendingBuffer[closure.JvmValue]] = {
+    val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
       enqueueClosure(closure, shape)
     }
   }
