@@ -1,6 +1,6 @@
 enablePlugins(JmhPlugin)
 
-libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.5").jar().classifier {
+libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6").jar().classifier {
   import scala.util.Properties._
   if (isMac) {
     "natives-macos"
