@@ -41,7 +41,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
       val element = 42.0f
       val filled = tensors.Tensor.fill(element, shape)
       for {
-        pendingBuffer <- filled.enqueue
+        pendingBuffer <- filled.doBuffer
         floatBuffer <- pendingBuffer.toHostBuffer
       } yield {
         for (i <- 0 until floatBuffer.capacity()) {
@@ -96,7 +96,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
           "]")
 
       for {
-        pendingBuffer <- translated.enqueue
+        pendingBuffer <- translated.doBuffer
         floatBuffer <- pendingBuffer.toHostBuffer
       } yield {
         floatBuffer.position() should be(0)

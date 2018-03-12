@@ -303,13 +303,10 @@ trait Tensors extends OpenCL {
     def apply[A](elements: A, padding: Float = 0.0f)(implicit tensorBuilder: TensorBuilder.Aux[A, Float]) = {
       val padding0 = padding
       new {
-
         val shape: Array[Int] = tensorBuilder.shape(elements).toArray
-
+        val padding: Float = padding0
       } with BufferedTensor {
-        def padding: Float = padding0
-
-        val enqueue = {
+        val doBuffer = {
           Do(TryT(ResourceT(UnitContinuation.delay {
             val data = tensorBuilder.flatten(elements).toArray
             val hostBuffer = MemoryUtil.memAllocFloat(data.length)
@@ -317,7 +314,7 @@ trait Tensors extends OpenCL {
             Resource(value = Success(hostBuffer), release = UnitContinuation.delay { MemoryUtil.memFree(hostBuffer) })
           }))).intransitiveFlatMap { hostBuffer =>
             allocateBufferFrom(hostBuffer).map(ReadyBuffer[Float]).asInstanceOf[Do[PendingBuffer[closure.JvmValue]]]
-          }
+          }.shared
         }
       }
     }
@@ -338,7 +335,7 @@ trait Tensors extends OpenCL {
         val padding = padding0
         val shape = shape0
       } with BufferedTensor {
-        def enqueue: Do[PendingBuffer[Float]] = {
+        val doBuffer: Do[PendingBuffer[Float]] = {
           val size = shape.product
           allocateBuffer[Float](size).flatMap { buffer =>
             Do.monadicCloseable(randomProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
@@ -348,7 +345,7 @@ trait Tensors extends OpenCL {
                 EventBuffer[Float](buffer, event)
               }
             }
-          }
+          }.shared
         }
       }
     }
@@ -361,14 +358,13 @@ trait Tensors extends OpenCL {
         val padding = padding0
         val shape = shape0
       } with BufferedTensor {
-        def enqueue: Do[PendingBuffer[Float]] = {
+        val doBuffer: Do[PendingBuffer[Float]] = {
           val size = shape.product
           val paddingSize = if (size % 2 == 1) {
             size + 1
           } else {
             size
           }
-
           allocateBuffer[Float](paddingSize).flatMap { buffer =>
             Do.monadicCloseable(randomNormalProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
               kernel(0) = buffer
@@ -378,7 +374,7 @@ trait Tensors extends OpenCL {
               }
             }
           }
-        }
+        }.shared
       }
     }
 
@@ -394,16 +390,14 @@ trait Tensors extends OpenCL {
       val tensors = force(tensors0)
       val headTensor = tensors.head
 
-      val shape0 = headTensor.shape :+ tensors.length
-      val padding0: Float = headTensor.padding
-      val enqueue0 = {
-        val elements = tensors.map(_.closure)
-        enqueueClosure(trees.tuple.zip(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]]
-      }
-      new BufferedTensor {
-        def shape: Array[Int] = shape0
-        def enqueue: Do[PendingBuffer[Float]] = enqueue0
-        def padding: Float = padding0
+      new {
+        val shape = headTensor.shape :+ tensors.length
+        val padding: Float = headTensor.padding
+      } with BufferedTensor {
+        val doBuffer = {
+          val elements = tensors.map(_.closure)
+          enqueueClosure(trees.tuple.zip(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]].shared
+        }
       }
     }
 
@@ -412,7 +406,7 @@ trait Tensors extends OpenCL {
   sealed trait Tensor { thisTensor =>
 
     override def toString: String = {
-      enqueue
+      doBuffer
         .intransitiveFlatMap { pendingBuffer =>
           pendingBuffer.toArray()(closure.valueType.memory)
         }
@@ -487,7 +481,7 @@ trait Tensors extends OpenCL {
       new {
         val padding: Float = thisTensor.padding
         val shape: Array[Int] = newShape
-        val enqueue: Do[PendingBuffer[Float]] = thisTensor.enqueue
+        val doBuffer: Do[PendingBuffer[Float]] = thisTensor.doBuffer
       } with BufferedTensor
     }
 
@@ -657,11 +651,10 @@ trait Tensors extends OpenCL {
 
     val closure: FloatTerm // FIXME: Allow element types other than float
 
-    // TODO: rename to make buffer
-    def enqueue: Do[PendingBuffer[closure.JvmValue]]
+    def doBuffer: Do[PendingBuffer[closure.JvmValue]]
 
     def flatArray: Do[Array[closure.JvmValue]] = {
-      enqueue.intransitiveFlatMap(_.toArray()(closure.valueType.memory))
+      doBuffer.intransitiveFlatMap(_.toArray()(closure.valueType.memory))
     }
 
     def padding: Float
@@ -703,83 +696,83 @@ trait Tensors extends OpenCL {
     clearCache >> super.monadicClose
   }
 
-  private def enqueueClosure(closure: ValueTerm, shape: Array[Int]): Do[PendingBuffer[closure.JvmValue]] = Do.suspend {
+  private def enqueueClosure(closure: ValueTerm, shape: Array[Int]): Do[PendingBuffer[closure.JvmValue]] =
+    Do.suspend {
+      val compiledKernel = kernelCache.getIfPresent(closure) match {
+        case null =>
+          val alphConversionContext = new AlphaConversionContext
+          val convertedTerm: ValueTerm = closure.alphaConversion
+          val loader = new Callable[CompiledKernel] {
+            def call(): CompiledKernel = {
+              val sourceCode = {
+                val globalContext = new GlobalContext
+                val functionContext = Factory[OpenCLKernelBuilder].newInstance(globalContext)
 
-    val compiledKernel = kernelCache.getIfPresent(closure) match {
-      case null =>
-        val alphConversionContext = new AlphaConversionContext
-        val convertedTerm: ValueTerm = closure.alphaConversion
-        val loader = new Callable[CompiledKernel] {
-          def call(): CompiledKernel = {
-            val sourceCode = {
-              val globalContext = new GlobalContext
-              val functionContext = Factory[OpenCLKernelBuilder].newInstance(globalContext)
+                val exportContext = new ExportContext
 
-              val exportContext = new ExportContext
+                val convertedTree = convertedTerm.tree
+                val kernelBody = convertedTree.export(functionContext, exportContext)
 
-              val convertedTree = convertedTerm.tree
-              val kernelBody = convertedTree.export(functionContext, exportContext)
-
-              val upvalues = parameterDescendants(convertedTree)
-              val kernelParameters = upvalues.map { upvalue: Parameter =>
-                val term = exportContext.get(upvalue)
-                assert(term != null)
-                term.asInstanceOf[functionContext.Term]
-              }
-              fastraw"""
+                val upvalues = parameterDescendants(convertedTree)
+                val kernelParameters = upvalues.map { upvalue: Parameter =>
+                  val term = exportContext.get(upvalue)
+                  assert(term != null)
+                  term.asInstanceOf[functionContext.Term]
+                }
+                fastraw"""
               $globalContext
               ${functionContext.generateKernelSourceCode("jit_kernel", shape.length, kernelParameters, Seq(kernelBody))}
               """
-            }
+              }
 
-            val program = createProgramWithSource(sourceCode)
-            program.build()
+              val program = createProgramWithSource(sourceCode)
+              program.build()
 
-            val compiledKernel = new CompiledKernel {
+              val compiledKernel = new CompiledKernel {
 
-              def monadicClose: UnitContinuation[Unit] = program.monadicClose
+                def monadicClose: UnitContinuation[Unit] = program.monadicClose
 
-              def run(upvalues: List[Parameter]): Do[PendingBuffer[convertedTerm.JvmValue]] = {
-                // TODO: Manage life cycle of upvalues more delicately
-                // e.g. a buffer should be release as soon as possible if it is a dependency of another buffer,
-                // e.g. however, it can be hold longer time if it is dependencies of many other buffers.
+                def run(upvalues: List[Parameter]): Do[PendingBuffer[convertedTerm.JvmValue]] = {
+                  // TODO: Manage life cycle of upvalues more delicately
+                  // e.g. a buffer should be release as soon as possible if it is a dependency of another buffer,
+                  // e.g. however, it can be hold longer time if it is dependencies of many other buffers.
 
-                upvalues
-                  .traverse[ParallelDo, PendingBuffer[_]] { tree =>
-                    Parallel(tree.id.asInstanceOf[Tensor].enqueue)
-                  }
-                  .unwrap
-                  .intransitiveFlatMap { arguments: List[PendingBuffer[_]] =>
-                    Do.monadicCloseable(program.createFirstKernel()).intransitiveFlatMap { kernel: Kernel =>
-                      val valueType = convertedTerm.valueType.asInstanceOf[ValueType]
-                      val memory = valueType.memory.asInstanceOf[Memory[convertedTerm.JvmValue]]
-                      allocateBuffer[convertedTerm.JvmValue](shape.product)(memory).flatMap { outputBuffer =>
-                        for ((arugment, i) <- arguments.view.zipWithIndex) {
-                          kernel(i) = arugment.buffer
-                        }
-                        kernel(arguments.length) = outputBuffer
-                        kernel
-                          .enqueue(globalWorkSize = shape.view.map(_.toLong),
-                                   waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle)))
-                          .map { event0 =>
-                            EventBuffer[convertedTerm.JvmValue](outputBuffer, event0)
+                  upvalues
+                    .traverse[ParallelDo, PendingBuffer[_]] { tree =>
+                      Parallel(tree.id.asInstanceOf[Tensor].doBuffer)
+                    }
+                    .unwrap
+                    .intransitiveFlatMap { arguments: List[PendingBuffer[_]] =>
+                      Do.monadicCloseable(program.createFirstKernel()).intransitiveFlatMap { kernel: Kernel =>
+                        val valueType = convertedTerm.valueType.asInstanceOf[ValueType]
+                        val memory = valueType.memory.asInstanceOf[Memory[convertedTerm.JvmValue]]
+                        allocateBuffer[convertedTerm.JvmValue](shape.product)(memory).flatMap { outputBuffer =>
+                          for ((arugment, i) <- arguments.view.zipWithIndex) {
+                            kernel(i) = arugment.buffer
                           }
+                          kernel(arguments.length) = outputBuffer
+                          kernel
+                            .enqueue(globalWorkSize = shape.view.map(_.toLong),
+                                     waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle)))
+                            .map { event0 =>
+                              EventBuffer[convertedTerm.JvmValue](outputBuffer, event0)
+                            }
+                        }
                       }
                     }
-                  }
 
+                }
               }
+              compiledKernel
             }
-            compiledKernel
           }
-        }
-        kernelCache.get(convertedTerm, loader)
-      case compiledKernel =>
-        compiledKernel
-    }
+          kernelCache.get(convertedTerm, loader)
+        case compiledKernel =>
+          compiledKernel
+      }
 
-    compiledKernel.run(parameterDescendants(closure.tree)).asInstanceOf[Do[PendingBuffer[closure.JvmValue]]].shared
-  }
+      compiledKernel.run(parameterDescendants(closure.tree)).asInstanceOf[Do[PendingBuffer[closure.JvmValue]]]
+    }
 
   /** An intermediate expression of tensor that can be composed into a more complex expression.
     *
@@ -788,8 +781,8 @@ trait Tensors extends OpenCL {
     * @see [[buffered]] to create a tensor that will cache the result.
     */
   trait InlineTensor extends Tensor {
-    val enqueue: Do[PendingBuffer[closure.JvmValue]] = {
-      enqueueClosure(closure, shape)
+    val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
+      enqueueClosure(closure, shape).shared
     }
   }
 
