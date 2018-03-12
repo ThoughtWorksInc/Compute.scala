@@ -405,6 +405,8 @@ trait Tensors extends OpenCL {
 
   sealed trait Tensor { thisTensor =>
 
+    def toBufferedTensor: BufferedTensor
+
     override def toString: String = {
       doBuffer
         .intransitiveFlatMap { pendingBuffer =>
@@ -780,10 +782,17 @@ trait Tensors extends OpenCL {
     *       the computation for the tensor may be evaluated more than once.
     * @see [[buffered]] to create a tensor that will cache the result.
     */
-  trait InlineTensor extends Tensor {
+  trait InlineTensor extends Tensor { thisInlineTensor =>
     val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
       enqueueClosure(closure, shape).shared
     }
+
+    def toBufferedTensor: BufferedTensor =
+      new {
+        val padding: Float = thisInlineTensor.padding
+        val doBuffer: Do[PendingBuffer[Float]] = thisInlineTensor.doBuffer
+        val shape: Array[Int] = thisInlineTensor.shape
+      } with BufferedTensor
   }
 
   trait TransformedTensor extends InlineTensor {
@@ -803,6 +812,9 @@ trait Tensors extends OpenCL {
   }
 
   trait BufferedTensor extends Tensor {
+
+    def toBufferedTensor: BufferedTensor = this
+
     // TODO: Allow other types
     @transient lazy val closure: FloatTerm = {
       arrayTerm.extract
