@@ -1,4 +1,4 @@
-libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.5" % Test).jar().classifier {
+libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6" % Test).jar().classifier {
   import scala.util.Properties._
   if (isMac) {
     "natives-macos"
@@ -11,7 +11,7 @@ libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.5" % Test).jar().classifier
   }
 }
 
-libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.5"
+libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.6"
 
 libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M8"
 
