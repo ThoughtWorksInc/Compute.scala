@@ -39,7 +39,7 @@ object OpenCLBenchmark {
     private[OpenCLBenchmark] lazy val compiledProgram: Program = {
 
       val program = createProgramWithSource(fastraw"""
-      float sample(global const float* /*restrict*/ input, const size_t image_index, const ptrdiff_t x, const ptrdiff_t y, const ptrdiff_t width, const ptrdiff_t height) {
+      float sample(global const float* /*restrict*/ input, const size_t image_index, const int x, const int y, const int width, const int height) {
         if (x >= 0 && x < width && y >= 0 && y < height) {
           return input[image_index * width * height, y * width + x];
         } else {

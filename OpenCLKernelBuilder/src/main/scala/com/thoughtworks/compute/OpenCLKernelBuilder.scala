@@ -267,9 +267,9 @@ trait OpenCLKernelBuilder extends AllExpressions {
         }
         val indexId = freshName("index")
         val (indexDefinition, bounds) = if (products.isEmpty) {
-          (fast"const ptrdiff_t $indexId = 0;\n", Nil)
+          (fast"const int $indexId = 0;\n", Nil)
         } else {
-          (fast"const ptrdiff_t $indexId = (ptrdiff_t)(${products.mkFastring(" + ")});\n",
+          (fast"const int $indexId = (int)(${products.mkFastring(" + ")});\n",
            Seq(fast"((bool)($indexId >= 0))", fast"((bool)($indexId < ${originalShape(y)}))"))
         }
         (indexId, indexDefinition, bounds)
