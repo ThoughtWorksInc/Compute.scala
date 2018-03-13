@@ -1,5 +1,6 @@
 package com.thoughtworks.compute
 
+import com.thoughtworks.compute.benchmarks.RandomNormalState
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
 import com.thoughtworks.continuation._
@@ -16,9 +17,71 @@ import org.openjdk.jmh.annotations._
 import scalaz.syntax.all._
 import scalaz.std.list._
 
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 object benchmarks {
+  @Threads(value = Threads.MAX)
+  @State(Scope.Benchmark)
+  class Nd4jRandomNormal extends RandomNormalState {
+
+    @Benchmark
+    final def nd4jRandomNormalBenchmark(): Array[Float] = {
+      Nd4j.randn(Array.fill(numberOfDimensions)(size)).data().asFloat()
+    }
+  }
+
+  @Threads(value = Threads.MAX)
+  @State(Scope.Benchmark)
+  class TensorRandomNormal extends RandomNormalState {
+    trait Benchmarks
+        extends StrictLogging
+        with OpenCL.LogContextNotification
+        with OpenCL.GlobalExecutionContext
+        with OpenCL.UseAllDevices
+        with OpenCL.UseFirstPlatform
+        with OpenCL.CommandQueuePool
+        with OpenCL.DontReleaseEventTooEarly
+        with Tensors.WangHashingRandomNumberGenerator {
+
+      protected val numberOfCommandQueuesForDevice: (Long, CLCapabilities) => Int = { (_, _) =>
+        2
+      }
+    }
+
+    var benchmarks: Benchmarks = _
+
+    @Setup
+    final def setup(): Unit = {
+      assert(benchmarks == null)
+      benchmarks = Factory[Benchmarks].newInstance()
+    }
+
+    @TearDown(Level.Trial)
+    final def tearDown(): Unit = {
+      val benchmarks = this.benchmarks
+      this.benchmarks = null
+      benchmarks.monadicClose.blockingAwait
+
+    }
+
+    @Benchmark
+    final def tensorRandomNormalBenchmark(): Array[Float] = {
+      benchmarks.Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).flatArray.run.blockingAwait
+    }
+  }
+
+  trait RandomNormalState {
+
+    @Param(Array("3", "2", "1"))
+    protected var numberOfDimensions: Int = _
+
+    @Param(Array("128", "64", "32", "16"))
+    protected var size: Int = _
+
+  }
+
+  @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
   class Nd4jConvolution extends ConvolutionState {
     private val input = Nd4j.randn(Array(batchSize, depth, imageHeight, imageWidth))
@@ -59,8 +122,8 @@ object benchmarks {
     }
   }
 
-  @State(Scope.Benchmark)
   @Threads(value = Threads.MAX)
+  @State(Scope.Benchmark)
   class TensorConvolution extends ConvolutionState {
 
     trait Benchmarks
@@ -75,14 +138,10 @@ object benchmarks {
         with ConvolutionTensors {
 
       protected val numberOfCommandQueuesForDevice: (Long, CLCapabilities) => Int = { (_, _) =>
-        3
+        2
       }
 
-      override def monadicClose: UnitContinuation[Unit] = {
-        super.monadicClose
-      }
-
-      def doComputeConvolution(): Do[() => Array[Float]] = {
+      def doBenchmark(): Do[() => Array[Float]] = {
         val input = Tensor.randomNormal(Array(batchSize, imageHeight, imageWidth, depth))
         val layers = (for (i <- (0 until numberOfLayers).view) yield {
           ConvolutionalLayer(weight = Tensor.randomNormal(Array(kernelHeight, kernelWidth, depth, depth)),
@@ -120,7 +179,7 @@ object benchmarks {
     final def setup(): Unit = {
       assert(benchmarkResouce == null)
       val Do(TryT(ResourceT(resourceContinuation))) =
-        Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doComputeConvolution())
+        Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
       benchmarkResouce = resourceContinuation.blockingAwait()
     }
 
@@ -140,25 +199,25 @@ object benchmarks {
 
   trait ConvolutionState {
     @Param(Array("5", "1", "2", "10"))
-    protected var numberOfLayers: Int = 3
+    protected var numberOfLayers: Int = _
 
     @Param(Array("3", "1"))
-    protected var kernelWidth: Int = 3
+    protected var kernelWidth: Int = _
 
     @Param(Array("3", "1"))
-    protected var kernelHeight: Int = 3
+    protected var kernelHeight: Int = _
 
     @Param(Array("32", "64"))
-    protected var imageHeight: Int = 32
+    protected var imageHeight: Int = _
 
     @Param(Array("32", "64"))
-    protected var imageWidth: Int = 32
+    protected var imageWidth: Int = _
 
     @Param(Array("32", "64"))
-    protected var batchSize: Int = 32
+    protected var batchSize: Int = _
 
     @Param(Array("3", "10", "20"))
-    protected var depth: Int = 3
+    protected var depth: Int = _
 
   }
 
