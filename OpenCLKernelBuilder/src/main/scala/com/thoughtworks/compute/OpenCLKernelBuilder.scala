@@ -1,5 +1,7 @@
 package com.thoughtworks.compute
 
+import java.text.DecimalFormat
+
 import com.dongxiguo.fastring.Fastring.Implicits._
 import com.thoughtworks.compute.OpenCLKernelBuilder.ClTypeDefinition._
 import com.thoughtworks.compute.Expressions.AllExpressions
@@ -7,7 +9,27 @@ import com.thoughtworks.compute.NDimensionalAffineTransform._
 import com.thoughtworks.feature.Factory.{Factory1, Factory2, Factory3, Factory5, Factory6, inject}
 
 import scala.collection.mutable
+
 object OpenCLKernelBuilder {
+  private val smallNumberFormat = {
+    val format = new DecimalFormat()
+    format.setMinimumFractionDigits(0)
+    format.setGroupingUsed(false)
+    format
+  }
+  private val bigNumberFormat = {
+    val format = new DecimalFormat()
+    format.setGroupingUsed(false)
+    format
+  }
+  private def toLiteral(value: Double): String = {
+    val format = if (value > Int.MaxValue) {
+      bigNumberFormat
+    } else {
+      smallNumberFormat
+    }
+    format.format(value)
+  }
 
   type ClTermCode = String
   type ClTypeCode = String
@@ -237,10 +259,10 @@ trait OpenCLKernelBuilder extends AllExpressions {
               case 1.0 =>
                 fast"get_global_id($x)"
               case scale =>
-                fast"get_global_id($x) * $scale"
+                fast"get_global_id($x) * ${toLiteral(scale)}"
             }
           } else {
-            fast"$scale"
+            fast"${toLiteral(scale)}"
           }
         }
         val indexId = freshName("index")
