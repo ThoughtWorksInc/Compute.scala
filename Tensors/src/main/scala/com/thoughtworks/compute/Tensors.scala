@@ -341,7 +341,7 @@ trait Tensors extends OpenCL {
             Do.monadicCloseable(randomProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
               kernel(0) = buffer
               kernel(1) = seed
-              kernel.enqueue(Array(size.toLong)).map { event: Event =>
+              kernel.dispatch(Array(size.toLong)).map { event: Event =>
                 EventBuffer[Float](buffer, event)
               }
             }
@@ -369,7 +369,7 @@ trait Tensors extends OpenCL {
             Do.monadicCloseable(randomNormalProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
               kernel(0) = buffer
               kernel(1) = seed
-              kernel.enqueue(Array((paddingSize / 2).toLong)).map { event: Event =>
+              kernel.dispatch(Array((paddingSize / 2).toLong)).map { event: Event =>
                 EventBuffer[Float](buffer, event)
               }
             }
@@ -754,8 +754,8 @@ trait Tensors extends OpenCL {
                           }
                           kernel(arguments.length) = outputBuffer
                           kernel
-                            .enqueue(globalWorkSize = shape.view.map(_.toLong),
-                                     waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle)))
+                            .dispatch(globalWorkSize = shape.view.map(_.toLong),
+                                      waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle)))
                             .map { event0 =>
                               EventBuffer[convertedTerm.JvmValue](outputBuffer, event0)
                             }

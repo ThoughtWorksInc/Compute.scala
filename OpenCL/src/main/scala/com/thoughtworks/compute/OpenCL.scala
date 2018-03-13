@@ -547,7 +547,7 @@ object OpenCL {
         Resource(value = Success(hostBuffer), release = UnitContinuation.delay { memory.free(hostBuffer) })
       }))).flatMap { hostBuffer =>
         witnessOwner.value
-          .enqueueReadBuffer[Element, memory.HostBuffer](
+          .dispatchReadBuffer[Element, memory.HostBuffer](
             this.asInstanceOf[witnessOwner.value.DeviceBuffer[Element]],
             hostBuffer,
             preconditionEvents.asInstanceOf[Seq[witnessOwner.value.Event]]: _*)(memory)
@@ -597,38 +597,62 @@ object OpenCL {
       }
     }
 
-    def enqueue(globalWorkSize: Seq[Long], waitingEvents: Seq[Long] = Array.empty[Long])(
+    def enqueue(commandQueue: Long, globalWorkSize: Seq[Long], waitingEvents: Seq[Long] = Array.empty[Long])(
         implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
-      witnessOwner.value.acquireCommandQueue.flatMap { commandQueue =>
-        Do.monadicCloseable {
-          val stack = stackPush()
-          val outputEvent = try {
-            val outputEventBuffer = stack.pointers(0L)
-            val inputEventBuffer = if (waitingEvents.isEmpty) {
-              null
-            } else {
-              stack.pointers(waitingEvents: _*)
-            }
-            checkErrorCode(
-              clEnqueueNDRangeKernel(
-                commandQueue,
-                handle,
-                globalWorkSize.length,
-                null,
-                stack.pointers(globalWorkSize: _*),
-                null,
-                inputEventBuffer,
-                outputEventBuffer
-              )
-            )
-            Event[Owner](outputEventBuffer.get(0))
-          } finally {
-            stack.close()
+      Do.monadicCloseable {
+        val stack = stackPush()
+        val outputEvent = try {
+          val outputEventBuffer = stack.pointers(0L)
+          val inputEventBuffer = if (waitingEvents.isEmpty) {
+            null
+          } else {
+            stack.pointers(waitingEvents: _*)
           }
-          checkErrorCode(clFlush(commandQueue))
-          outputEvent
+          checkErrorCode(
+            clEnqueueNDRangeKernel(
+              commandQueue,
+              handle,
+              globalWorkSize.length,
+              null,
+              stack.pointers(globalWorkSize: _*),
+              null,
+              inputEventBuffer,
+              outputEventBuffer
+            )
+          )
+          Event[Owner](outputEventBuffer.get(0))
+        } finally {
+          stack.close()
         }
+        checkErrorCode(clFlush(commandQueue))
+        outputEvent
       }
+    }
+
+    def dispatch(globalWorkSize: Seq[Long], waitingEvents: Seq[Long] = Array.empty[Long])(
+        implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
+      val owner = witnessOwner.value
+      val Do(TryT(ResourceT(acquireContinuation))) = owner.acquireCommandQueue
+
+      Do.garbageCollected(acquireContinuation).flatMap {
+        case Resource(Success(commandQueue), release) =>
+          enqueue(commandQueue, globalWorkSize, waitingEvents).map { event =>
+            event
+              .waitForComplete()
+              .flatMap { _: Unit =>
+                release.toThoughtworksFuture
+              }
+              .onComplete {
+                case Success(()) =>
+                case Failure(e) =>
+                  owner.logger.error(s"Cannot wait for cl_event[handle = ${event.handle}]", e)
+              }
+            event
+          }
+        case r @ Resource(Failure(e), release) =>
+          Do(TryT(ResourceT(UnitContinuation.now(r.asInstanceOf[Resource[UnitContinuation, Try[Event[Owner]]]]))))
+      }
+
     }
 
     def monadicClose: UnitContinuation[Unit] = {
@@ -781,10 +805,11 @@ object OpenCL {
   trait DontReleaseEventTooEarly extends OpenCL {
     import DontReleaseEventTooEarly._
     override protected def enqueueReadBuffer[Element, Destination](
+        commandQueue: Long,
         deviceBuffer: DeviceBuffer[Element],
         hostBuffer: Destination,
         preconditionEvents: Event*)(implicit memory: Aux[Element, Destination]): Do[Event] =
-      super.enqueueReadBuffer(deviceBuffer, hostBuffer, preconditionEvents: _*).map { event =>
+      super.enqueueReadBuffer(commandQueue, deviceBuffer, hostBuffer, preconditionEvents: _*).map { event =>
         @tailrec
         def enqueueEvent(): Unit = {
           newlyCreatedEvents.get() match {
@@ -873,8 +898,6 @@ object OpenCL {
 
   trait LogContextNotification extends OpenCL {
 
-    protected val logger: Logger
-
     protected def handleOpenCLNotification(errorInfo: String, privateInfo: ByteBuffer): Unit = {
       Logger.takingImplicit[ByteBuffer](logger.underlying).info(errorInfo)(privateInfo)
     }
@@ -884,6 +907,8 @@ object OpenCL {
 
 trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton with DefaultCloseable {
   import OpenCL._
+
+  protected val logger: Logger
 
   type Program = OpenCL.Program[this.type]
   type Event = OpenCL.Event[this.type]
@@ -907,44 +932,49 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
     }
   }
 
-  protected def enqueueReadBuffer[Element, Destination](deviceBuffer: DeviceBuffer[Element],
+  private[OpenCL] def dispatchReadBuffer[Element, Destination](
+      deviceBuffer: DeviceBuffer[Element],
+      hostBuffer: Destination,
+      preconditionEvents: Event*)(implicit memory: Memory.Aux[Element, Destination]): Do[Event] =
+    acquireCommandQueue.flatMap(enqueueReadBuffer(_, deviceBuffer, hostBuffer, preconditionEvents: _*))
+
+  protected def enqueueReadBuffer[Element, Destination](commandQueue: Long,
+                                                        deviceBuffer: DeviceBuffer[Element],
                                                         hostBuffer: Destination,
                                                         preconditionEvents: Event*)(
       implicit
       memory: Memory.Aux[Element, Destination]): Do[Event] = {
-    acquireCommandQueue.flatMap { commandQueue =>
-      Do.monadicCloseable {
-        val outputEvent = {
-          val stack = stackPush()
-          try {
-            val (inputEventBufferSize, inputEventBufferAddress) = if (preconditionEvents.isEmpty) {
-              (0, NULL)
-            } else {
-              val inputEventBuffer = stack.pointers(preconditionEvents.view.map(_.handle): _*)
-              (preconditionEvents.length, inputEventBuffer.address())
-            }
-            val outputEventBuffer = stack.pointers(0L)
-            checkErrorCode(
-              nclEnqueueReadBuffer(
-                commandQueue,
-                deviceBuffer.handle,
-                CL_FALSE,
-                0,
-                memory.remainingBytes(hostBuffer),
-                memory.address(hostBuffer),
-                inputEventBufferSize,
-                inputEventBufferAddress,
-                outputEventBuffer.address()
-              )
-            )
-            new Event(outputEventBuffer.get(0))
-          } finally {
-            stack.close()
+    Do.monadicCloseable {
+      val outputEvent = {
+        val stack = stackPush()
+        try {
+          val (inputEventBufferSize, inputEventBufferAddress) = if (preconditionEvents.isEmpty) {
+            (0, NULL)
+          } else {
+            val inputEventBuffer = stack.pointers(preconditionEvents.view.map(_.handle): _*)
+            (preconditionEvents.length, inputEventBuffer.address())
           }
+          val outputEventBuffer = stack.pointers(0L)
+          checkErrorCode(
+            nclEnqueueReadBuffer(
+              commandQueue,
+              deviceBuffer.handle,
+              CL_FALSE,
+              0,
+              memory.remainingBytes(hostBuffer),
+              memory.address(hostBuffer),
+              inputEventBufferSize,
+              inputEventBufferAddress,
+              outputEventBuffer.address()
+            )
+          )
+          new Event(outputEventBuffer.get(0))
+        } finally {
+          stack.close()
         }
-        checkErrorCode(clFlush(commandQueue))
-        outputEvent
       }
+      checkErrorCode(clFlush(commandQueue))
+      outputEvent
     }
   }
 

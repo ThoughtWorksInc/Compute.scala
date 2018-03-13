@@ -10,6 +10,7 @@ import com.thoughtworks.feature.{Factory, ImplicitApply}
 import com.thoughtworks.feature.mixins.ImplicitsSingleton
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
+import com.typesafe.scalalogging.StrictLogging
 import org.lwjgl.opencl.CL10._
 import org.lwjgl.opencl.CLCapabilities
 import org.lwjgl.system.MemoryStack._
@@ -81,7 +82,7 @@ object OpenCLBenchmark {
           kernel(1) = output
           kernel(2) = weight
           val self: this.type = this
-          kernel.enqueue(Array[Long](batchSize, width, height))(Witness(self)).flatMap { event =>
+          kernel.dispatch(Array[Long](batchSize, width, height))(Witness(self)).flatMap { event =>
             Do.garbageCollected(event.waitForComplete())
           }
         }
@@ -133,7 +134,7 @@ class OpenCLBenchmark {
       numberOfConcurrentLayers
     }
     val doOpenCL = Do.monadicCloseable {
-      Factory[TestKernels with OpenCL with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with ImplicitsSingleton with OpenCL.CommandQueuePool]
+      Factory[StrictLogging with TestKernels with OpenCL with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with ImplicitsSingleton with OpenCL.CommandQueuePool]
         .newInstance(
           handleOpenCLNotification = handleOpenCLNotification,
           numberOfCommandQueuesForDevice = numberOfCommandQueuesForDevice

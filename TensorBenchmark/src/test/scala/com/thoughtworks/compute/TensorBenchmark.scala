@@ -18,6 +18,7 @@ import scala.util.Try
   * @author 杨博 (Yang Bo)
   */
 @State(Scope.Benchmark)
+@Threads(value = Threads.MAX)
 class TensorBenchmark {
   import com.thoughtworks.compute.TensorBenchmark._
 
@@ -36,7 +37,7 @@ class TensorBenchmark {
       with Convolution {
 
     protected val numberOfCommandQueuesForDevice: (Long, CLCapabilities) => Int = { (_, _) =>
-      30
+      3
     }
 
     override def monadicClose: UnitContinuation[Unit] = {
@@ -100,20 +101,6 @@ class TensorBenchmark {
 
 object TensorBenchmark {
 
-  def main(args: Array[String]): Unit = {
-    val tensorBenchMark = new TensorBenchmark
-    tensorBenchMark.setup()
-    try {
-      tensorBenchMark.computeConvolution()
-    } finally {
-      tensorBenchMark.tearDown()
-    }
-//    val Do(TryT(ResourceT(resourceContinuation))) =
-//      Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doComputeConvolution())
-//    benchmarkResouce = resourceContinuation.blockingAwait()
-
-  }
-
   trait Convolution extends Tensors {
     final case class ConvolutionalLayer(weight: Tensor, bias: Tensor) {
       def forward(input: Tensor): Tensor = {
@@ -169,7 +156,8 @@ object TensorBenchmark {
                     }
 
                   weightSeq match {
-                    case Seq(h, w, d, _*) if h.length == kernelHeight && w.length == kernelWidth && d.length == depth =>
+                    case Seq(h @ Seq(w @ Seq(d, _*), _*), _*)
+                        if h.length == kernelHeight && w.length == kernelWidth && d.length == depth =>
                     case _ =>
                       throw new IllegalArgumentException
                   }
