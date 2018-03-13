@@ -229,9 +229,9 @@ trait OpenCLKernelBuilder extends AllExpressions {
       } yield {
         val products = for {
           x <- 0 until numberOfColumns
-          if matrix(y * numberOfColumns + x) != 0.0
+          scale = matrix(y * numberOfColumns + x)
+          if scale != 0.0
         } yield {
-          val scale = matrix(y * numberOfColumns + x)
           if (x < numberOfColumns - 1) {
             scale match {
               case 1.0 =>
@@ -248,7 +248,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
           (fast"const ptrdiff_t $indexId = 0;\n", Nil)
         } else {
           (fast"const ptrdiff_t $indexId = (ptrdiff_t)(${products.mkFastring(" + ")});\n",
-           Seq(fast"(bool)($indexId >= 0)", fast"(bool)($indexId < ${originalShape(y)})"))
+           Seq(fast"((bool)($indexId >= 0))", fast"((bool)($indexId < ${originalShape(y)}))"))
         }
         (indexId, indexDefinition, bounds)
       }).unzip3
