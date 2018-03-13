@@ -352,11 +352,11 @@ object OpenCL {
       }
   }
 
-  trait GlobalExecutionContext extends HandleEventInExecutionContext {
+  trait GlobalExecutionContext {
     val executionContext: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
   }
 
-  trait SingleThreadExecutionContext extends HandleEventInExecutionContext {
+  trait SingleThreadExecutionContext {
     val executionContext: ExecutionContextExecutor =
       scala.concurrent.ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
   }
