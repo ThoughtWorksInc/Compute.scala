@@ -722,10 +722,12 @@ trait Tensors extends OpenCL {
                   term.asInstanceOf[functionContext.Term]
                 }
                 fastraw"""
-              $globalContext
-              ${functionContext.generateKernelSourceCode("jit_kernel", shape.length, kernelParameters, Seq(kernelBody))}
-              """
+                $globalContext
+                ${functionContext.generateKernelSourceCode("jit_kernel", shape.length, kernelParameters, Seq(kernelBody))}
+                """
               }
+
+              sourceCode.foreach(print)
 
               val program = createProgramWithSource(sourceCode)
               program.build()
