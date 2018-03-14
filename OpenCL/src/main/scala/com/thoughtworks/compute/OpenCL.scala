@@ -389,6 +389,28 @@ object OpenCL {
   }
 
   final case class DeviceId[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
+    def maxWorkItemSizes: Seq[Long] = {
+      val stack = stackPush()
+      try {
+        val bufferSizeBuffer = stack.mallocPointer(1)
+        checkErrorCode(clGetDeviceInfo(handle, CL_DEVICE_MAX_WORK_ITEM_SIZES, null: PointerBuffer, bufferSizeBuffer))
+        bufferSizeBuffer.get(0) match {
+          case n if n > Int.MaxValue =>
+            throw new IllegalStateException()
+          case n =>
+            val numberOfDimensions = n.toInt
+            val sizeBuffer = stack.mallocPointer(numberOfDimensions)
+            checkErrorCode(clGetDeviceInfo(handle, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeBuffer, null))
+            val output = Array.ofDim[Long](numberOfDimensions)
+            sizeBuffer.get(output)
+            output
+        }
+
+      } finally {
+        stack.close()
+      }
+    }
+
     private[OpenCL] def longInfo(paramName: Int) = {
       val buffer = Array[Long](0L)
       checkErrorCode(clGetDeviceInfo(handle, paramName, buffer, null))
@@ -412,6 +434,17 @@ object OpenCL {
   final case class CommandQueue[Owner <: Singleton with OpenCL](handle: Long)
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
+
+    def deviceId: DeviceId[Owner] = {
+      val stack = stackPush()
+      try {
+        val deviceIdBuffer = stack.mallocPointer(1)
+        checkErrorCode(clGetCommandQueueInfo(handle, CL_QUEUE_DEVICE, deviceIdBuffer, null))
+        DeviceId(deviceIdBuffer.get(0))
+      } finally {
+        stack.close()
+      }
+    }
 
     def flush(): Unit = {
       checkErrorCode(clFlush(handle))

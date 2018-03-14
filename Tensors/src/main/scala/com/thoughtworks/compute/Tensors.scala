@@ -36,15 +36,17 @@ import scalaz.syntax.tag._
 
 object Tensors {
 
-  trait CodeGenerationMonoid {
+  private[Tensors] trait CodeGenerationMonoid {
     def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring
     def zero: Fastring
   }
 
-  object CodeGenerationPlus extends CodeGenerationMonoid {
+  private[Tensors] object CodeGenerationPlus extends CodeGenerationMonoid {
     def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring = fast"(($leftHandSide) + ($rightHandSide))"
     def zero: Fastring = fast"0.0f"
   }
+  private val ScalarShape: Array[Int] = Array.empty[Int]
+
   trait LcgRandomNumberGenerator extends Tensors {
     protected def hashSourceCode: Fastring = fastraw"""
       static inline uint hash(uint value) {
@@ -456,6 +458,39 @@ trait Tensors extends OpenCL {
   sealed trait Tensor { thisTensor =>
 
     def toBufferedTensor: BufferedTensor
+
+    private def reduce(reduceProgram: Program): Tensor = {
+      new {
+        val padding: Float = thisTensor.padding
+
+        val doBuffer: Do[PendingBuffer[Float]] = {
+          thisTensor.doBuffer.intransitiveFlatMap { inputPendingBuffer: PendingBuffer[Float] =>
+            Do.monadicCloseable(reduceProgram.createFirstKernel()).intransitiveFlatMap { kernel: Kernel =>
+              val length = thisTensor.shape.product
+              allocateBuffer[Float](1).flatMap { outputBuffer =>
+                dispatch { commandQueue =>
+                  val workSize: Long = math.min(length, commandQueue.deviceId.maxWorkItemSizes.head)
+                  kernel(0) = inputPendingBuffer.buffer
+                  kernel.setLocalMemorySize[Float](1, workSize)
+                  kernel(2) = length
+                  kernel(3) = outputBuffer
+                  kernel.enqueue(
+                    commandQueue,
+                    globalWorkSize = Array(workSize),
+                    localWorkSize = Some(Array(workSize): Seq[Long]),
+                    waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
+                  )
+                }.map(EventBuffer[Float](outputBuffer, _))
+              }
+            }
+          }.shared
+        }
+      } with BufferedTensor {
+        def shape: Array[Int] = Tensors.ScalarShape
+      }
+    }
+
+    def sum = reduce(Tensor.sumProgram)
 
     override def toString: String = {
       doBuffer
