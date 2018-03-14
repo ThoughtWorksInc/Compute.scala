@@ -232,7 +232,7 @@ trait Tensors extends OpenCL {
     builder.result()
   }
 
-  sealed trait PendingBuffer[JvmType] {
+  protected sealed trait PendingBuffer[JvmType] {
     def buffer: DeviceBuffer[JvmType]
     def eventOption: Option[Event]
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer]
@@ -243,8 +243,9 @@ trait Tensors extends OpenCL {
       }
     }
   }
+
   @(silent @companionObject)
-  final case class ReadyBuffer[JvmType](buffer: DeviceBuffer[JvmType]) extends PendingBuffer[JvmType] {
+  protected final case class ReadyBuffer[JvmType](buffer: DeviceBuffer[JvmType]) extends PendingBuffer[JvmType] {
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer] = {
       buffer.toHostBuffer()(Witness(Tensors.this), memory)
     }
@@ -252,7 +253,8 @@ trait Tensors extends OpenCL {
   }
 
   @(silent @companionObject)
-  final case class EventBuffer[JvmType](buffer: DeviceBuffer[JvmType], event: Event) extends PendingBuffer[JvmType] {
+  protected final case class EventBuffer[JvmType](buffer: DeviceBuffer[JvmType], event: Event)
+      extends PendingBuffer[JvmType] {
     def eventOption = Some(event)
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer] = {
       buffer.toHostBuffer(event)
@@ -789,7 +791,7 @@ trait Tensors extends OpenCL {
     }
   }
 
-  trait CompiledKernel extends MonadicCloseable[UnitContinuation] {
+  protected trait CompiledKernel extends MonadicCloseable[UnitContinuation] {
     def run(parameters: List[Parameter]): Do[PendingBuffer[_]]
   }
 
@@ -903,7 +905,7 @@ trait Tensors extends OpenCL {
     *       the computation for the tensor may be evaluated more than once.
     * @see [[buffered]] to create a tensor that will cache the result.
     */
-  trait InlineTensor extends Tensor { thisInlineTensor =>
+  protected trait InlineTensor extends Tensor { thisInlineTensor =>
     val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
       enqueueClosure(closure, shape).shared
     }
@@ -916,7 +918,7 @@ trait Tensors extends OpenCL {
       } with BufferedTensor
   }
 
-  trait TransformedTensor extends InlineTensor {
+  protected trait TransformedTensor extends InlineTensor {
 
     def checkpoint: Tensor
 
