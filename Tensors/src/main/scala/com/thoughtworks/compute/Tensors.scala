@@ -430,6 +430,20 @@ trait Tensors extends OpenCL {
       }
     }
 
+    def abs(leftHandSide: Tensor): Tensor = {
+      leftHandSide.derivedTensor(trees.float.abs(leftHandSide.closure.asInstanceOf[FloatTerm]))
+
+    }
+
+    def exp(leftHandSide: Tensor): Tensor = {
+      leftHandSide.derivedTensor(trees.float.exp(leftHandSide.closure.asInstanceOf[FloatTerm]))
+
+    }
+
+    def log(leftHandSide: Tensor): Tensor = {
+      leftHandSide.derivedTensor(trees.float.log(leftHandSide.closure.asInstanceOf[FloatTerm]))
+    }
+
     def min(leftHandSide: Tensor, rightHandSide: Tensor): Tensor = {
       def newClosure =
         trees.float.min(leftHandSide.closure.asInstanceOf[FloatTerm], rightHandSide.closure.asInstanceOf[FloatTerm])

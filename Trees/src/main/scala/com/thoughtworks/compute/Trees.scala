@@ -381,6 +381,48 @@ object Trees {
 
     /** @group AST */
     @(silent @companionObject)
+    final case class Exp(operand0: FloatTree) extends FloatOperator {
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, foreignCategory.float.exp(operand0.export(foreignCategory, context)))
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context))
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    /** @group AST */
+    @(silent @companionObject)
+    final case class Log(operand0: FloatTree) extends FloatOperator {
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, foreignCategory.float.log(operand0.export(foreignCategory, context)))
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context))
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    /** @group AST */
+    @(silent @companionObject)
+    final case class Abs(operand0: FloatTree) extends FloatOperator {
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, foreignCategory.float.abs(operand0.export(foreignCategory, context)))
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context))
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    /** @group AST */
+    @(silent @companionObject)
     final case class Min(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
 
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
@@ -541,6 +583,18 @@ object Trees {
       @inline
       def max(leftHandSide: FloatTerm, rightHandSide: FloatTerm): FloatTerm = {
         term(Max(leftHandSide.tree, rightHandSide.tree))
+      }
+      @inline
+      def log(operand: FloatTerm): FloatTerm = {
+        term(Log(operand.tree))
+      }
+      @inline
+      def exp(operand: FloatTerm): FloatTerm = {
+        term(Exp(operand.tree))
+      }
+      @inline
+      def abs(operand: FloatTerm): FloatTerm = {
+        term(Abs(operand.tree))
       }
 
     }

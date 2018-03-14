@@ -232,7 +232,30 @@ trait OpenCLKernelBuilder extends AllExpressions {
         const ${leftHandSide.typeCode} $valueTermName = fmax(${leftHandSide.termCode}, ${rightHandSide.termCode});
       """
       float.termFactory.newInstance(valueTermName)
+    }
 
+    def log(operand0: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${operand0.typeCode} $valueTermName = log(${operand0.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
+
+    def exp(operand0: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${operand0.typeCode} $valueTermName = exp(${operand0.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
+
+    def abs(operand0: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${operand0.typeCode} $valueTermName = fabs(${operand0.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
     }
   }
 
