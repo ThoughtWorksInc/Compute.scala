@@ -361,10 +361,6 @@ object OpenCL {
       scala.concurrent.ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
   }
 
-  object CommandQueuePool {
-    sealed trait State
-  }
-
   trait CommandQueuePool extends OpenCL {
 
     protected val numberOfCommandQueuesForDevice: (Long, CLCapabilities) => Int
