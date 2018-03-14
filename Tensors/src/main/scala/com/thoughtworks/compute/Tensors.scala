@@ -11,7 +11,7 @@ import com.google.common.cache._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats, Tuples}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
-import com.thoughtworks.compute.Tensors.{CodeGenerationMonoid, CodeGenerationPlus, MemoryTrees}
+import com.thoughtworks.compute.Tensors.{CodeGenerationMonoid, CodeGenerationPlus, MemoryTrees, TensorBuilder}
 import com.thoughtworks.compute.Trees.{AllTrees, StructuralTrees}
 import com.thoughtworks.continuation._
 import com.thoughtworks.feature.Factory
@@ -35,6 +35,58 @@ import scalaz.syntax.all._
 import scalaz.syntax.tag._
 
 object Tensors {
+
+  trait TensorBuilder[Data] {
+    type Element
+    def flatten(a: Data): Seq[Element]
+    def shape(a: Data): Seq[Int]
+  }
+
+  private[Tensors] trait LowPriorityTensorBuilder {
+
+    implicit def tensorBuilder0[Data]: TensorBuilder.Aux[Data, Data] = {
+      new TensorBuilder[Data] {
+        type Element = Data
+
+        def flatten(a: Data): Seq[Data] = Seq(a)
+
+        def shape(a: Data): Seq[Int] = Nil
+      }
+    }
+
+  }
+  object TensorBuilder extends LowPriorityTensorBuilder {
+    type Aux[Data, Element0] = TensorBuilder[Data] {
+      type Element = Element0
+    }
+
+    implicit def nDimensionalSeqToNDimensionalSeq[Data, Nested, Element0](
+        implicit asSeq: Data => Seq[Nested],
+        nestedBuilder: TensorBuilder.Aux[Nested, Element0]): TensorBuilder.Aux[Data, Element0] = {
+      new TensorBuilder[Data] {
+        type Element = Element0
+
+        def flatten(a: Data): Seq[Element] = a.flatMap { nested =>
+          nestedBuilder.flatten(nested)
+        }
+
+        def shape(a: Data): Seq[Int] = {
+          val nestedSeq = asSeq(a)
+          if (nestedSeq.isEmpty) {
+            0 :: Nil
+          } else {
+            nestedSeq.length +: nestedSeq.map(nestedBuilder.shape).reduce { (a0, a1) =>
+              if (a0 == a1) {
+                a0
+              } else {
+                throw new IllegalArgumentException
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   private[Tensors] trait CodeGenerationMonoid {
     def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring
@@ -204,58 +256,6 @@ trait Tensors extends OpenCL {
     def eventOption = Some(event)
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer] = {
       buffer.toHostBuffer(event)
-    }
-  }
-
-  trait TensorBuilder[Data] {
-    type Element
-    def flatten(a: Data): Seq[Element]
-    def shape(a: Data): Seq[Int]
-  }
-
-  private[Tensors] trait LowPriorityTensorBuilder {
-
-    implicit def tensorBuilder0[Data]: TensorBuilder.Aux[Data, Data] = {
-      new TensorBuilder[Data] {
-        type Element = Data
-
-        def flatten(a: Data): Seq[Data] = Seq(a)
-
-        def shape(a: Data): Seq[Int] = Nil
-      }
-    }
-
-  }
-  object TensorBuilder extends LowPriorityTensorBuilder {
-    type Aux[Data, Element0] = TensorBuilder[Data] {
-      type Element = Element0
-    }
-
-    implicit def nDimensionalSeqToNDimensionalSeq[Data, Nested, Element0](
-        implicit asSeq: Data => Seq[Nested],
-        nestedBuilder: TensorBuilder.Aux[Nested, Element0]): TensorBuilder.Aux[Data, Element0] = {
-      new TensorBuilder[Data] {
-        type Element = Element0
-
-        def flatten(a: Data): Seq[Element] = a.flatMap { nested =>
-          nestedBuilder.flatten(nested)
-        }
-
-        def shape(a: Data): Seq[Int] = {
-          val nestedSeq = asSeq(a)
-          if (nestedSeq.isEmpty) {
-            0 :: Nil
-          } else {
-            nestedSeq.length +: nestedSeq.map(nestedBuilder.shape).reduce { (a0, a1) =>
-              if (a0 == a1) {
-                a0
-              } else {
-                throw new IllegalArgumentException
-              }
-            }
-          }
-        }
-      }
     }
   }
 
