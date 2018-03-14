@@ -37,7 +37,7 @@ import scalaz.syntax.tag._
 object Tensors {
 
   trait LcgRandomNumberGenerator extends Tensors {
-    protected def hashSourceCode: Fastring = fast"""
+    protected def hashSourceCode: Fastring = fastraw"""
       static inline uint hash(uint value) {
         return 1103515245 * value + 12345;
       }
@@ -45,7 +45,7 @@ object Tensors {
   }
 
   trait WangHashingRandomNumberGenerator extends Tensors {
-    protected def hashSourceCode: Fastring = fast"""
+    protected def hashSourceCode: Fastring = fastraw"""
       static inline uint hash(uint value) {
         value = (value ^ 61) ^ (value >> 16);
         value *= 9;
@@ -255,7 +255,7 @@ trait Tensors extends OpenCL {
     @transient
     private lazy val randomNormalProgram: Program = {
 
-      val program = createProgramWithSource(fast"""
+      val program = createProgramWithSource(fastraw"""
         $hashSourceCode
 
         static inline uint xorshift(uint seed) {
@@ -288,7 +288,7 @@ trait Tensors extends OpenCL {
 
     @transient
     private lazy val randomProgram: Program = {
-      val program = createProgramWithSource(fast"""
+      val program = createProgramWithSource(fastraw"""
     $hashSourceCode
 
     kernel void random(global float * const restrict buffer, const uint seed) {
