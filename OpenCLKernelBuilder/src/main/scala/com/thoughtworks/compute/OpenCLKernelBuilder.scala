@@ -217,6 +217,46 @@ trait OpenCLKernelBuilder extends AllExpressions {
       val termSymbol = freshName(id.toString)
       termFactory.newInstance(termSymbol)
     }
+
+    def min(leftHandSide: FloatTerm, rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${leftHandSide.typeCode} $valueTermName = fmin(${leftHandSide.termCode}, ${rightHandSide.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
+
+    def max(leftHandSide: FloatTerm, rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${leftHandSide.typeCode} $valueTermName = fmax(${leftHandSide.termCode}, ${rightHandSide.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
+
+    def log(operand0: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${operand0.typeCode} $valueTermName = log(${operand0.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
+
+    def exp(operand0: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${operand0.typeCode} $valueTermName = exp(${operand0.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
+
+    def abs(operand0: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${operand0.typeCode} $valueTermName = fabs(${operand0.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
   }
 
   type FloatType <: (ValueType with Any) with ClFloatType

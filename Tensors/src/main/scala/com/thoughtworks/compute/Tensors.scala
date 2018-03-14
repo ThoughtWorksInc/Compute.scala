@@ -430,6 +430,40 @@ trait Tensors extends OpenCL {
       }
     }
 
+    def abs(leftHandSide: Tensor): Tensor = {
+      leftHandSide.derivedTensor(trees.float.abs(leftHandSide.closure.asInstanceOf[FloatTerm]))
+
+    }
+
+    def exp(leftHandSide: Tensor): Tensor = {
+      leftHandSide.derivedTensor(trees.float.exp(leftHandSide.closure.asInstanceOf[FloatTerm]))
+
+    }
+
+    def log(leftHandSide: Tensor): Tensor = {
+      leftHandSide.derivedTensor(trees.float.log(leftHandSide.closure.asInstanceOf[FloatTerm]))
+    }
+
+    def min(leftHandSide: Tensor, rightHandSide: Tensor): Tensor = {
+      def newClosure =
+        trees.float.min(leftHandSide.closure.asInstanceOf[FloatTerm], rightHandSide.closure.asInstanceOf[FloatTerm])
+      if (java.util.Arrays.equals(leftHandSide.shape, rightHandSide.shape)) {
+        leftHandSide.derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
+    }
+
+    def max(leftHandSide: Tensor, rightHandSide: Tensor): Tensor = {
+      def newClosure =
+        trees.float.max(leftHandSide.closure.asInstanceOf[FloatTerm], rightHandSide.closure.asInstanceOf[FloatTerm])
+      if (java.util.Arrays.equals(leftHandSide.shape, rightHandSide.shape)) {
+        leftHandSide.derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
+    }
+
     def zip(tensors0: Seq[Tensor]): BufferedTensor = {
       def force[A](seq: Seq[A]) = {
         seq match {
