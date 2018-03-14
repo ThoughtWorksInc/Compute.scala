@@ -11,7 +11,7 @@ import com.google.common.cache._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats, Tuples}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
-import com.thoughtworks.compute.Tensors.MemoryTrees
+import com.thoughtworks.compute.Tensors.{CodeGenerationMonoid, CodeGenerationPlus, MemoryTrees}
 import com.thoughtworks.compute.Trees.{AllTrees, StructuralTrees}
 import com.thoughtworks.continuation._
 import com.thoughtworks.feature.Factory
@@ -36,6 +36,15 @@ import scalaz.syntax.tag._
 
 object Tensors {
 
+  trait CodeGenerationMonoid {
+    def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring
+    def zero: Fastring
+  }
+
+  object CodeGenerationPlus extends CodeGenerationMonoid {
+    def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring = fast"(($leftHandSide) + ($rightHandSide))"
+    def zero: Fastring = fast"0.0f"
+  }
   trait LcgRandomNumberGenerator extends Tensors {
     protected def hashSourceCode: Fastring = fastraw"""
       static inline uint hash(uint value) {
@@ -251,6 +260,50 @@ trait Tensors extends OpenCL {
   protected def hashSourceCode: Fastring
 
   object Tensor {
+
+    /**
+      * @see https://stackoverflow.com/questions/20753862/why-nvidia-and-amd-opencl-reduction-example-did-not-reduce-an-array-to-an-elemen/49253218#49253218
+      *      for preferred global size / local size settings.
+      */
+    protected def reductionProgram(monoid: CodeGenerationMonoid) = {
+      import monoid._
+      val program = createProgramWithSource(fastraw"""
+        kernel void reduce(global const float * restrict buffer, local float * restrict scratch, const int length, global float * restrict result) {
+          int global_index = get_global_id(0);
+          float accumulator = $zero;
+          // Loop sequentially over chunks of input vector
+          while (global_index < length) {
+            float element = buffer[global_index];
+            accumulator = ${append(fast"accumulator", fast"element")};
+            global_index += get_global_size(0);
+          }
+
+          // Perform parallel reduction
+          int local_index = get_local_id(0);
+          scratch[local_index] = accumulator;
+          barrier(CLK_LOCAL_MEM_FENCE);
+          for(int offset = get_local_size(0) / 2;
+              offset > 0;
+              offset = offset / 2) {
+            if (local_index < offset) {
+              const float other = scratch[local_index + offset];
+              const float mine = scratch[local_index];
+              scratch[local_index] = ${append(fast"mine", fast"other")};
+            }
+            barrier(CLK_LOCAL_MEM_FENCE);
+          }
+          if (local_index == 0) {
+            result[get_group_id(0)] = scratch[0];
+          }
+        }
+      """)
+      program.build()
+      program
+
+    }
+
+    @transient
+    private lazy val sumProgram: Program = reductionProgram(CodeGenerationPlus)
 
     @transient
     private lazy val randomNormalProgram: Program = {
