@@ -341,9 +341,7 @@ trait Tensors extends OpenCL {
             Do.monadicCloseable(randomProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
               kernel(0) = buffer
               kernel(1) = seed
-              kernel.dispatch(globalWorkSize = Array(size.toLong)).map { event: Event =>
-                EventBuffer[Float](buffer, event)
-              }
+              dispatch(kernel.enqueue(_, globalWorkSize = Array(size.toLong))).map(EventBuffer[Float](buffer, _))
             }
           }.shared
         }
@@ -369,9 +367,8 @@ trait Tensors extends OpenCL {
             Do.monadicCloseable(randomNormalProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
               kernel(0) = buffer
               kernel(1) = seed
-              kernel.dispatch(globalWorkSize = Array((paddingSize / 2).toLong)).map { event: Event =>
-                EventBuffer[Float](buffer, event)
-              }
+              val globalWorkSize = Array((paddingSize / 2).toLong)
+              dispatch(kernel.enqueue(_, globalWorkSize = globalWorkSize)).map(EventBuffer[Float](buffer, _))
             }
           }
         }.shared
@@ -756,12 +753,11 @@ trait Tensors extends OpenCL {
                             kernel(i) = arugment.buffer
                           }
                           kernel(arguments.length) = outputBuffer
-                          kernel
-                            .dispatch(globalWorkSize = shape.view.map(_.toLong),
-                                      waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle)))
-                            .map { event0 =>
-                              EventBuffer[convertedTerm.JvmValue](outputBuffer, event0)
-                            }
+                          dispatch(
+                            kernel.enqueue(_,
+                                           globalWorkSize = shape.view.map(_.toLong),
+                                           waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle))))
+                            .map(EventBuffer[convertedTerm.JvmValue](outputBuffer, _))
                         }
                       }
                     }

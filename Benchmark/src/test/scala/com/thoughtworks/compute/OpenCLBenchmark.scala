@@ -81,7 +81,7 @@ object OpenCLBenchmark {
           kernel(0) = input
           kernel(1) = output
           kernel(2) = weight
-          kernel.dispatch(globalWorkSize = Array[Long](batchSize, width, height)).flatMap { event =>
+          dispatch(kernel.enqueue(_, globalWorkSize = Array[Long](batchSize, width, height))).flatMap { event =>
             Do.garbageCollected(event.waitForComplete())
           }
         }
