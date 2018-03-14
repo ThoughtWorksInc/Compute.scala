@@ -19,7 +19,7 @@ import org.lwjgl.system.Pointer._
 
 import scala.collection.mutable
 import com.thoughtworks.compute.Memory.{Aux, Box}
-import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}
+import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}, Event.Status
 import org.lwjgl.system.jni.JNINativeInterface
 import org.lwjgl.system._
 
@@ -282,7 +282,7 @@ object OpenCL {
   trait UseAllDevices extends OpenCL {
 
     @transient
-    protected lazy val deviceIds: Seq[Long] = {
+    protected lazy val deviceIds: Seq[DeviceId] = {
       deviceIdsByType(CL_DEVICE_TYPE_ALL)
     }
 
@@ -291,7 +291,7 @@ object OpenCL {
   trait UseFirstDevice extends OpenCL {
 
     @transient
-    protected lazy val deviceIds: Seq[Long] = {
+    protected lazy val deviceIds: Seq[DeviceId] = {
       val allDeviceIds = deviceIdsByType(CL_DEVICE_TYPE_ALL)
       Seq(allDeviceIds.head)
     }
@@ -301,7 +301,7 @@ object OpenCL {
   trait UseAllGpuDevices extends OpenCL {
 
     @transient
-    protected lazy val deviceIds: Seq[Long] = {
+    protected lazy val deviceIds: Seq[DeviceId] = {
       deviceIdsByType(CL_DEVICE_TYPE_GPU)
     }
   }
@@ -309,7 +309,7 @@ object OpenCL {
   trait UseFirstGpuDevice extends OpenCL {
 
     @transient
-    protected lazy val deviceIds: Seq[Long] = {
+    protected lazy val deviceIds: Seq[DeviceId] = {
       val allDeviceIds = deviceIdsByType(CL_DEVICE_TYPE_GPU)
       Seq(allDeviceIds.head)
     }
@@ -317,7 +317,7 @@ object OpenCL {
   trait UseFirstCpuDevice extends OpenCL {
 
     @transient
-    protected lazy val deviceIds: Seq[Long] = {
+    protected lazy val deviceIds: Seq[DeviceId] = {
       val allDeviceIds = deviceIdsByType(CL_DEVICE_TYPE_CPU)
       Seq(allDeviceIds.head)
     }
@@ -326,7 +326,7 @@ object OpenCL {
   trait UseAllCpuDevices extends OpenCL {
 
     @transient
-    protected lazy val deviceIds: Seq[Long] = {
+    protected lazy val deviceIds: Seq[DeviceId] = {
       deviceIdsByType(CL_DEVICE_TYPE_CPU)
     }
   }
@@ -363,13 +363,13 @@ object OpenCL {
 
   trait CommandQueuePool extends OpenCL {
 
-    protected val numberOfCommandQueuesForDevice: (Long, CLCapabilities) => Int
+    protected val numberOfCommandQueuesPerDevice: Int
 
-    @transient private lazy val commandQueues: Seq[Long] = {
+    @transient private lazy val commandQueues: Seq[CommandQueue] = {
       deviceIds.flatMap { deviceId =>
         val capabilities = deviceCapabilities(deviceId)
-        for (i <- 0 until numberOfCommandQueuesForDevice(deviceId, capabilities)) yield {
-          val supportedProperties = deviceLongInfo(deviceId, CL_DEVICE_QUEUE_PROPERTIES)
+        for (i <- 0 until numberOfCommandQueuesPerDevice) yield {
+          val supportedProperties = deviceId.longInfo(CL_DEVICE_QUEUE_PROPERTIES)
           val properties = Map(
             CL_QUEUE_PROPERTIES -> (supportedProperties & CL_QUEUE_ON_DEVICE)
           )
@@ -381,22 +381,22 @@ object OpenCL {
     @transient
     lazy val Resource(acquireCommandQueue, shutdownCommandQueues) = AsynchronousPool.preloaded(commandQueues)
 
-    private def deviceLongInfo(deviceId: Long, paramName: Int): Long = {
-      val buffer = Array[Long](0L)
-      checkErrorCode(clGetDeviceInfo(deviceId, paramName, buffer, null))
-      val Array(value) = buffer
-      value
-    }
-
     override def monadicClose: UnitContinuation[Unit] = {
-      shutdownCommandQueues >> UnitContinuation.delay {
-        for (commandQueue <- commandQueues) {
-          checkErrorCode(clReleaseCommandQueue(commandQueue))
-        }
-      } >> super.monadicClose
+      import scalaz.std.iterable._
+      shutdownCommandQueues >> commandQueues.traverseU_(_.monadicClose) >> super.monadicClose
     }
 
   }
+
+  final case class DeviceId[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
+    private[OpenCL] def longInfo(paramName: Int) = {
+      val buffer = Array[Long](0L)
+      checkErrorCode(clGetDeviceInfo(handle, paramName, buffer, null))
+      val Array(value) = buffer
+      value
+    }
+  }
+
   object Event {
     private[OpenCL] val eventCallback: CLEventCallback = CLEventCallback.create(new CLEventCallbackI {
       final def invoke(event: Long, status: Int, userData: Long): Unit = {
@@ -406,9 +406,21 @@ object OpenCL {
         scalaCallback(status)
       }
     })
+    type Status = Int
   }
 
-  type Status = Int
+  final case class CommandQueue[Owner <: Singleton with OpenCL](handle: Long)
+      extends AnyVal
+      with MonadicCloseable[UnitContinuation] {
+
+    def flush(): Unit = {
+      checkErrorCode(clFlush(handle))
+    }
+
+    def monadicClose: UnitContinuation[Unit] = UnitContinuation.delay {
+      checkErrorCode(clReleaseCommandQueue(handle))
+    }
+  }
 
   final case class Event[Owner <: Singleton with OpenCL](handle: Long)
       extends AnyVal
@@ -598,12 +610,11 @@ object OpenCL {
     }
 
     @inline
-    def enqueue(
-        commandQueue: Long,
-        globalWorkOffset: Option[Seq[Long]] = None,
-        globalWorkSize: Seq[Long],
-        localWorkSize: Option[Seq[Long]] = None,
-        waitingEvents: Seq[Long] = Array.empty[Long])(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
+    def enqueue(commandQueue: CommandQueue[Owner],
+                globalWorkOffset: Option[Seq[Long]] = None,
+                globalWorkSize: Seq[Long],
+                localWorkSize: Option[Seq[Long]] = None,
+                waitingEvents: Seq[Long] = Array.empty[Long]): Do[Event[Owner]] = {
 
       def optionalStackPointerBuffer(option: Option[Seq[Long]]): MemoryStack => PointerBuffer = {
         option match {
@@ -627,7 +638,7 @@ object OpenCL {
           }
           checkErrorCode(
             clEnqueueNDRangeKernel(
-              commandQueue,
+              commandQueue.handle,
               handle,
               globalWorkSize.length,
               globalWorkOffsetBuffer(stack),
@@ -641,39 +652,18 @@ object OpenCL {
         } finally {
           stack.close()
         }
-        checkErrorCode(clFlush(commandQueue))
+        commandQueue.flush()
         outputEvent
       }
     }
 
-    def dispatch(
-        globalWorkOffset: Option[Seq[Long]] = None,
-        globalWorkSize: Seq[Long],
-        localWorkSize: Option[Seq[Long]] = None,
-        waitingEvents: Seq[Long] = Array.empty[Long])(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
-      val owner = witnessOwner.value
-      val Do(TryT(ResourceT(acquireContinuation))) = owner.acquireCommandQueue
-
-      Do.garbageCollected(acquireContinuation).flatMap {
-        case Resource(Success(commandQueue), release) =>
-          enqueue(commandQueue, globalWorkOffset, globalWorkSize, localWorkSize, waitingEvents).map { event =>
-            event
-              .waitForComplete()
-              .flatMap { _: Unit =>
-                release.toThoughtworksFuture
-              }
-              .onComplete {
-                case Success(()) =>
-                case Failure(e) =>
-                  owner.logger.error(s"Cannot wait for cl_event[handle = ${event.handle}]", e)
-              }
-            event
-          }
-        case r @ Resource(Failure(e), release) =>
-          Do(TryT(ResourceT(UnitContinuation.now(r.asInstanceOf[Resource[UnitContinuation, Try[Event[Owner]]]]))))
-      }
-
-    }
+//    def dispatch(globalWorkOffset: Option[Seq[Long]] = None,
+//                 globalWorkSize: Seq[Long],
+//                 localWorkSize: Option[Seq[Long]] = None,
+//                 waitingEvents: Seq[Long] = Array.empty[Long])(implicit witnessOwner: Witness.Aux[Owner]) = {
+//      val owner: Owner = witnessOwner.value
+//      owner.dispatch(enqueue(_, globalWorkOffset, globalWorkSize, localWorkSize, waitingEvents))
+//    }
 
     def monadicClose: UnitContinuation[Unit] = {
       UnitContinuation.delay {
@@ -825,7 +815,7 @@ object OpenCL {
   trait DontReleaseEventTooEarly extends OpenCL {
     import DontReleaseEventTooEarly._
     override protected def enqueueReadBuffer[Element, Destination](
-        commandQueue: Long,
+        commandQueue: CommandQueue,
         deviceBuffer: DeviceBuffer[Element],
         hostBuffer: Destination,
         preconditionEvents: Event*)(implicit memory: Aux[Element, Destination]): Do[Event] =
@@ -932,8 +922,10 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
 
   type Program = OpenCL.Program[this.type]
   type Event = OpenCL.Event[this.type]
+  type CommandQueue = OpenCL.CommandQueue[this.type]
+  type DeviceId = OpenCL.DeviceId[this.type]
 
-  protected final def deviceIdsByType(deviceType: Int): Seq[Long] = {
+  protected final def deviceIdsByType(deviceType: Int): Seq[DeviceId] = {
     val Array(numberOfDevices) = {
       val a = Array(0)
       checkErrorCode(clGetDeviceIDs(platformId, deviceType, null, a))
@@ -941,11 +933,11 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
     }
     val stack = stackPush()
     try {
-      val deviceIds = stack.mallocPointer(numberOfDevices)
-      checkErrorCode(clGetDeviceIDs(platformId, deviceType, deviceIds, null: IntBuffer))
-      for (i <- 0 until deviceIds.capacity()) yield {
-        val deviceId = deviceIds.get(i)
-        deviceId
+      val deviceIdBuffer = stack.mallocPointer(numberOfDevices)
+      checkErrorCode(clGetDeviceIDs(platformId, deviceType, deviceIdBuffer, null: IntBuffer))
+      for (i <- 0 until deviceIdBuffer.capacity()) yield {
+        val deviceId = deviceIdBuffer.get(i)
+        new DeviceId(deviceId)
       }
     } finally {
       stack.close()
@@ -955,10 +947,11 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
   private[OpenCL] def dispatchReadBuffer[Element, Destination](
       deviceBuffer: DeviceBuffer[Element],
       hostBuffer: Destination,
-      preconditionEvents: Event*)(implicit memory: Memory.Aux[Element, Destination]): Do[Event] =
-    acquireCommandQueue.flatMap(enqueueReadBuffer(_, deviceBuffer, hostBuffer, preconditionEvents: _*))
+      preconditionEvents: Event*)(implicit memory: Memory.Aux[Element, Destination]): Do[Event] = {
+    dispatch(enqueueReadBuffer(_, deviceBuffer, hostBuffer, preconditionEvents: _*))
+  }
 
-  protected def enqueueReadBuffer[Element, Destination](commandQueue: Long,
+  protected def enqueueReadBuffer[Element, Destination](commandQueue: CommandQueue,
                                                         deviceBuffer: DeviceBuffer[Element],
                                                         hostBuffer: Destination,
                                                         preconditionEvents: Event*)(
@@ -977,7 +970,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
           val outputEventBuffer = stack.pointers(0L)
           checkErrorCode(
             nclEnqueueReadBuffer(
-              commandQueue,
+              commandQueue.handle,
               deviceBuffer.handle,
               CL_FALSE,
               0,
@@ -993,7 +986,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
           stack.close()
         }
       }
-      checkErrorCode(clFlush(commandQueue))
+      commandQueue.flush()
       outputEvent
     }
   }
@@ -1048,7 +1041,31 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
     }
   }
 
-  protected def acquireCommandQueue: Do[Long]
+  protected def acquireCommandQueue: Do[CommandQueue]
+
+  protected def dispatch(command: CommandQueue => Do[Event]): Do[Event] = {
+    val Do(TryT(ResourceT(acquireContinuation))) = acquireCommandQueue
+
+    Do.garbageCollected(acquireContinuation).flatMap {
+      case Resource(Success(commandQueue), release) =>
+        command(commandQueue).map { event =>
+          event
+            .waitForComplete()
+            .flatMap { _: Unit =>
+              release.toThoughtworksFuture
+            }
+            .onComplete {
+              case Success(()) =>
+              case Failure(e) =>
+                logger.error(s"Cannot wait for cl_event[handle = ${event.handle}]", e)
+            }
+          event
+        }
+      case r @ Resource(Failure(e), release) =>
+        Do(TryT(ResourceT(UnitContinuation.now(r.asInstanceOf[Resource[UnitContinuation, Try[Event]]]))))
+    }
+
+  }
 
   protected def releaseContext: UnitContinuation[Unit] = UnitContinuation.delay {
     checkErrorCode(clReleaseContext(context))
@@ -1063,34 +1080,34 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
   import OpenCL._
 
   protected val platformId: Long
-  protected val deviceIds: Seq[Long]
+  protected val deviceIds: Seq[DeviceId]
 
   @transient
   private lazy val platformCapabilities: CLCapabilities = {
     CL.createPlatformCapabilities(platformId)
   }
 
-  protected def createCommandQueue(deviceId: Long, properties: Map[Int, Long]): Long = {
+  protected def createCommandQueue(deviceId: DeviceId, properties: Map[Int, Long]): CommandQueue = new CommandQueue(
     if (deviceCapabilities(deviceId).OpenCL20) {
       val cl20Properties = (properties.view.flatMap { case (key, value) => Seq(key, value) } ++ Seq(0L)).toArray
       val a = Array(0)
       val commandQueue =
-        clCreateCommandQueueWithProperties(platformId, deviceId, cl20Properties, a)
+        clCreateCommandQueueWithProperties(platformId, deviceId.handle, cl20Properties, a)
       checkErrorCode(a(0))
       commandQueue
     } else {
       val cl10Properties = properties.getOrElse(CL_QUEUE_PROPERTIES, 0L)
       val a = Array(0)
-      val commandQueue = clCreateCommandQueue(context, deviceId, cl10Properties, a)
+      val commandQueue = clCreateCommandQueue(context, deviceId.handle, cl10Properties, a)
       checkErrorCode(a(0))
       commandQueue
     }
-  }
+  )
 
   @transient
-  protected lazy val deviceCapabilities: Long => CLCapabilities = {
-    Memo.mutableMapMemo(new ConcurrentHashMap[Long, CLCapabilities].asScala) { deviceId =>
-      CL.createDeviceCapabilities(deviceId, platformCapabilities)
+  protected lazy val deviceCapabilities: DeviceId => CLCapabilities = {
+    Memo.mutableMapMemo(new ConcurrentHashMap[DeviceId, CLCapabilities].asScala) { deviceId =>
+      CL.createDeviceCapabilities(deviceId.handle, platformCapabilities)
     }
   }
 
@@ -1100,7 +1117,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
     try {
       val errorCodeBuffer = stack.ints(CL_SUCCESS)
       val contextProperties = stack.pointers(CL_CONTEXT_PLATFORM, platformId, 0)
-      val deviceIdBuffer = stack.pointers(deviceIds: _*)
+      val deviceIdBuffer = stack.pointers(deviceIds.view.map(_.handle): _*)
       val context =
         clCreateContext(contextProperties,
                         deviceIdBuffer,

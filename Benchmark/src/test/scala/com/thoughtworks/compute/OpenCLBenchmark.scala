@@ -81,7 +81,7 @@ object OpenCLBenchmark {
           kernel(0) = input
           kernel(1) = output
           kernel(2) = weight
-          kernel.dispatch(globalWorkSize = Array[Long](batchSize, width, height)).flatMap { event =>
+          dispatch(kernel.enqueue(_, globalWorkSize = Array[Long](batchSize, width, height))).flatMap { event =>
             Do.garbageCollected(event.waitForComplete())
           }
         }
@@ -128,21 +128,17 @@ class OpenCLBenchmark {
   @Benchmark
   def testTheNet(): Unit = {
 
-    val numberOfCommandQueuesForDevice = { (deviceId: Long, capabilities: CLCapabilities) =>
-      numberOfConcurrentLayers
-    }
     val doOpenCL = Do.monadicCloseable {
       Factory[
         StrictLogging with TestKernels with OpenCL with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with ImplicitsSingleton with OpenCL.CommandQueuePool]
         .newInstance(
           handleOpenCLNotification = handleOpenCLNotification,
-          numberOfCommandQueuesForDevice = numberOfCommandQueuesForDevice
+          numberOfCommandQueuesPerDevice = numberOfConcurrentLayers
         )
     }
 
     doOpenCL
-      .flatMap { opencl2 =>
-        val opencl = opencl2 // Workaround for https://github.com/milessabin/shapeless/issues/749
+      .flatMap { opencl =>
         import opencl.implicits._
 
         val sliceSize = width * height * batchSize
