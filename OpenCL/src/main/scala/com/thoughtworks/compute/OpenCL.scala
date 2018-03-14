@@ -601,8 +601,25 @@ object OpenCL {
       }
     }
 
-    def enqueue(commandQueue: Long, globalWorkSize: Seq[Long], waitingEvents: Seq[Long] = Array.empty[Long])(
-        implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
+    @inline
+    def enqueue(
+        commandQueue: Long,
+        globalWorkOffset: Option[Seq[Long]] = None,
+        globalWorkSize: Seq[Long],
+        localWorkSize: Option[Seq[Long]] = None,
+        waitingEvents: Seq[Long] = Array.empty[Long])(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
+
+      def optionalStackPointerBuffer(option: Option[Seq[Long]]): MemoryStack => PointerBuffer = {
+        option match {
+          case None =>
+            Function.const(null)
+          case Some(pointers) =>
+            _.pointers(pointers: _*)
+        }
+      }
+      val globalWorkOffsetBuffer = optionalStackPointerBuffer(globalWorkOffset)
+      val localWorkSizeBuffer = optionalStackPointerBuffer(localWorkSize)
+
       Do.monadicCloseable {
         val stack = stackPush()
         val outputEvent = try {
@@ -617,9 +634,9 @@ object OpenCL {
               commandQueue,
               handle,
               globalWorkSize.length,
-              null,
+              globalWorkOffsetBuffer(stack),
               stack.pointers(globalWorkSize: _*),
-              null,
+              localWorkSizeBuffer(stack),
               inputEventBuffer,
               outputEventBuffer
             )
@@ -633,14 +650,17 @@ object OpenCL {
       }
     }
 
-    def dispatch(globalWorkSize: Seq[Long], waitingEvents: Seq[Long] = Array.empty[Long])(
-        implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
+    def dispatch(
+        globalWorkOffset: Option[Seq[Long]] = None,
+        globalWorkSize: Seq[Long],
+        localWorkSize: Option[Seq[Long]] = None,
+        waitingEvents: Seq[Long] = Array.empty[Long])(implicit witnessOwner: Witness.Aux[Owner]): Do[Event[Owner]] = {
       val owner = witnessOwner.value
       val Do(TryT(ResourceT(acquireContinuation))) = owner.acquireCommandQueue
 
       Do.garbageCollected(acquireContinuation).flatMap {
         case Resource(Success(commandQueue), release) =>
-          enqueue(commandQueue, globalWorkSize, waitingEvents).map { event =>
+          enqueue(commandQueue, globalWorkOffset, globalWorkSize, localWorkSize, waitingEvents).map { event =>
             event
               .waitForComplete()
               .flatMap { _: Unit =>

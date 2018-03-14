@@ -81,13 +81,11 @@ object OpenCLBenchmark {
           kernel(0) = input
           kernel(1) = output
           kernel(2) = weight
-          val self: this.type = this
-          kernel.dispatch(Array[Long](batchSize, width, height))(Witness(self)).flatMap { event =>
+          kernel.dispatch(globalWorkSize = Array[Long](batchSize, width, height)).flatMap { event =>
             Do.garbageCollected(event.waitForComplete())
           }
         }
         .run
-
     }
   }
 
@@ -134,7 +132,8 @@ class OpenCLBenchmark {
       numberOfConcurrentLayers
     }
     val doOpenCL = Do.monadicCloseable {
-      Factory[StrictLogging with TestKernels with OpenCL with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with ImplicitsSingleton with OpenCL.CommandQueuePool]
+      Factory[
+        StrictLogging with TestKernels with OpenCL with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with ImplicitsSingleton with OpenCL.CommandQueuePool]
         .newInstance(
           handleOpenCLNotification = handleOpenCLNotification,
           numberOfCommandQueuesForDevice = numberOfCommandQueuesForDevice
