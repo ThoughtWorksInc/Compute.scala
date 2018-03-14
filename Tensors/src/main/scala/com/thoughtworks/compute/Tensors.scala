@@ -430,6 +430,26 @@ trait Tensors extends OpenCL {
       }
     }
 
+    def min(leftHandSide: Tensor, rightHandSide: Tensor): Tensor = {
+      def newClosure =
+        trees.float.min(leftHandSide.closure.asInstanceOf[FloatTerm], rightHandSide.closure.asInstanceOf[FloatTerm])
+      if (java.util.Arrays.equals(leftHandSide.shape, rightHandSide.shape)) {
+        leftHandSide.derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
+    }
+
+    def max(leftHandSide: Tensor, rightHandSide: Tensor): Tensor = {
+      def newClosure =
+        trees.float.max(leftHandSide.closure.asInstanceOf[FloatTerm], rightHandSide.closure.asInstanceOf[FloatTerm])
+      if (java.util.Arrays.equals(leftHandSide.shape, rightHandSide.shape)) {
+        leftHandSide.derivedTensor(newClosure)
+      } else {
+        throw new IllegalArgumentException
+      }
+    }
+
     def zip(tensors0: Seq[Tensor]): BufferedTensor = {
       def force[A](seq: Seq[A]) = {
         seq match {

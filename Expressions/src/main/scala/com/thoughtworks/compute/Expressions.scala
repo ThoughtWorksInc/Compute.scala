@@ -113,7 +113,10 @@ object Expressions {
     /** @template */
     type FloatTerm <: (ValueTerm with Any) with FloatTermApi
 
-    protected trait FloatTypeApi extends ValueSingletonApi with FloatExpressionApi {}
+    protected trait FloatTypeApi extends ValueSingletonApi with FloatExpressionApi {
+      def min(leftHandSide: FloatTerm, rightHandSide: FloatTerm): FloatTerm
+      def max(leftHandSide: FloatTerm, rightHandSide: FloatTerm): FloatTerm
+    }
 
     /** @template */
     type FloatType <: (ValueType with Any) with FloatTypeApi

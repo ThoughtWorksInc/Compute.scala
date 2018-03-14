@@ -381,6 +381,40 @@ object Trees {
 
     /** @group AST */
     @(silent @companionObject)
+    final case class Min(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala
+          .getOrElseUpdate(this,
+                           foreignCategory.float.min(operand0.export(foreignCategory, context),
+                                                     operand1.export(foreignCategory, context)))
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    /** @group AST */
+    @(silent @companionObject)
+    final case class Max(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala
+          .getOrElseUpdate(this,
+                           foreignCategory.float.max(operand0.export(foreignCategory, context),
+                                                     operand1.export(foreignCategory, context)))
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context), operand1 = operand1.alphaConversion(context))
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+    /** @group AST */
+    @(silent @companionObject)
     final case class Plus(operand0: FloatTree, operand1: FloatTree) extends FloatOperator {
 
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
@@ -495,8 +529,20 @@ object Trees {
       def parameter(id: Any): ThisTerm = {
         termFactory.newInstance(FloatParameter(id))
       }
+
       @inline
       def term(tree: Tree): ThisTerm = termFactory.newInstance(tree)
+
+      @inline
+      def min(leftHandSide: FloatTerm, rightHandSide: FloatTerm): FloatTerm = {
+        term(Min(leftHandSide.tree, rightHandSide.tree))
+      }
+
+      @inline
+      def max(leftHandSide: FloatTerm, rightHandSide: FloatTerm): FloatTerm = {
+        term(Max(leftHandSide.tree, rightHandSide.tree))
+      }
+
     }
 
     type FloatType <: (ValueType with Any) with FloatTreeType

@@ -217,6 +217,23 @@ trait OpenCLKernelBuilder extends AllExpressions {
       val termSymbol = freshName(id.toString)
       termFactory.newInstance(termSymbol)
     }
+
+    def min(leftHandSide: FloatTerm, rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${leftHandSide.typeCode} $valueTermName = fmin(${leftHandSide.termCode}, ${rightHandSide.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
+
+    def max(leftHandSide: FloatTerm, rightHandSide: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${leftHandSide.typeCode} $valueTermName = fmax(${leftHandSide.termCode}, ${rightHandSide.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+
+    }
   }
 
   type FloatType <: (ValueType with Any) with ClFloatType
