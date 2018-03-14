@@ -20,9 +20,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     Do.monadicCloseable(Factory[
       Tensors.WangHashingRandomNumberGenerator with StrictLogging with OpenCL.LogContextNotification with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
       .newInstance(
-        numberOfCommandQueuesForDevice = { (deviceId: Long, capabilities: CLCapabilities) =>
-          5
-        }
+        numberOfCommandQueuesPerDevice = 5
       ))
 
   "repeatedly toString" in {

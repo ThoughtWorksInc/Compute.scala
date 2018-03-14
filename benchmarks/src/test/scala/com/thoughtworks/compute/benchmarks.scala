@@ -44,9 +44,8 @@ object benchmarks {
         with OpenCL.DontReleaseEventTooEarly
         with Tensors.WangHashingRandomNumberGenerator {
 
-      protected val numberOfCommandQueuesForDevice: (Long, CLCapabilities) => Int = { (_, _) =>
-        2
-      }
+      protected val numberOfCommandQueuesPerDevice: Int = 2
+
     }
 
     var benchmarks: Benchmarks = _
@@ -137,9 +136,7 @@ object benchmarks {
         with Tensors.WangHashingRandomNumberGenerator
         with ConvolutionTensors {
 
-      protected val numberOfCommandQueuesForDevice: (Long, CLCapabilities) => Int = { (_, _) =>
-        2
-      }
+      protected val numberOfCommandQueuesPerDevice = 2
 
       def doBenchmark(): Do[() => Array[Float]] = {
         val input = Tensor.randomNormal(Array(batchSize, imageHeight, imageWidth, depth))
