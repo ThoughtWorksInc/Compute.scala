@@ -11,7 +11,7 @@ import com.google.common.cache._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats, Tuples}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
-import com.thoughtworks.compute.Tensors.{CodeGenerationMonoid, CodeGenerationPlus, MemoryTrees}
+import com.thoughtworks.compute.Tensors.{CodeGenerationMonoid, CodeGenerationPlus, MemoryTrees, TensorBuilder}
 import com.thoughtworks.compute.Trees.{AllTrees, StructuralTrees}
 import com.thoughtworks.continuation._
 import com.thoughtworks.feature.Factory
@@ -35,6 +35,58 @@ import scalaz.syntax.all._
 import scalaz.syntax.tag._
 
 object Tensors {
+
+  trait TensorBuilder[Data] {
+    type Element
+    def flatten(a: Data): Seq[Element]
+    def shape(a: Data): Seq[Int]
+  }
+
+  private[Tensors] trait LowPriorityTensorBuilder {
+
+    implicit def tensorBuilder0[Data]: TensorBuilder.Aux[Data, Data] = {
+      new TensorBuilder[Data] {
+        type Element = Data
+
+        def flatten(a: Data): Seq[Data] = Seq(a)
+
+        def shape(a: Data): Seq[Int] = Nil
+      }
+    }
+
+  }
+  object TensorBuilder extends LowPriorityTensorBuilder {
+    type Aux[Data, Element0] = TensorBuilder[Data] {
+      type Element = Element0
+    }
+
+    implicit def nDimensionalSeqToNDimensionalSeq[Data, Nested, Element0](
+        implicit asSeq: Data => Seq[Nested],
+        nestedBuilder: TensorBuilder.Aux[Nested, Element0]): TensorBuilder.Aux[Data, Element0] = {
+      new TensorBuilder[Data] {
+        type Element = Element0
+
+        def flatten(a: Data): Seq[Element] = a.flatMap { nested =>
+          nestedBuilder.flatten(nested)
+        }
+
+        def shape(a: Data): Seq[Int] = {
+          val nestedSeq = asSeq(a)
+          if (nestedSeq.isEmpty) {
+            0 :: Nil
+          } else {
+            nestedSeq.length +: nestedSeq.map(nestedBuilder.shape).reduce { (a0, a1) =>
+              if (a0 == a1) {
+                a0
+              } else {
+                throw new IllegalArgumentException
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   private[Tensors] trait CodeGenerationMonoid {
     def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring
@@ -180,7 +232,7 @@ trait Tensors extends OpenCL {
     builder.result()
   }
 
-  sealed trait PendingBuffer[JvmType] {
+  protected sealed trait PendingBuffer[JvmType] {
     def buffer: DeviceBuffer[JvmType]
     def eventOption: Option[Event]
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer]
@@ -191,8 +243,9 @@ trait Tensors extends OpenCL {
       }
     }
   }
+
   @(silent @companionObject)
-  final case class ReadyBuffer[JvmType](buffer: DeviceBuffer[JvmType]) extends PendingBuffer[JvmType] {
+  protected final case class ReadyBuffer[JvmType](buffer: DeviceBuffer[JvmType]) extends PendingBuffer[JvmType] {
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer] = {
       buffer.toHostBuffer()(Witness(Tensors.this), memory)
     }
@@ -200,62 +253,11 @@ trait Tensors extends OpenCL {
   }
 
   @(silent @companionObject)
-  final case class EventBuffer[JvmType](buffer: DeviceBuffer[JvmType], event: Event) extends PendingBuffer[JvmType] {
+  protected final case class EventBuffer[JvmType](buffer: DeviceBuffer[JvmType], event: Event)
+      extends PendingBuffer[JvmType] {
     def eventOption = Some(event)
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer] = {
       buffer.toHostBuffer(event)
-    }
-  }
-
-  trait TensorBuilder[Data] {
-    type Element
-    def flatten(a: Data): Seq[Element]
-    def shape(a: Data): Seq[Int]
-  }
-
-  private[Tensors] trait LowPriorityTensorBuilder {
-
-    implicit def tensorBuilder0[Data]: TensorBuilder.Aux[Data, Data] = {
-      new TensorBuilder[Data] {
-        type Element = Data
-
-        def flatten(a: Data): Seq[Data] = Seq(a)
-
-        def shape(a: Data): Seq[Int] = Nil
-      }
-    }
-
-  }
-  object TensorBuilder extends LowPriorityTensorBuilder {
-    type Aux[Data, Element0] = TensorBuilder[Data] {
-      type Element = Element0
-    }
-
-    implicit def nDimensionalSeqToNDimensionalSeq[Data, Nested, Element0](
-        implicit asSeq: Data => Seq[Nested],
-        nestedBuilder: TensorBuilder.Aux[Nested, Element0]): TensorBuilder.Aux[Data, Element0] = {
-      new TensorBuilder[Data] {
-        type Element = Element0
-
-        def flatten(a: Data): Seq[Element] = a.flatMap { nested =>
-          nestedBuilder.flatten(nested)
-        }
-
-        def shape(a: Data): Seq[Int] = {
-          val nestedSeq = asSeq(a)
-          if (nestedSeq.isEmpty) {
-            0 :: Nil
-          } else {
-            nestedSeq.length +: nestedSeq.map(nestedBuilder.shape).reduce { (a0, a1) =>
-              if (a0 == a1) {
-                a0
-              } else {
-                throw new IllegalArgumentException
-              }
-            }
-          }
-        }
-      }
     }
   }
 
@@ -789,7 +791,7 @@ trait Tensors extends OpenCL {
     }
   }
 
-  trait CompiledKernel extends MonadicCloseable[UnitContinuation] {
+  protected trait CompiledKernel extends MonadicCloseable[UnitContinuation] {
     def run(parameters: List[Parameter]): Do[PendingBuffer[_]]
   }
 
@@ -903,7 +905,7 @@ trait Tensors extends OpenCL {
     *       the computation for the tensor may be evaluated more than once.
     * @see [[buffered]] to create a tensor that will cache the result.
     */
-  trait InlineTensor extends Tensor { thisInlineTensor =>
+  protected trait InlineTensor extends Tensor { thisInlineTensor =>
     val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
       enqueueClosure(closure, shape).shared
     }
@@ -916,7 +918,7 @@ trait Tensors extends OpenCL {
       } with BufferedTensor
   }
 
-  trait TransformedTensor extends InlineTensor {
+  protected trait TransformedTensor extends InlineTensor {
 
     def checkpoint: Tensor
 
