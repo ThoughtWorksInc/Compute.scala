@@ -11,7 +11,7 @@ import com.google.common.cache._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats, Tuples}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
-import com.thoughtworks.compute.Tensors.MemoryTrees
+import com.thoughtworks.compute.Tensors.{CodeGenerationMonoid, CodeGenerationPlus, MemoryTrees}
 import com.thoughtworks.compute.Trees.{AllTrees, StructuralTrees}
 import com.thoughtworks.continuation._
 import com.thoughtworks.feature.Factory
@@ -35,6 +35,17 @@ import scalaz.syntax.all._
 import scalaz.syntax.tag._
 
 object Tensors {
+
+  private[Tensors] trait CodeGenerationMonoid {
+    def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring
+    def zero: Fastring
+  }
+
+  private[Tensors] object CodeGenerationPlus extends CodeGenerationMonoid {
+    def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring = fast"(($leftHandSide) + ($rightHandSide))"
+    def zero: Fastring = fast"0.0f"
+  }
+  private val ScalarShape: Array[Int] = Array.empty[Int]
 
   trait LcgRandomNumberGenerator extends Tensors {
     protected def hashSourceCode: Fastring = fastraw"""
@@ -252,6 +263,50 @@ trait Tensors extends OpenCL {
 
   object Tensor {
 
+    /**
+      * @see https://stackoverflow.com/questions/20753862/why-nvidia-and-amd-opencl-reduction-example-did-not-reduce-an-array-to-an-elemen/49253218#49253218
+      *      for preferred global size / local size settings.
+      */
+    protected def reductionProgram(monoid: CodeGenerationMonoid) = {
+      import monoid._
+      val program = createProgramWithSource(fastraw"""
+        kernel void reduce(global const float * restrict buffer, local float * restrict scratch, const int length, global float * restrict result) {
+          int global_index = get_global_id(0);
+          float accumulator = $zero;
+          // Loop sequentially over chunks of input vector
+          while (global_index < length) {
+            float element = buffer[global_index];
+            accumulator = ${append(fast"accumulator", fast"element")};
+            global_index += get_global_size(0);
+          }
+
+          // Perform parallel reduction
+          int local_index = get_local_id(0);
+          scratch[local_index] = accumulator;
+          barrier(CLK_LOCAL_MEM_FENCE);
+          for(int offset = get_local_size(0) / 2;
+              offset > 0;
+              offset = offset / 2) {
+            if (local_index < offset) {
+              const float other = scratch[local_index + offset];
+              const float mine = scratch[local_index];
+              scratch[local_index] = ${append(fast"mine", fast"other")};
+            }
+            barrier(CLK_LOCAL_MEM_FENCE);
+          }
+          if (local_index == 0) {
+            result[get_group_id(0)] = scratch[0];
+          }
+        }
+      """)
+      program.build()
+      program
+
+    }
+
+    @transient
+    private lazy val sumProgram: Program = reductionProgram(CodeGenerationPlus)
+
     @transient
     private lazy val randomNormalProgram: Program = {
 
@@ -403,6 +458,39 @@ trait Tensors extends OpenCL {
   sealed trait Tensor { thisTensor =>
 
     def toBufferedTensor: BufferedTensor
+
+    private def reduce(reduceProgram: Program): Tensor = {
+      new {
+        val padding: Float = thisTensor.padding
+
+        val doBuffer: Do[PendingBuffer[Float]] = {
+          thisTensor.doBuffer.intransitiveFlatMap { inputPendingBuffer: PendingBuffer[Float] =>
+            Do.monadicCloseable(reduceProgram.createFirstKernel()).intransitiveFlatMap { kernel: Kernel =>
+              val length = thisTensor.shape.product
+              allocateBuffer[Float](1).flatMap { outputBuffer =>
+                dispatch { commandQueue =>
+                  val workSize: Long = math.min(length, commandQueue.deviceId.maxWorkItemSizes.head)
+                  kernel(0) = inputPendingBuffer.buffer
+                  kernel.setLocalMemorySize[Float](1, workSize)
+                  kernel(2) = length
+                  kernel(3) = outputBuffer
+                  kernel.enqueue(
+                    commandQueue,
+                    globalWorkSize = Array(workSize),
+                    localWorkSize = Some(Array(workSize): Seq[Long]),
+                    waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
+                  )
+                }.map(EventBuffer[Float](outputBuffer, _))
+              }
+            }
+          }.shared
+        }
+      } with BufferedTensor {
+        def shape: Array[Int] = Tensors.ScalarShape
+      }
+    }
+
+    def sum = reduce(Tensor.sumProgram)
 
     override def toString: String = {
       doBuffer
