@@ -565,16 +565,20 @@ object OpenCL {
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
 
+    def setLocalMemorySize[A](argIndex: Int, size: Long)(implicit memory: Memory[A]): Unit = {
+      checkErrorCode(nclSetKernelArg(handle, argIndex, size * memory.numberOfBytesPerElement, NULL))
+    }
+
     def update[A](argIndex: Int, a: A)(implicit memory: Memory[A]): Unit = {
+      val sizeofParameter = memory.numberOfBytesPerElement
       val stack = stackPush()
       try {
-        val byteBuffer = stack.malloc(memory.numberOfBytesPerElement)
+        val byteBuffer = stack.malloc(sizeofParameter)
         memory.put(memory.fromByteBuffer(byteBuffer), 0, a)
-        checkErrorCode(nclSetKernelArg(handle, argIndex, byteBuffer.remaining, memAddress(byteBuffer)))
+        checkErrorCode(nclSetKernelArg(handle, argIndex, sizeofParameter, memAddress(byteBuffer)))
       } finally {
         stack.close()
       }
-
     }
 
     def functionName: String = {
