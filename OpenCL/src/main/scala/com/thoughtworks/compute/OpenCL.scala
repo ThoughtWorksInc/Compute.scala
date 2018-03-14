@@ -19,7 +19,7 @@ import org.lwjgl.system.Pointer._
 
 import scala.collection.mutable
 import com.thoughtworks.compute.Memory.{Aux, Box}
-import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}
+import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}, Event.Status
 import org.lwjgl.system.jni.JNINativeInterface
 import org.lwjgl.system._
 
@@ -403,9 +403,8 @@ object OpenCL {
         scalaCallback(status)
       }
     })
+    type Status = Int
   }
-
-  type Status = Int
 
   final case class CommandQueue[Owner <: Singleton with OpenCL](handle: Long)
       extends AnyVal
