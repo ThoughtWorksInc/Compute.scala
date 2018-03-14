@@ -341,7 +341,7 @@ trait Tensors extends OpenCL {
             Do.monadicCloseable(randomProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
               kernel(0) = buffer
               kernel(1) = seed
-              kernel.dispatch(Array(size.toLong)).map { event: Event =>
+              kernel.dispatch(globalWorkSize = Array(size.toLong)).map { event: Event =>
                 EventBuffer[Float](buffer, event)
               }
             }
@@ -369,7 +369,7 @@ trait Tensors extends OpenCL {
             Do.monadicCloseable(randomNormalProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
               kernel(0) = buffer
               kernel(1) = seed
-              kernel.dispatch(Array((paddingSize / 2).toLong)).map { event: Event =>
+              kernel.dispatch(globalWorkSize = Array((paddingSize / 2).toLong)).map { event: Event =>
                 EventBuffer[Float](buffer, event)
               }
             }
@@ -723,7 +723,10 @@ trait Tensors extends OpenCL {
                 }
                 fastraw"""
                 $globalContext
-                ${functionContext.generateKernelSourceCode("jit_kernel", shape.length, kernelParameters, Seq(kernelBody))}
+                ${functionContext.generateKernelSourceCode("jit_kernel",
+                                                           shape.length,
+                                                           kernelParameters,
+                                                           Seq(kernelBody))}
                 """
               }
 
