@@ -40,7 +40,7 @@ object benchmarks {
         extends StrictLogging
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
-        with OpenCL.UseAllDevices
+        with OpenCL.UseAllCpuDevices
         with OpenCL.UseFirstPlatform
         with OpenCL.CommandQueuePool
         with OpenCL.DontReleaseEventTooEarly
@@ -109,7 +109,7 @@ object benchmarks {
         extends StrictLogging
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
-        with OpenCL.UseAllDevices
+        with OpenCL.UseAllCpuDevices
         with OpenCL.UseFirstPlatform
         with OpenCL.CommandQueuePool
         with OpenCL.DontReleaseEventTooEarly
@@ -200,7 +200,7 @@ object benchmarks {
         extends StrictLogging
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
-        with OpenCL.UseAllDevices
+        with OpenCL.UseAllCpuDevices
         with OpenCL.UseFirstPlatform
         with OpenCL.CommandQueuePool
         with OpenCL.DontReleaseEventTooEarly
