@@ -389,6 +389,17 @@ object OpenCL {
   }
 
   final case class DeviceId[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
+    def maxWorkGroupSize: Long = {
+      val stack = stackPush()
+      try {
+        val bufferSizeBuffer = stack.mallocPointer(1)
+        checkErrorCode(clGetDeviceInfo(handle, CL_DEVICE_MAX_WORK_GROUP_SIZE, bufferSizeBuffer, null))
+        bufferSizeBuffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
+
     def maxWorkItemSizes: Seq[Long] = {
       val stack = stackPush()
       try {
@@ -606,6 +617,18 @@ object OpenCL {
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
 
+    def workGroupSize(deviceId: DeviceId[Owner]) = {
+      val stack = stackPush()
+      try {
+        val pointerBuffer = stack.mallocPointer(1)
+        checkErrorCode(
+          clGetKernelWorkGroupInfo(handle, deviceId.handle, CL_KERNEL_WORK_GROUP_SIZE, pointerBuffer, null))
+        pointerBuffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
+
     def setLocalMemorySize[A](argIndex: Int, size: Long)(implicit memory: Memory[A]): Unit = {
       checkErrorCode(nclSetKernelArg(handle, argIndex, size * memory.numberOfBytesPerElement, NULL))
     }
@@ -689,14 +712,6 @@ object OpenCL {
         outputEvent
       }
     }
-
-//    def dispatch(globalWorkOffset: Option[Seq[Long]] = None,
-//                 globalWorkSize: Seq[Long],
-//                 localWorkSize: Option[Seq[Long]] = None,
-//                 waitingEvents: Seq[Long] = Array.empty[Long])(implicit witnessOwner: Witness.Aux[Owner]) = {
-//      val owner: Owner = witnessOwner.value
-//      owner.dispatch(enqueue(_, globalWorkOffset, globalWorkSize, localWorkSize, waitingEvents))
-//    }
 
     def monadicClose: UnitContinuation[Unit] = {
       UnitContinuation.delay {
