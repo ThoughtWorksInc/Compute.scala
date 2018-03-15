@@ -119,6 +119,7 @@ object Expressions {
       def log(operand: FloatTerm): FloatTerm
       def exp(operand: FloatTerm): FloatTerm
       def abs(operand: FloatTerm): FloatTerm
+      def sqrt(operand: FloatTerm): FloatTerm
     }
 
     /** @template */
