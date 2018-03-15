@@ -2,13 +2,14 @@ package com.thoughtworks.compute
 
 import java.nio.{ByteBuffer, FloatBuffer}
 
+import com.thoughtworks.compute.OpenCL.Exceptions
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
 import com.typesafe.scalalogging.StrictLogging
 import org.lwjgl.opencl.CLCapabilities
-
 import scalaz.syntax.all._
+
 import scala.language.existentials
 import org.scalatest._
 
@@ -249,6 +250,14 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
 
     }
   }.run.toScalaFuture
+
+  "sum" in doTensors
+    .map { tensors =>
+      import tensors._
+      Tensor.fill(15625.0f, Array(8, 8)).sum.toString should be("1000000.0")
+    }
+    .run
+    .toScalaFuture
 
   "random" in doTensors
     .map { tensors =>
