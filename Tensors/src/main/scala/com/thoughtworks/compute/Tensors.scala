@@ -505,9 +505,7 @@ trait Tensors extends OpenCL {
               val length = thisTensor.shape.product
               allocateBuffer[Float](1).flatMap { outputBuffer =>
                 dispatch { commandQueue =>
-                  val workSize: Long = math.min(length,
-                                                math.min(commandQueue.deviceId.maxWorkGroupSize,
-                                                         commandQueue.deviceId.maxWorkItemSizes.head))
+                  val workSize: Long = math.min(length, kernel.workGroupSize(commandQueue.deviceId))
                   kernel(0) = inputPendingBuffer.buffer
                   kernel.setLocalMemorySize[Float](1, workSize)
                   kernel(2) = length

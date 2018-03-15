@@ -617,6 +617,18 @@ object OpenCL {
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
 
+    def workGroupSize(deviceId: DeviceId[Owner]) = {
+      val stack = stackPush()
+      try {
+        val pointerBuffer = stack.mallocPointer(1)
+        checkErrorCode(
+          clGetKernelWorkGroupInfo(handle, deviceId.handle, CL_KERNEL_WORK_GROUP_SIZE, pointerBuffer, null))
+        pointerBuffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
+
     def setLocalMemorySize[A](argIndex: Int, size: Long)(implicit memory: Memory[A]): Unit = {
       checkErrorCode(nclSetKernelArg(handle, argIndex, size * memory.numberOfBytesPerElement, NULL))
     }
