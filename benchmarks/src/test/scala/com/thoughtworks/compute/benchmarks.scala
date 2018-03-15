@@ -23,6 +23,77 @@ import scala.util.Try
 object benchmarks {
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
+  class Nd4jSum extends SumState {
+
+    private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
+
+    @Benchmark
+    final def nd4jSumBenchmark(): Float = {
+      input.sumNumber().floatValue()
+    }
+
+  }
+  @Threads(value = Threads.MAX)
+  @State(Scope.Benchmark)
+  class TensorSum extends SumState {
+    trait Benchmarks
+        extends StrictLogging
+        with OpenCL.LogContextNotification
+        with OpenCL.GlobalExecutionContext
+        with OpenCL.UseAllDevices
+        with OpenCL.UseFirstPlatform
+        with OpenCL.CommandQueuePool
+        with OpenCL.DontReleaseEventTooEarly
+        with Tensors.WangHashingRandomNumberGenerator {
+
+      protected val numberOfCommandQueuesPerDevice: Int = 2
+
+      def doBenchmark(): Do[() => Float] = {
+        val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
+
+        input.doBuffer.map { _ =>
+          { () =>
+            val Array(v) = input.sum.flatArray.run.blockingAwait
+            v
+          }
+        }
+      }
+    }
+
+    private var benchmarkResouce: Resource[UnitContinuation, Try[() => Float]] = _
+
+    @Setup
+    final def setup(): Unit = {
+      assert(benchmarkResouce == null)
+      val Do(TryT(ResourceT(resourceContinuation))) =
+        Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
+      benchmarkResouce = resourceContinuation.blockingAwait()
+    }
+
+    @TearDown(Level.Trial)
+    final def tearDown(): Unit = {
+      val benchmarkResouce = this.benchmarkResouce
+      this.benchmarkResouce = null
+      benchmarkResouce.release.blockingAwait
+    }
+
+    @Benchmark
+    final def tensorSumBenchmark(): Float = {
+      benchmarkResouce.value.get.apply()
+    }
+
+  }
+
+  trait SumState {
+    @Param(Array("3", "2", "1"))
+    protected var numberOfDimensions: Int = _
+
+    @Param(Array("128", "64", "32", "16"))
+    protected var size: Int = _
+  }
+
+  @Threads(value = Threads.MAX)
+  @State(Scope.Benchmark)
   class Nd4jRandomNormal extends RandomNormalState {
 
     @Benchmark
@@ -83,8 +154,8 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
   class Nd4jConvolution extends ConvolutionState {
-    private val input = Nd4j.randn(Array(batchSize, depth, imageHeight, imageWidth))
-    private val layers = (for (i <- (0 until numberOfLayers).view) yield {
+    private lazy val input = Nd4j.randn(Array(batchSize, depth, imageHeight, imageWidth))
+    private lazy val layers = (for (i <- (0 until numberOfLayers).view) yield {
       (Nd4j.randn(Array(kernelHeight, kernelWidth, depth, depth)), Nd4j.randn(Array(depth)))
     }).toList
 
