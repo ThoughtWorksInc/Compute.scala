@@ -1077,23 +1077,29 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
   protected def acquireCommandQueue: Do[CommandQueue]
 
   protected def dispatch(command: CommandQueue => Do[Event]): Do[Event] = {
+
     val Do(TryT(ResourceT(acquireContinuation))) = acquireCommandQueue
 
     Do.garbageCollected(acquireContinuation).flatMap {
       case Resource(Success(commandQueue), release) =>
-        command(commandQueue).map { event =>
-          event
-            .waitForComplete()
-            .flatMap { _: Unit =>
-              release.toThoughtworksFuture
-            }
-            .onComplete {
-              case Success(()) =>
-              case Failure(e) =>
-                logger.error(s"Cannot wait for cl_event[handle = ${event.handle}]", e)
-            }
-          event
-        }
+        command(commandQueue)
+          .handleError { e =>
+            release.onComplete(identity)
+            e.raiseError[Do, Event]
+          }
+          .map { event =>
+            event
+              .waitForComplete()
+              .onComplete { result =>
+                release.onComplete(identity)
+                result match {
+                  case Success(()) =>
+                  case Failure(e) =>
+                    logger.error(s"Cannot wait for cl_event[handle = ${event.handle}]", e)
+                }
+              }
+            event
+          }
       case r @ Resource(Failure(e), release) =>
         Do(TryT(ResourceT(UnitContinuation.now(r.asInstanceOf[Resource[UnitContinuation, Try[Event]]]))))
     }
