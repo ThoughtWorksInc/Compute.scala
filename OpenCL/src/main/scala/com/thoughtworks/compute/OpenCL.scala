@@ -701,14 +701,6 @@ object OpenCL {
       }
     }
 
-//    def dispatch(globalWorkOffset: Option[Seq[Long]] = None,
-//                 globalWorkSize: Seq[Long],
-//                 localWorkSize: Option[Seq[Long]] = None,
-//                 waitingEvents: Seq[Long] = Array.empty[Long])(implicit witnessOwner: Witness.Aux[Owner]) = {
-//      val owner: Owner = witnessOwner.value
-//      owner.dispatch(enqueue(_, globalWorkOffset, globalWorkSize, localWorkSize, waitingEvents))
-//    }
-
     def monadicClose: UnitContinuation[Unit] = {
       UnitContinuation.delay {
         checkErrorCode(clReleaseKernel(handle))
