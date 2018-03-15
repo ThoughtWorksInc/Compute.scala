@@ -389,6 +389,17 @@ object OpenCL {
   }
 
   final case class DeviceId[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
+    def maxWorkGroupSize: Long = {
+      val stack = stackPush()
+      try {
+        val bufferSizeBuffer = stack.mallocPointer(1)
+        checkErrorCode(clGetDeviceInfo(handle, CL_DEVICE_MAX_WORK_GROUP_SIZE, bufferSizeBuffer, null))
+        bufferSizeBuffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
+
     def maxWorkItemSizes: Seq[Long] = {
       val stack = stackPush()
       try {
