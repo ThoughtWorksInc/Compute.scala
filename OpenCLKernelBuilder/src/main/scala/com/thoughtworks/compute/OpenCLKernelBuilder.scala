@@ -257,6 +257,14 @@ trait OpenCLKernelBuilder extends AllExpressions {
       """
       float.termFactory.newInstance(valueTermName)
     }
+
+    def sqrt(operand0: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${operand0.typeCode} $valueTermName = sqrt(${operand0.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
   }
 
   type FloatType <: (ValueType with Any) with ClFloatType
