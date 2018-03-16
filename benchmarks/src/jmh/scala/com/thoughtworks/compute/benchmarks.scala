@@ -33,11 +33,13 @@ object benchmarks {
     }
 
   }
+
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
   class TensorSum extends SumState {
     trait Benchmarks
         extends StrictLogging
+        with Tensors.UnsafeMathOptimizations
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.UseAllCpuDevices
@@ -107,6 +109,7 @@ object benchmarks {
   class TensorRandomNormal extends RandomNormalState {
     trait Benchmarks
         extends StrictLogging
+        with Tensors.UnsafeMathOptimizations
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.UseAllCpuDevices
@@ -198,6 +201,7 @@ object benchmarks {
 
     trait Benchmarks
         extends StrictLogging
+        with Tensors.UnsafeMathOptimizations
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.UseAllCpuDevices

@@ -36,6 +36,11 @@ import scalaz.syntax.tag._
 
 object Tensors {
 
+  trait UnsafeMathOptimizations extends Tensors {
+    private lazy val _openclCompilerFlags = super.openclCompilerFlags + " -cl-unsafe-math-optimizations"
+    override protected def openclCompilerFlags: String = _openclCompilerFlags
+  }
+
   trait TensorBuilder[Data] {
     type Element
     def flatten(a: Data): Seq[Element]
@@ -263,6 +268,8 @@ trait Tensors extends OpenCL {
 
   protected def hashSourceCode: Fastring
 
+  protected def openclCompilerFlags: String = ""
+
   object Tensor {
 
     /**
@@ -303,7 +310,7 @@ trait Tensors extends OpenCL {
 
         }
       """)
-      program.build()
+      program.build(openclCompilerFlags)
       program
 
     }
@@ -341,7 +348,7 @@ trait Tensors extends OpenCL {
           buffer[i * 2 + 1] = z1;
         }
       """)
-      program.build()
+      program.build(openclCompilerFlags)
       program
     }
 
@@ -355,7 +362,7 @@ trait Tensors extends OpenCL {
       buffer[i] = hash(i ^ seed) / 4294967296.0f;
     }
     """)
-      program.build()
+      program.build(openclCompilerFlags)
       program
     }
 
@@ -856,7 +863,7 @@ trait Tensors extends OpenCL {
               }
 
               val program = createProgramWithSource(sourceCode)
-              program.build()
+              program.build(openclCompilerFlags)
 
               val compiledKernel = new CompiledKernel {
 
