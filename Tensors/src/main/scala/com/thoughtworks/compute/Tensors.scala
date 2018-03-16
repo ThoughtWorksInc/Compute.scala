@@ -527,22 +527,67 @@ trait Tensors extends OpenCL {
 
         val doBuffer: Do[PendingBuffer[Float]] = {
           thisTensor.doBuffer.intransitiveFlatMap { inputPendingBuffer: PendingBuffer[Float] =>
-            Do.monadicCloseable(reduceProgram.createFirstKernel()).intransitiveFlatMap { kernel: Kernel =>
+            Do.monadicCloseable(reduceProgram.createFirstKernel()).intransitiveFlatMap { kernel1: Kernel =>
               val length = thisTensor.shape.product
               allocateBuffer[Float](1).flatMap { outputBuffer =>
                 dispatch { commandQueue =>
-                  val workSize: Long = math.min(length, kernel.workGroupSize(commandQueue.deviceId))
-                  kernel(0) = inputPendingBuffer.buffer
-                  kernel.setLocalMemorySize[Float](1, workSize)
-                  kernel(2) = length
-                  kernel(3) = outputBuffer
-                  kernel.enqueue(
-                    commandQueue,
-                    globalWorkSize = Array(workSize),
-                    localWorkSize = Some(Array(workSize): Seq[Long]),
-                    waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
-                  )
-                }.map(EventBuffer[Float](outputBuffer, _))
+                  val stage1WorkSize: Long = math.min(length, kernel1.workGroupSize(commandQueue.deviceId))
+                  val maxNumberOfReductionGroups = commandQueue.deviceId.maxComputeUnits
+                  val numberOfStage1Groups = if (length % stage1WorkSize == 0) {
+                    math.min(length / stage1WorkSize, maxNumberOfReductionGroups)
+                  } else {
+                    math.min(length / stage1WorkSize + 1, maxNumberOfReductionGroups)
+                  }
+                  if (numberOfStage1Groups == 1) {
+                    kernel1(0) = inputPendingBuffer.buffer
+                    kernel1.setLocalMemorySize[Float](1, stage1WorkSize)
+                    kernel1(2) = length
+                    kernel1(3) = outputBuffer
+                    kernel1.enqueue(
+                      commandQueue,
+                      globalWorkSize = Array(stage1WorkSize),
+                      localWorkSize = Some(Array(stage1WorkSize): Seq[Long]),
+                      waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
+                    )
+                  } else {
+
+                    allocateBuffer[Float](numberOfStage1Groups).intransitiveFlatMap { globalScratchBuffer =>
+                      kernel1(0) = inputPendingBuffer.buffer
+                      kernel1.setLocalMemorySize[Float](1, stage1WorkSize)
+                      kernel1(2) = length
+                      kernel1(3) = globalScratchBuffer
+                      kernel1
+                        .enqueue(
+                          commandQueue,
+                          globalWorkSize = Array(stage1WorkSize * numberOfStage1Groups),
+                          localWorkSize = Some(Array(stage1WorkSize): Seq[Long]),
+                          waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
+                        )
+                        .intransitiveFlatMap { scratchEvent: Event =>
+                          Do.monadicCloseable(reduceProgram.createFirstKernel()).intransitiveFlatMap {
+                            kernel2: Kernel =>
+                              // FIXME: An exception thrown here will not be handled. Need investigation
+
+                              val stage2WorkSize: Long =
+                                math.min(numberOfStage1Groups, kernel2.workGroupSize(commandQueue.deviceId))
+                              kernel2(0) = globalScratchBuffer
+                              kernel2.setLocalMemorySize[Float](1, stage2WorkSize)
+                              kernel2(2) = numberOfStage1Groups.toInt
+                              kernel2(3) = outputBuffer
+
+                              kernel2.enqueue(
+                                commandQueue,
+                                globalWorkSize = Array(stage2WorkSize),
+                                localWorkSize = Some(Array(stage2WorkSize): Seq[Long]),
+                                waitingEvents = Array(scratchEvent.handle)
+                              )
+                          }
+                        }
+                    }
+                  }
+                }.map { stage2Event: Event =>
+                  EventBuffer[Float](outputBuffer, stage2Event)
+                }
               }
             }
           }.shared

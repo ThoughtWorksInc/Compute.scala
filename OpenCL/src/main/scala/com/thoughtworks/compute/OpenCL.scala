@@ -1108,8 +1108,11 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
 
     Do.garbageCollected(acquireContinuation).flatMap {
       case Resource(Success(commandQueue), release) =>
-        command(commandQueue)
-          .handleError { e =>
+        (try command(commandQueue)
+        catch {
+          case NonFatal(e) =>
+            e.raiseError[Do, Event]
+        }).handleError { e =>
             release.onComplete(identity)
             e.raiseError[Do, Event]
           }
