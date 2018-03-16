@@ -36,6 +36,26 @@ import scalaz.syntax.tag._
 
 object Tensors {
 
+  /** A plug-in of Tensors to suppress warnings during compiling a OpenCL kernel for non-AMD platforms. */
+  trait SuppressWarnings extends Tensors {
+    @transient
+    private lazy val _openclCompilerFlags = {
+      if (platformCapabilities.cl_amd_compile_options) {
+        // AMD SDK does not support -w flag in OpenCL specification.
+        super.openclCompilerFlags
+      } else {
+        super.openclCompilerFlags + " -w"
+      }
+    }
+
+    override protected def openclCompilerFlags: String = _openclCompilerFlags
+  }
+
+  trait UnsafeMathOptimizations extends Tensors {
+    private lazy val _openclCompilerFlags = super.openclCompilerFlags + " -cl-unsafe-math-optimizations"
+    override protected def openclCompilerFlags: String = _openclCompilerFlags
+  }
+
   trait TensorBuilder[Data] {
     type Element
     def flatten(a: Data): Seq[Element]
@@ -263,6 +283,8 @@ trait Tensors extends OpenCL {
 
   protected def hashSourceCode: Fastring
 
+  protected def openclCompilerFlags: String = ""
+
   object Tensor {
 
     /**
@@ -287,9 +309,9 @@ trait Tensors extends OpenCL {
           // Perform parallel reduction in a work group
           local_scratch[get_local_id(0)] = accumulator;
           barrier(CLK_LOCAL_MEM_FENCE);
-          for(uint offset = get_local_size(0) / 2;
-              offset > 1;
-              offset = offset / 2) {
+          for (uint offset = get_local_size(0) / 2;
+               offset > 1;
+               offset = offset / 2) {
             if (get_local_id(0) < offset) {
               const float other = local_scratch[get_local_id(0) + offset];
               const float mine = local_scratch[get_local_id(0)];
@@ -303,7 +325,7 @@ trait Tensors extends OpenCL {
 
         }
       """)
-      program.build()
+      program.build(openclCompilerFlags)
       program
 
     }
@@ -341,7 +363,7 @@ trait Tensors extends OpenCL {
           buffer[i * 2 + 1] = z1;
         }
       """)
-      program.build()
+      program.build(openclCompilerFlags)
       program
     }
 
@@ -355,7 +377,7 @@ trait Tensors extends OpenCL {
       buffer[i] = hash(i ^ seed) / 4294967296.0f;
     }
     """)
-      program.build()
+      program.build(openclCompilerFlags)
       program
     }
 
@@ -856,7 +878,7 @@ trait Tensors extends OpenCL {
               }
 
               val program = createProgramWithSource(sourceCode)
-              program.build()
+              program.build(openclCompilerFlags)
 
               val compiledKernel = new CompiledKernel {
 

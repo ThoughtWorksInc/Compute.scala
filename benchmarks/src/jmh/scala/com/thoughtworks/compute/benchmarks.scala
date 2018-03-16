@@ -21,6 +21,88 @@ import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 object benchmarks {
+
+  @Threads(value = Threads.MAX)
+  @State(Scope.Benchmark)
+  class Nd4jSigmoid extends SigmoidState {
+
+    private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
+    private def sigmoid(x: INDArray): INDArray = {
+      val expX = Transforms.exp(x)
+      expX.div(expX.add(1.0))
+    }
+    @Benchmark
+    final def nd4jSigmoidBenchmark(): Array[Float] = {
+      sigmoid(input).data().asFloat()
+    }
+
+  }
+
+  @Threads(value = Threads.MAX)
+  @State(Scope.Benchmark)
+  class TensorSigmoid extends SigmoidState {
+    trait Benchmarks
+        extends StrictLogging
+        with Tensors.UnsafeMathOptimizations
+        with Tensors.SuppressWarnings
+        with OpenCL.LogContextNotification
+        with OpenCL.GlobalExecutionContext
+        with OpenCL.UseAllCpuDevices
+        with OpenCL.UseFirstPlatform
+        with OpenCL.CommandQueuePool
+        with OpenCL.DontReleaseEventTooEarly
+        with Tensors.WangHashingRandomNumberGenerator {
+
+      protected val numberOfCommandQueuesPerDevice: Int = 2
+
+      private def sigmoid(x: Tensor): Tensor = {
+        val expX = Tensor.exp(x)
+        expX / (expX + Tensor.fill(1.0f, expX.shape))
+      }
+
+      def doBenchmark(): Do[() => Array[Float]] = {
+        val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
+
+        input.doBuffer.map { _ =>
+          { () =>
+            sigmoid(input).flatArray.run.blockingAwait
+
+          }
+        }
+      }
+    }
+
+    private var benchmarkResouce: Resource[UnitContinuation, Try[() => Array[Float]]] = _
+
+    @Setup
+    final def setup(): Unit = {
+      assert(benchmarkResouce == null)
+      val Do(TryT(ResourceT(resourceContinuation))) =
+        Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
+      benchmarkResouce = resourceContinuation.blockingAwait()
+    }
+
+    @TearDown(Level.Trial)
+    final def tearDown(): Unit = {
+      val benchmarkResouce = this.benchmarkResouce
+      this.benchmarkResouce = null
+      benchmarkResouce.release.blockingAwait
+    }
+
+    @Benchmark
+    final def tensorSigmoidBenchmark(): Array[Float] = {
+      benchmarkResouce.value.get.apply()
+    }
+
+  }
+
+  trait SigmoidState {
+    @Param(Array("3", "2", "1"))
+    protected var numberOfDimensions: Int = _
+
+    @Param(Array("128", "64", "32", "16"))
+    protected var size: Int = _
+  }
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
   class Nd4jSum extends SumState {
@@ -33,11 +115,13 @@ object benchmarks {
     }
 
   }
+
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
   class TensorSum extends SumState {
     trait Benchmarks
         extends StrictLogging
+        with Tensors.UnsafeMathOptimizations
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.UseAllCpuDevices
@@ -107,6 +191,7 @@ object benchmarks {
   class TensorRandomNormal extends RandomNormalState {
     trait Benchmarks
         extends StrictLogging
+        with Tensors.UnsafeMathOptimizations
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.UseAllCpuDevices
@@ -198,6 +283,7 @@ object benchmarks {
 
     trait Benchmarks
         extends StrictLogging
+        with Tensors.UnsafeMathOptimizations
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.UseAllCpuDevices

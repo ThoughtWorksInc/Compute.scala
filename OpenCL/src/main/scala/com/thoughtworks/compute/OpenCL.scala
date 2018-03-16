@@ -1148,7 +1148,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
   protected val deviceIds: Seq[DeviceId]
 
   @transient
-  private lazy val platformCapabilities: CLCapabilities = {
+  protected lazy val platformCapabilities: CLCapabilities = {
     CL.createPlatformCapabilities(platformId)
   }
 
