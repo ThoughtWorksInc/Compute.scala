@@ -36,6 +36,21 @@ import scalaz.syntax.tag._
 
 object Tensors {
 
+  /** A plug-in of Tensors to suppress warnings during compiling a OpenCL kernel for non-AMD platforms. */
+  trait SuppressWarnings extends Tensors {
+    @transient
+    private lazy val _openclCompilerFlags = {
+      if (platformCapabilities.cl_amd_compile_options) {
+        // AMD SDK does not support -w flag in OpenCL specification.
+        super.openclCompilerFlags
+      } else {
+        super.openclCompilerFlags + " -w"
+      }
+    }
+
+    override protected def openclCompilerFlags: String = _openclCompilerFlags
+  }
+
   trait UnsafeMathOptimizations extends Tensors {
     private lazy val _openclCompilerFlags = super.openclCompilerFlags + " -cl-unsafe-math-optimizations"
     override protected def openclCompilerFlags: String = _openclCompilerFlags
