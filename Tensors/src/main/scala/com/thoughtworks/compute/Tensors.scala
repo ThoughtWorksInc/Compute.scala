@@ -272,7 +272,10 @@ trait Tensors extends OpenCL {
     protected def reductionProgram(monoid: CodeGenerationMonoid) = {
       import monoid._
       val program = createProgramWithSource(fastraw"""
-        kernel void reduce(global const float * restrict buffer, local float * restrict scratch, const int length, global float * restrict result) {
+        kernel void reduce(global const float * restrict buffer,
+                           local float * restrict local_scratch,
+                           const int length,
+                           global float * restrict result) {
           int global_index = get_global_id(0);
           float accumulator = $zero;
           // Loop sequentially over chunks of input vector
@@ -281,24 +284,23 @@ trait Tensors extends OpenCL {
             accumulator = ${append(fast"accumulator", fast"element")};
             global_index += get_global_size(0);
           }
-
-          // Perform parallel reduction
-          int local_index = get_local_id(0);
-          scratch[local_index] = accumulator;
+          // Perform parallel reduction in a work group
+          local_scratch[get_local_id(0)] = accumulator;
           barrier(CLK_LOCAL_MEM_FENCE);
-          for(int offset = get_local_size(0) / 2;
-              offset > 0;
+          for(uint offset = get_local_size(0) / 2;
+              offset > 1;
               offset = offset / 2) {
-            if (local_index < offset) {
-              const float other = scratch[local_index + offset];
-              const float mine = scratch[local_index];
-              scratch[local_index] = ${append(fast"mine", fast"other")};
+            if (get_local_id(0) < offset) {
+              const float other = local_scratch[get_local_id(0) + offset];
+              const float mine = local_scratch[get_local_id(0)];
+              local_scratch[get_local_id(0)] = ${append(fast"mine", fast"other")};
             }
             barrier(CLK_LOCAL_MEM_FENCE);
           }
-          if (local_index == 0) {
-            result[get_group_id(0)] = scratch[0];
+          if (get_local_id(0) == 0) {
+            result[get_group_id(0)] = ${append(fast"local_scratch[0]", fast"local_scratch[1]")};
           }
+
         }
       """)
       program.build()
