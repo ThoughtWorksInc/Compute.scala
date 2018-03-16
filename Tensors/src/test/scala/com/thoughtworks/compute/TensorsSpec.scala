@@ -19,7 +19,7 @@ import org.scalatest._
 class TensorsSpec extends AsyncFreeSpec with Matchers {
   private def doTensors: Do[Tensors] =
     Do.monadicCloseable(Factory[
-      Tensors.WangHashingRandomNumberGenerator with StrictLogging with OpenCL.LogContextNotification with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
+      Tensors.UnsafeMathOptimizations with Tensors.SuppressWarnings with Tensors.WangHashingRandomNumberGenerator with StrictLogging with OpenCL.LogContextNotification with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
       .newInstance(
         numberOfCommandQueuesPerDevice = 5
       ))

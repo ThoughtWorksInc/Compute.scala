@@ -122,6 +122,7 @@ object benchmarks {
     trait Benchmarks
         extends StrictLogging
         with Tensors.UnsafeMathOptimizations
+        with Tensors.SuppressWarnings
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.UseAllCpuDevices
@@ -192,6 +193,7 @@ object benchmarks {
     trait Benchmarks
         extends StrictLogging
         with Tensors.UnsafeMathOptimizations
+        with Tensors.SuppressWarnings
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.UseAllCpuDevices
@@ -284,6 +286,7 @@ object benchmarks {
     trait Benchmarks
         extends StrictLogging
         with Tensors.UnsafeMathOptimizations
+        with Tensors.SuppressWarnings
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.UseAllCpuDevices
