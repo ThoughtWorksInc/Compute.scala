@@ -287,9 +287,9 @@ trait Tensors extends OpenCL {
           // Perform parallel reduction in a work group
           local_scratch[get_local_id(0)] = accumulator;
           barrier(CLK_LOCAL_MEM_FENCE);
-          for(uint offset = get_local_size(0) / 2;
-              offset > 1;
-              offset = offset / 2) {
+          for (uint offset = get_local_size(0) / 2;
+               offset > 1;
+               offset = offset / 2) {
             if (get_local_id(0) < offset) {
               const float other = local_scratch[get_local_id(0) + offset];
               const float mine = local_scratch[get_local_id(0)];
