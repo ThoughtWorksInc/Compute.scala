@@ -18,9 +18,3 @@ libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6").jar().classifier {
 }
 
 scalacOptions += "-Ypartial-unification"
-
-sourceDirectory in Jmh := (sourceDirectory in Test).value
-
-classDirectory in Jmh := (classDirectory in Test).value
-
-dependencyClasspath in Jmh := (dependencyClasspath in Test).value
