@@ -389,6 +389,17 @@ object OpenCL {
   }
 
   final case class DeviceId[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
+    def deviceType: Long = {
+      val stack = stackPush()
+      try {
+        val deviceTypeBuffer = stack.mallocLong(1)
+        checkErrorCode(clGetDeviceInfo(handle, CL_DEVICE_TYPE, deviceTypeBuffer, null))
+        deviceTypeBuffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
+
     def maxComputeUnits: Int = {
       val stack = stackPush()
       try {
@@ -627,6 +638,22 @@ object OpenCL {
   final case class Kernel[Owner <: OpenCL with Singleton](handle: Long)
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
+
+    def preferredWorkGroupSizeMultiple(deviceId: DeviceId[Owner]) = {
+      val stack = stackPush()
+      try {
+        val pointerBuffer = stack.mallocPointer(1)
+        checkErrorCode(
+          clGetKernelWorkGroupInfo(handle,
+                                   deviceId.handle,
+                                   CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
+                                   pointerBuffer,
+                                   null))
+        pointerBuffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
 
     def workGroupSize(deviceId: DeviceId[Owner]) = {
       val stack = stackPush()
@@ -1108,8 +1135,11 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
 
     Do.garbageCollected(acquireContinuation).flatMap {
       case Resource(Success(commandQueue), release) =>
-        command(commandQueue)
-          .handleError { e =>
+        (try command(commandQueue)
+        catch {
+          case NonFatal(e) =>
+            e.raiseError[Do, Event]
+        }).handleError { e =>
             release.onComplete(identity)
             e.raiseError[Do, Event]
           }
