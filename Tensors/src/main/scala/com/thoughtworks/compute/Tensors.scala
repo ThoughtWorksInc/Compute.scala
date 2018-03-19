@@ -11,7 +11,7 @@ import com.google.common.cache._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats, Tuples}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
-import com.thoughtworks.compute.Tensors.{CodeGenerationMonoid, CodeGenerationPlus, MemoryTrees, TensorBuilder}
+import com.thoughtworks.compute.Tensors.{MemoryTrees, TensorBuilder}
 import com.thoughtworks.compute.Trees.{AllTrees, StructuralTrees}
 import com.thoughtworks.continuation._
 import com.thoughtworks.feature.Factory
@@ -19,6 +19,7 @@ import com.thoughtworks.future._
 import com.thoughtworks.raii.asynchronous._
 import com.thoughtworks.raii.covariant._
 import com.thoughtworks.tryt.covariant.TryT
+import org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_CPU
 import org.lwjgl.system.MemoryUtil
 import shapeless.Witness
 
@@ -108,15 +109,6 @@ object Tensors {
     }
   }
 
-  private[Tensors] trait CodeGenerationMonoid {
-    def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring
-    def zero: Fastring
-  }
-
-  private[Tensors] object CodeGenerationPlus extends CodeGenerationMonoid {
-    def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring = fast"(($leftHandSide) + ($rightHandSide))"
-    def zero: Fastring = fast"0.0f"
-  }
   private val ScalarShape: Array[Int] = Array.empty[Int]
 
   trait LcgRandomNumberGenerator extends Tensors {
@@ -285,14 +277,62 @@ trait Tensors extends OpenCL {
 
   protected def openclCompilerFlags: String = ""
 
-  object Tensor {
+  protected object PlusPrograms extends MonoidPrograms {
+    def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring = fast"(($leftHandSide) + ($rightHandSide))"
+    def zero: Fastring = fast"0.0f"
+  }
+
+  protected trait MonoidPrograms {
+    def append(leftHandSide: Fastring, rightHandSide: Fastring): Fastring
+    def zero: Fastring
+
+    @transient
+    lazy val sequentialReductionProgram = {
+      val program = createProgramWithSource(fastraw"""
+        static float reduce16(global const float * restrict buffer, const uint length) {
+          float16 accumulator = vload16(get_global_id(0), buffer);
+          for (uint global_index = get_global_id(0) + get_global_size(0);
+               global_index < length;
+               global_index += get_global_size(0)
+          ) {
+            accumulator = ${append(fast"accumulator", fast"vload16(global_index, buffer)")};
+          }
+          const float8 f8 = ${append(fast"accumulator.hi", fast"accumulator.lo")};
+          const float4 f4 = ${append(fast"f8.hi", fast"f8.lo")};
+          const float2 f2 = ${append(fast"f4.hi", fast"f4.lo")};
+          return ${append(fast"f2.x", fast"f2.y")};
+        }
+
+        static float reduce_rest(global const float * restrict buffer, const uint length, float accumulator) {
+          for (uint global_index = get_global_id(0); global_index < length; global_index += get_global_size(0)) {
+            accumulator = ${append(fast"accumulator", fast"buffer[global_index]")};
+          }
+          return accumulator;
+        }
+
+        kernel void reduce(global const float * restrict buffer,
+                           const uint length,
+                           global float * restrict result) {
+          const uint vector_length = length / 16;
+          if (vector_length >= get_global_size(0)) {
+            const int stage1_length = 16 * vector_length;
+            const int stage2_length = length - stage1_length;
+            result[get_global_id(0)] = reduce_rest(buffer + stage1_length, stage2_length, reduce16(buffer, vector_length));
+          } else {
+            result[get_global_id(0)] = reduce_rest(buffer, length, $zero);
+          }
+        }
+      """)
+      program.build(openclCompilerFlags)
+      program
+    }
 
     /**
       * @see https://stackoverflow.com/questions/20753862/why-nvidia-and-amd-opencl-reduction-example-did-not-reduce-an-array-to-an-elemen/49253218#49253218
       *      for preferred global size / local size settings.
       */
-    protected def reductionProgram(monoid: CodeGenerationMonoid) = {
-      import monoid._
+    @transient
+    lazy val parallelReductionProgram = {
       val program = createProgramWithSource(fastraw"""
         kernel void reduce(global const float * restrict buffer,
                            local float * restrict local_scratch,
@@ -322,16 +362,14 @@ trait Tensors extends OpenCL {
           if (get_local_id(0) == 0) {
             result[get_group_id(0)] = ${append(fast"local_scratch[0]", fast"local_scratch[1]")};
           }
-
         }
       """)
       program.build(openclCompilerFlags)
       program
-
     }
+  }
 
-    @transient
-    private lazy val sumProgram: Program = reductionProgram(CodeGenerationPlus)
+  object Tensor {
 
     @transient
     private lazy val randomNormalProgram: Program = {
@@ -521,73 +559,92 @@ trait Tensors extends OpenCL {
 
     def toBufferedTensor: BufferedTensor
 
-    private def reduce(reduceProgram: Program): Tensor = {
+    private def reduce(programs: MonoidPrograms): Tensor = {
       new {
         val padding: Float = thisTensor.padding
 
         val doBuffer: Do[PendingBuffer[Float]] = {
           thisTensor.doBuffer.intransitiveFlatMap { inputPendingBuffer: PendingBuffer[Float] =>
-            Do.monadicCloseable(reduceProgram.createFirstKernel()).intransitiveFlatMap { kernel1: Kernel =>
-              val length = thisTensor.shape.product
-              allocateBuffer[Float](1).flatMap { outputBuffer =>
-                dispatch { commandQueue =>
-                  val stage1WorkSize: Long = math.min(length, kernel1.workGroupSize(commandQueue.deviceId))
-                  val maxNumberOfReductionGroups = commandQueue.deviceId.maxComputeUnits
-                  val numberOfStage1Groups = if (length % stage1WorkSize == 0) {
-                    math.min(length / stage1WorkSize, maxNumberOfReductionGroups)
-                  } else {
-                    math.min(length / stage1WorkSize + 1, maxNumberOfReductionGroups)
-                  }
-                  if (numberOfStage1Groups == 1) {
-                    kernel1(0) = inputPendingBuffer.buffer
-                    kernel1.setLocalMemorySize[Float](1, stage1WorkSize)
-                    kernel1(2) = length
-                    kernel1(3) = outputBuffer
-                    kernel1.enqueue(
-                      commandQueue,
-                      globalWorkSize = Array(stage1WorkSize),
-                      localWorkSize = Some(Array(stage1WorkSize): Seq[Long]),
-                      waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
-                    )
-                  } else {
+            val length = thisTensor.shape.product
+            allocateBuffer[Float](1).flatMap { outputBuffer =>
+              dispatch { commandQueue =>
+                commandQueue.deviceId.deviceType match {
+                  case CL_DEVICE_TYPE_CPU =>
+                    Do.monadicCloseable(programs.sequentialReductionProgram.createFirstKernel()).intransitiveFlatMap {
+                      kernel1: Kernel =>
+                        kernel1(0) = inputPendingBuffer.buffer
+                        kernel1(1) = length
+                        kernel1(2) = outputBuffer
+                        kernel1
+                          .enqueue(
+                            commandQueue,
+                            globalWorkSize = Array(1L),
+                            localWorkSize = Some(Array(1L): Seq[Long]),
+                            waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
+                          )
+                    }
+                  case _ =>
+                    Do.monadicCloseable(programs.parallelReductionProgram.createFirstKernel()).intransitiveFlatMap {
+                      kernel1: Kernel =>
+                        val stage1LocalWorkSize: Long = math.min(length, kernel1.workGroupSize(commandQueue.deviceId))
+                        val maxNumberOfReductionGroups = commandQueue.deviceId.maxComputeUnits
+                        val numberOfStage1Groups = if (length % stage1LocalWorkSize == 0) {
+                          math.min(length / stage1LocalWorkSize, maxNumberOfReductionGroups)
+                        } else {
+                          math.min(length / stage1LocalWorkSize + 1, maxNumberOfReductionGroups)
+                        }
+                        if (numberOfStage1Groups == 1) {
+                          kernel1(0) = inputPendingBuffer.buffer
+                          kernel1.setLocalMemorySize[Float](1, stage1LocalWorkSize)
+                          kernel1(2) = length
+                          kernel1(3) = outputBuffer
+                          kernel1.enqueue(
+                            commandQueue,
+                            globalWorkSize = Array(stage1LocalWorkSize),
+                            localWorkSize = Some(Array(stage1LocalWorkSize): Seq[Long]),
+                            waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
+                          )
+                        } else {
 
-                    allocateBuffer[Float](numberOfStage1Groups).intransitiveFlatMap { globalScratchBuffer =>
-                      kernel1(0) = inputPendingBuffer.buffer
-                      kernel1.setLocalMemorySize[Float](1, stage1WorkSize)
-                      kernel1(2) = length
-                      kernel1(3) = globalScratchBuffer
-                      kernel1
-                        .enqueue(
-                          commandQueue,
-                          globalWorkSize = Array(stage1WorkSize * numberOfStage1Groups),
-                          localWorkSize = Some(Array(stage1WorkSize): Seq[Long]),
-                          waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
-                        )
-                        .intransitiveFlatMap { scratchEvent: Event =>
-                          Do.monadicCloseable(reduceProgram.createFirstKernel()).intransitiveFlatMap {
-                            kernel2: Kernel =>
-                              // FIXME: An exception thrown here will not be handled. Need investigation
-
-                              val stage2WorkSize: Long =
-                                math.min(numberOfStage1Groups, kernel2.workGroupSize(commandQueue.deviceId))
-                              kernel2(0) = globalScratchBuffer
-                              kernel2.setLocalMemorySize[Float](1, stage2WorkSize)
-                              kernel2(2) = numberOfStage1Groups.toInt
-                              kernel2(3) = outputBuffer
-
-                              kernel2.enqueue(
+                          allocateBuffer[Float](numberOfStage1Groups).intransitiveFlatMap { globalScratchBuffer =>
+                            kernel1(0) = inputPendingBuffer.buffer
+                            kernel1.setLocalMemorySize[Float](1, stage1LocalWorkSize)
+                            kernel1(2) = length
+                            kernel1(3) = globalScratchBuffer
+                            kernel1
+                              .enqueue(
                                 commandQueue,
-                                globalWorkSize = Array(stage2WorkSize),
-                                localWorkSize = Some(Array(stage2WorkSize): Seq[Long]),
-                                waitingEvents = Array(scratchEvent.handle)
+                                globalWorkSize = Array(stage1LocalWorkSize * numberOfStage1Groups),
+                                localWorkSize = Some(Array(stage1LocalWorkSize): Seq[Long]),
+                                waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
                               )
+                              .intransitiveFlatMap { scratchEvent: Event =>
+                                Do.monadicCloseable(programs.parallelReductionProgram.createFirstKernel())
+                                  .intransitiveFlatMap { kernel2: Kernel =>
+                                    // FIXME: An exception thrown here will not be handled. Need further investigation.
+
+                                    val stage2WorkSize: Long =
+                                      math.min(numberOfStage1Groups, kernel2.workGroupSize(commandQueue.deviceId))
+                                    kernel2(0) = globalScratchBuffer
+                                    kernel2.setLocalMemorySize[Float](1, stage2WorkSize)
+                                    kernel2(2) = numberOfStage1Groups.toInt
+                                    kernel2(3) = outputBuffer
+
+                                    kernel2.enqueue(
+                                      commandQueue,
+                                      globalWorkSize = Array(stage2WorkSize),
+                                      localWorkSize = Some(Array(stage2WorkSize): Seq[Long]),
+                                      waitingEvents = Array(scratchEvent.handle)
+                                    )
+                                  }
+                              }
                           }
                         }
                     }
-                  }
-                }.map { stage2Event: Event =>
-                  EventBuffer[Float](outputBuffer, stage2Event)
                 }
+
+              }.map { stage2Event: Event =>
+                EventBuffer[Float](outputBuffer, stage2Event)
               }
             }
           }.shared
@@ -597,7 +654,7 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def sum = reduce(Tensor.sumProgram)
+    def sum = reduce(PlusPrograms)
 
     override def toString: String = {
       doBuffer
