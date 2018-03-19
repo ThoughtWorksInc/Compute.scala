@@ -26,6 +26,7 @@ object benchmarks {
   @State(Scope.Benchmark)
   class Nd4jSigmoid extends SigmoidState {
 
+    @transient
     private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
     private def sigmoid(x: INDArray): INDArray = {
       val expX = Transforms.exp(x)
@@ -107,6 +108,7 @@ object benchmarks {
   @State(Scope.Benchmark)
   class Nd4jSum extends SumState {
 
+    @transient
     private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
 
     @Benchmark
@@ -239,7 +241,11 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
   class Nd4jConvolution extends ConvolutionState {
+
+    @transient
     private lazy val input = Nd4j.randn(Array(batchSize, depth, imageHeight, imageWidth))
+
+    @transient
     private lazy val layers = (for (i <- (0 until numberOfLayers).view) yield {
       (Nd4j.randn(Array(kernelHeight, kernelWidth, depth, depth)), Nd4j.randn(Array(depth)))
     }).toList
