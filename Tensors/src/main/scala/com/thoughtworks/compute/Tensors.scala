@@ -502,6 +502,10 @@ trait Tensors extends OpenCL {
       leftHandSide.derivedTensor(trees.float.sqrt(leftHandSide.closure.asInstanceOf[FloatTerm]))
     }
 
+    def tanh(leftHandSide: Tensor): Tensor = {
+      leftHandSide.derivedTensor(trees.float.tanh(leftHandSide.closure.asInstanceOf[FloatTerm]))
+    }
+
     def exp(leftHandSide: Tensor): Tensor = {
       leftHandSide.derivedTensor(trees.float.exp(leftHandSide.closure.asInstanceOf[FloatTerm]))
     }
