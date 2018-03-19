@@ -389,6 +389,17 @@ object OpenCL {
   }
 
   final case class DeviceId[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
+    def deviceType: Long = {
+      val stack = stackPush()
+      try {
+        val deviceTypeBuffer = stack.mallocLong(1)
+        checkErrorCode(clGetDeviceInfo(handle, CL_DEVICE_TYPE, deviceTypeBuffer, null))
+        deviceTypeBuffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
+
     def maxComputeUnits: Int = {
       val stack = stackPush()
       try {
