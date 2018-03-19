@@ -9,6 +9,7 @@ import com.thoughtworks.raii.covariant._
 import com.thoughtworks.tryt.covariant._
 import com.typesafe.scalalogging.StrictLogging
 import org.lwjgl.opencl.CLCapabilities
+import org.lwjgl.system.Configuration
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.convolution.Convolution
 import org.nd4j.linalg.factory.Nd4j
@@ -24,24 +25,29 @@ object benchmarks {
 
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
-  class Nd4jSigmoid extends SigmoidState {
+  class Nd4jTanh extends TanhState {
 
     @transient
     private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
-    private def sigmoid(x: INDArray): INDArray = {
+    private def tanh(x: INDArray): INDArray = {
       val expX = Transforms.exp(x)
       expX.div(expX.add(1.0))
     }
     @Benchmark
-    final def nd4jSigmoidBenchmark(): Array[Float] = {
-      sigmoid(input).data().asFloat()
+    final def nd4jTanhBenchmark(): Array[Float] = {
+      (0 until numberOfIterations)
+        .foldLeft(input) { (input, _) =>
+          Transforms.tanh(input)
+        }
+        .data()
+        .asFloat()
     }
 
   }
 
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
-  class TensorSigmoid extends SigmoidState {
+  class TensorTanh extends TanhState {
     trait Benchmarks
         extends StrictLogging
         with Tensors.UnsafeMathOptimizations
@@ -56,18 +62,18 @@ object benchmarks {
 
       protected val numberOfCommandQueuesPerDevice: Int = 2
 
-      private def sigmoid(x: Tensor): Tensor = {
-        val expX = Tensor.exp(x)
-        expX / (expX + Tensor.fill(1.0f, expX.shape))
-      }
-
       def doBenchmark(): Do[() => Array[Float]] = {
         val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
         input.doBuffer.map { _ =>
           { () =>
-            sigmoid(input).flatArray.run.blockingAwait
-
+            (0 until numberOfIterations)
+              .foldLeft(input) { (input, _) =>
+                Tensor.tanh(input)
+              }
+              .flatArray
+              .run
+              .blockingAwait
           }
         }
       }
@@ -77,6 +83,7 @@ object benchmarks {
 
     @Setup
     final def setup(): Unit = {
+//      Configuration.OPENCL_LIBRARY_NAME.set("/opt/pocl-1.1/lib/libOpenCL.dylib")
       assert(benchmarkResouce == null)
       val Do(TryT(ResourceT(resourceContinuation))) =
         Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
@@ -91,14 +98,17 @@ object benchmarks {
     }
 
     @Benchmark
-    final def tensorSigmoidBenchmark(): Array[Float] = {
+    final def tensorTanhBenchmark(): Array[Float] = {
       benchmarkResouce.value.get.apply()
     }
 
   }
 
-  trait SigmoidState {
-    @Param(Array("3", "2", "1"))
+  trait TanhState {
+    @Param(Array("100", "10", "1"))
+    protected var numberOfIterations: Int = _
+
+    @Param(Array("2", "3", "1"))
     protected var numberOfDimensions: Int = _
 
     @Param(Array("128", "64", "32", "16"))
