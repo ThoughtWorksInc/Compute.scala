@@ -265,6 +265,14 @@ trait OpenCLKernelBuilder extends AllExpressions {
       """
       float.termFactory.newInstance(valueTermName)
     }
+
+    def tanh(operand0: FloatTerm): FloatTerm = {
+      val valueTermName = freshName("")
+      localDefinitions += fastraw"""
+        const ${operand0.typeCode} $valueTermName = tanh(${operand0.termCode});
+      """
+      float.termFactory.newInstance(valueTermName)
+    }
   }
 
   type FloatType <: (ValueType with Any) with ClFloatType

@@ -423,6 +423,21 @@ object Trees {
 
     /** @group AST */
     @(silent @companionObject)
+    final case class Tanh(operand0: FloatTree) extends FloatOperator {
+
+      protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
+        context.asScala.getOrElseUpdate(this, foreignCategory.float.tanh(operand0.export(foreignCategory, context)))
+      }
+
+      protected def erasedAlphaConversion(context: AlphaConversionContext): Tree = {
+        def converted = copy(operand0 = operand0.alphaConversion(context))
+        context.asScala.getOrElseUpdate(this, converted)
+      }
+    }
+
+
+    /** @group AST */
+    @(silent @companionObject)
     final case class Sqrt(operand0: FloatTree) extends FloatOperator {
 
       protected def erasedExport(foreignCategory: Category, context: ExportContext) = {
@@ -617,6 +632,11 @@ object Trees {
       @inline
       def sqrt(operand: FloatTerm): FloatTerm = {
         term(Sqrt(operand.tree))
+      }
+
+      @inline
+      def tanh(operand: FloatTerm): FloatTerm = {
+        term(Tanh(operand.tree))
       }
 
     }

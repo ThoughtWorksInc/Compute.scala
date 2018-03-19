@@ -120,6 +120,7 @@ object Expressions {
       def exp(operand: FloatTerm): FloatTerm
       def abs(operand: FloatTerm): FloatTerm
       def sqrt(operand: FloatTerm): FloatTerm
+      def tanh(operand: FloatTerm): FloatTerm
     }
 
     /** @template */
