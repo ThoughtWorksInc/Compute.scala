@@ -639,6 +639,22 @@ object OpenCL {
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
 
+    def preferredWorkGroupSizeMultiple(deviceId: DeviceId[Owner]) = {
+      val stack = stackPush()
+      try {
+        val pointerBuffer = stack.mallocPointer(1)
+        checkErrorCode(
+          clGetKernelWorkGroupInfo(handle,
+                                   deviceId.handle,
+                                   CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
+                                   pointerBuffer,
+                                   null))
+        pointerBuffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
+
     def workGroupSize(deviceId: DeviceId[Owner]) = {
       val stack = stackPush()
       try {
