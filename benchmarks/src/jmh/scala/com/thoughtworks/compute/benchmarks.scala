@@ -1,5 +1,6 @@
 package com.thoughtworks.compute
 
+import com.thoughtworks.compute.OpenCL.Exceptions.DeviceNotFound
 import com.thoughtworks.compute.benchmarks.RandomNormalState
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
@@ -25,7 +26,7 @@ object benchmarks {
 
   trait TensorState {
     @Param(Array("CPU", "GPU"))
-    protected var deviceType: String = _
+    protected var tensorDeviceType: String = _
 
     trait BenchmarkTensors
         extends StrictLogging
@@ -33,15 +34,41 @@ object benchmarks {
         with Tensors.SuppressWarnings
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
-        with OpenCL.UseFirstPlatform
         with OpenCL.CommandQueuePool
         with OpenCL.DontReleaseEventTooEarly
         with Tensors.WangHashingRandomNumberGenerator {
-
       @transient
-      protected lazy val deviceIds: Seq[DeviceId] = {
-        deviceIdsByType(classOf[CL10].getField(s"CL_DEVICE_TYPE_$deviceType").get(null).asInstanceOf[Int])
+      protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
+        val deviceType = classOf[CL10].getField(s"CL_DEVICE_TYPE_$tensorDeviceType").get(null).asInstanceOf[Int]
+
+        object MatchDeviceType {
+          def unapply(platformId: PlatformId): Option[Seq[DeviceId]] = {
+            (try {
+              platformId.deviceIdsByType(deviceType)
+            } catch {
+              case e: DeviceNotFound =>
+                return None
+            }) match {
+              case devices if devices.nonEmpty =>
+                Some(devices)
+              case _ =>
+                None
+            }
+
+          }
+        }
+
+        platformIds.collectFirst {
+          case platformId @ MatchDeviceType(deviceIds) =>
+            (platformId, deviceIds)
+        } match {
+          case None =>
+            throw new DeviceNotFound(s"$tensorDeviceType device is not found")
+          case Some(pair) =>
+            pair
+        }
       }
+
     }
   }
 
