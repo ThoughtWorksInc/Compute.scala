@@ -96,33 +96,33 @@ object OpenCL {
     }
   })
   object Exceptions {
-    final class MisalignedSubBufferOffset extends IllegalArgumentException
+    final class MisalignedSubBufferOffset(message: String = null) extends IllegalArgumentException(message)
 
-    final class ExecStatusErrorForEventsInWaitList extends IllegalArgumentException
+    final class ExecStatusErrorForEventsInWaitList(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidProperty extends IllegalArgumentException
+    final class InvalidProperty(message: String = null) extends IllegalArgumentException(message)
 
-    final class PlatformNotFoundKhr extends IllegalStateException
+    final class PlatformNotFoundKhr(message: String = null) extends NoSuchElementException(message)
 
-    final class DeviceNotFound extends IllegalArgumentException
+    final class DeviceNotFound(message: String = null) extends NoSuchElementException(message)
 
-    final class DeviceNotAvailable extends IllegalStateException
+    final class DeviceNotAvailable(message: String = null) extends IllegalStateException(message)
 
-    final class CompilerNotAvailable extends IllegalStateException
+    final class CompilerNotAvailable(message: String = null) extends IllegalStateException(message)
 
-    final class MemObjectAllocationFailure extends IllegalStateException
+    final class MemObjectAllocationFailure(message: String = null) extends IllegalStateException(message)
 
-    final class OutOfResources extends IllegalStateException
+    final class OutOfResources(message: String = null) extends IllegalStateException(message)
 
-    final class OutOfHostMemory extends IllegalStateException
+    final class OutOfHostMemory(message: String = null) extends IllegalStateException(message)
 
-    final class ProfilingInfoNotAvailable extends IllegalStateException
+    final class ProfilingInfoNotAvailable(message: String = null) extends IllegalStateException(message)
 
-    final class MemCopyOverlap extends IllegalStateException
+    final class MemCopyOverlap(message: String = null) extends IllegalStateException(message)
 
-    final class ImageFormatMismatch extends IllegalStateException
+    final class ImageFormatMismatch(message: String = null) extends IllegalStateException(message)
 
-    final class ImageFormatNotSupported extends IllegalStateException
+    final class ImageFormatNotSupported(message: String = null) extends IllegalStateException(message)
 
     final class BuildProgramFailure(buildLogs: Map[Long /* device id */, String] = Map.empty)
         extends IllegalStateException({
@@ -134,71 +134,71 @@ object OpenCL {
             .mkString("\n")
         })
 
-    final class MapFailure extends IllegalStateException
+    final class MapFailure(message: String = null) extends IllegalStateException(message)
 
-    final class InvalidValue extends IllegalArgumentException
+    final class InvalidValue(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidDeviceType extends IllegalArgumentException
+    final class InvalidDeviceType(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidPlatform extends IllegalArgumentException
+    final class InvalidPlatform(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidDevice extends IllegalArgumentException
+    final class InvalidDevice(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidContext extends IllegalArgumentException
+    final class InvalidContext(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidQueueProperties extends IllegalArgumentException
+    final class InvalidQueueProperties(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidCommandQueue extends IllegalArgumentException
+    final class InvalidCommandQueue(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidHostPtr extends IllegalArgumentException
+    final class InvalidHostPtr(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidMemObject extends IllegalArgumentException
+    final class InvalidMemObject(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidImageFormatDescriptor extends IllegalArgumentException
+    final class InvalidImageFormatDescriptor(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidImageSize extends IllegalArgumentException
+    final class InvalidImageSize(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidSampler extends IllegalArgumentException
+    final class InvalidSampler(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidBinary extends IllegalArgumentException
+    final class InvalidBinary(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidBuildOptions extends IllegalArgumentException
+    final class InvalidBuildOptions(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidProgram extends IllegalArgumentException
+    final class InvalidProgram(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidProgramExecutable extends IllegalArgumentException
+    final class InvalidProgramExecutable(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidKernelName extends IllegalArgumentException
+    final class InvalidKernelName(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidKernelDefinition extends IllegalArgumentException
+    final class InvalidKernelDefinition(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidKernel extends IllegalArgumentException
+    final class InvalidKernel(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidArgIndex extends IllegalArgumentException
+    final class InvalidArgIndex(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidArgValue extends IllegalArgumentException
+    final class InvalidArgValue(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidArgSize extends IllegalArgumentException
+    final class InvalidArgSize(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidKernelArgs extends IllegalArgumentException
+    final class InvalidKernelArgs(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidWorkDimension extends IllegalArgumentException
+    final class InvalidWorkDimension(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidWorkGroupSize extends IllegalArgumentException
+    final class InvalidWorkGroupSize(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidWorkItemSize extends IllegalArgumentException
+    final class InvalidWorkItemSize(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidGlobalOffset extends IllegalArgumentException
+    final class InvalidGlobalOffset(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidEventWaitList extends IllegalArgumentException
+    final class InvalidEventWaitList(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidEvent extends IllegalArgumentException
+    final class InvalidEvent(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidOperation extends IllegalArgumentException
+    final class InvalidOperation(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidBufferSize extends IllegalArgumentException
+    final class InvalidBufferSize(message: String = null) extends IllegalArgumentException(message)
 
-    final class InvalidGlobalWorkSize extends IllegalArgumentException
+    final class InvalidGlobalWorkSize(message: String = null) extends IllegalArgumentException(message)
 
     final class UnknownErrorCode(errorCode: Int) extends IllegalStateException(s"Unknown error code: $errorCode")
 
