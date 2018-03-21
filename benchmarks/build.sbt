@@ -6,9 +6,7 @@ val nd4jRuntime = settingKey[String]("\"cuda-8.0\" to run benchmark on GPU, \"na
 
 nd4jRuntime in Global := "native"
 
-libraryDependencies += {
-  "org.nd4j" % s"nd4j-${nd4jRuntime.value}-platform" % "0.8.0"
-}
+libraryDependencies += "org.nd4j" % s"nd4j-${nd4jRuntime.value}-platform" % "0.8.0"
 
 libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6").jar().classifier {
   import scala.util.Properties._
