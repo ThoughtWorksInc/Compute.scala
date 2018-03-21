@@ -1,5 +1,6 @@
 package com.thoughtworks.compute
 
+import com.thoughtworks.compute.OpenCL.Exceptions.DeviceNotFound
 import com.thoughtworks.compute.benchmarks.RandomNormalState
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
@@ -8,7 +9,7 @@ import com.thoughtworks.raii.asynchronous._
 import com.thoughtworks.raii.covariant._
 import com.thoughtworks.tryt.covariant._
 import com.typesafe.scalalogging.StrictLogging
-import org.lwjgl.opencl.CLCapabilities
+import org.lwjgl.opencl.{CL10, CLCapabilities}
 import org.lwjgl.system.Configuration
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.convolution.Convolution
@@ -22,6 +23,54 @@ import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 object benchmarks {
+
+  trait TensorState {
+    @Param(Array("CPU", "GPU"))
+    protected var tensorDeviceType: String = _
+
+    trait BenchmarkTensors
+        extends StrictLogging
+        with Tensors.UnsafeMathOptimizations
+        with Tensors.SuppressWarnings
+        with OpenCL.LogContextNotification
+        with OpenCL.GlobalExecutionContext
+        with OpenCL.CommandQueuePool
+        with OpenCL.DontReleaseEventTooEarly
+        with Tensors.WangHashingRandomNumberGenerator {
+      @transient
+      protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
+        val deviceType = classOf[CL10].getField(s"CL_DEVICE_TYPE_$tensorDeviceType").get(null).asInstanceOf[Int]
+
+        object MatchDeviceType {
+          def unapply(platformId: PlatformId): Option[Seq[DeviceId]] = {
+            (try {
+              platformId.deviceIdsByType(deviceType)
+            } catch {
+              case e: DeviceNotFound =>
+                return None
+            }) match {
+              case devices if devices.nonEmpty =>
+                Some(devices)
+              case _ =>
+                None
+            }
+
+          }
+        }
+
+        platformIds.collectFirst {
+          case platformId @ MatchDeviceType(deviceIds) =>
+            (platformId, deviceIds)
+        } match {
+          case None =>
+            throw new DeviceNotFound(s"$tensorDeviceType device is not found")
+          case Some(pair) =>
+            pair
+        }
+      }
+
+    }
+  }
 
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
@@ -47,18 +96,8 @@ object benchmarks {
 
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
-  class TensorTanh extends TanhState {
-    trait Benchmarks
-        extends StrictLogging
-        with Tensors.UnsafeMathOptimizations
-        with Tensors.SuppressWarnings
-        with OpenCL.LogContextNotification
-        with OpenCL.GlobalExecutionContext
-        with OpenCL.UseAllCpuDevices
-        with OpenCL.UseFirstPlatform
-        with OpenCL.CommandQueuePool
-        with OpenCL.DontReleaseEventTooEarly
-        with Tensors.WangHashingRandomNumberGenerator {
+  class TensorTanh extends TanhState with TensorState {
+    trait Benchmarks extends BenchmarkTensors {
 
       protected val numberOfCommandQueuesPerDevice: Int = 2
 
@@ -130,17 +169,8 @@ object benchmarks {
 
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
-  class TensorSum extends SumState {
-    trait Benchmarks
-        extends StrictLogging
-        with Tensors.UnsafeMathOptimizations
-        with OpenCL.LogContextNotification
-        with OpenCL.GlobalExecutionContext
-        with OpenCL.UseAllCpuDevices
-        with OpenCL.UseFirstPlatform
-        with OpenCL.CommandQueuePool
-        with OpenCL.DontReleaseEventTooEarly
-        with Tensors.WangHashingRandomNumberGenerator {
+  class TensorSum extends SumState with TensorState {
+    trait Benchmarks extends BenchmarkTensors {
 
       protected val numberOfCommandQueuesPerDevice: Int = 2
 
@@ -200,17 +230,8 @@ object benchmarks {
 
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
-  class TensorRandomNormal extends RandomNormalState {
-    trait Benchmarks
-        extends StrictLogging
-        with Tensors.UnsafeMathOptimizations
-        with OpenCL.LogContextNotification
-        with OpenCL.GlobalExecutionContext
-        with OpenCL.UseAllCpuDevices
-        with OpenCL.UseFirstPlatform
-        with OpenCL.CommandQueuePool
-        with OpenCL.DontReleaseEventTooEarly
-        with Tensors.WangHashingRandomNumberGenerator {
+  class TensorRandomNormal extends RandomNormalState with TensorState {
+    trait Benchmarks extends BenchmarkTensors {
 
       protected val numberOfCommandQueuesPerDevice: Int = 2
 
@@ -295,19 +316,9 @@ object benchmarks {
 
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
-  class TensorConvolution extends ConvolutionState {
+  class TensorConvolution extends ConvolutionState with TensorState {
 
-    trait Benchmarks
-        extends StrictLogging
-        with Tensors.UnsafeMathOptimizations
-        with OpenCL.LogContextNotification
-        with OpenCL.GlobalExecutionContext
-        with OpenCL.UseAllCpuDevices
-        with OpenCL.UseFirstPlatform
-        with OpenCL.CommandQueuePool
-        with OpenCL.DontReleaseEventTooEarly
-        with Tensors.WangHashingRandomNumberGenerator
-        with ConvolutionTensors {
+    trait Benchmarks extends BenchmarkTensors with ConvolutionTensors {
 
       protected val numberOfCommandQueuesPerDevice = 2
 
