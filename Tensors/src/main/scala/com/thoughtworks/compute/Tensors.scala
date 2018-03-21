@@ -334,20 +334,43 @@ trait Tensors extends OpenCL {
     @transient
     lazy val parallelReductionProgram = {
       val program = createProgramWithSource(fastraw"""
+
+        static float reduce16(global const float * restrict buffer, const uint length) {
+          float16 accumulator = vload16(get_global_id(0), buffer);
+          for (uint global_index = get_global_id(0) + get_global_size(0);
+               global_index < length;
+               global_index += get_global_size(0)
+          ) {
+            accumulator = ${append(fast"accumulator", fast"vload16(global_index, buffer)")};
+          }
+          const float8 f8 = ${append(fast"accumulator.hi", fast"accumulator.lo")};
+          const float4 f4 = ${append(fast"f8.hi", fast"f8.lo")};
+          const float2 f2 = ${append(fast"f4.hi", fast"f4.lo")};
+          return ${append(fast"f2.x", fast"f2.y")};
+        }
+
+        static float reduce_rest(global const float * restrict buffer, const uint length, float accumulator) {
+          for (uint global_index = get_global_id(0); global_index < length; global_index += get_global_size(0)) {
+            accumulator = ${append(fast"accumulator", fast"buffer[global_index]")};
+          }
+          return accumulator;
+        }
+
+
         kernel void reduce(global const float * restrict buffer,
                            local float * restrict local_scratch,
                            const int length,
                            global float * restrict result) {
-          int global_index = get_global_id(0);
-          float accumulator = $zero;
-          // Loop sequentially over chunks of input vector
-          while (global_index < length) {
-            float element = buffer[global_index];
-            accumulator = ${append(fast"accumulator", fast"element")};
-            global_index += get_global_size(0);
+          const uint vector_length = length / 16;
+          if (vector_length >= get_global_size(0)) {
+            const int stage1_length = 16 * vector_length;
+            const int stage2_length = length - stage1_length;
+            local_scratch[get_local_id(0)] = reduce_rest(buffer + stage1_length, stage2_length, reduce16(buffer, vector_length));
+          } else {
+            local_scratch[get_local_id(0)] = reduce_rest(buffer, length, $zero);
           }
+
           // Perform parallel reduction in a work group
-          local_scratch[get_local_id(0)] = accumulator;
           barrier(CLK_LOCAL_MEM_FENCE);
           for (uint offset = get_local_size(0) / 2;
                offset > 1;
