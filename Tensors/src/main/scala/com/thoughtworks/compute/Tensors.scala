@@ -438,7 +438,11 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f) = {
+    def scalar(value: Float, padding: Float = 0.0f): Tensor = {
+      fill(value, Tensors.ScalarShape, padding)
+    }
+
+    def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f): Tensor = {
       val padding0 = padding
       new {
         val padding: Float = padding0
