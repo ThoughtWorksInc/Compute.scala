@@ -363,7 +363,10 @@ object OpenCL {
     *       (e.g. https://travis-ci.org/Atry/DeepLearning.scala/jobs/318466522),
     *       no matter if they are blocking or not.
     *
-    *       As a workaround, always enable this [[HandleEventInExecutionContext]] for AMD's OpenCL implementation.
+    *       There is also similar bug in Intel's OpenCL implementation
+    *
+    *       As a workaround, always enable this [[HandleEventInExecutionContext]] for
+    *       Intel's and AMD's OpenCL implementation.
     */
   trait HandleEventInExecutionContext extends OpenCL {
     val executionContext: ExecutionContext
