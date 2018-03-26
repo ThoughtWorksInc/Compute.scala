@@ -881,6 +881,20 @@ object OpenCL {
     def monadicClose = UnitContinuation.delay {
       OpenCL.checkErrorCode(clReleaseProgram(handle))
     }
+
+    def kernelNames(): Seq[String] = {
+      val stack = stackPush()
+      try {
+        val sizeBuffer = stack.mallocPointer(1)
+        checkErrorCode(clGetProgramInfo(this.handle, CL_PROGRAM_KERNEL_NAMES, null: ByteBuffer, sizeBuffer))
+        val nameBuffer = stack.malloc(sizeBuffer.get(0).toInt)
+        checkErrorCode(clGetProgramInfo(this.handle, CL_PROGRAM_KERNEL_NAMES, nameBuffer, null: PointerBuffer))
+        memUTF8(nameBuffer).split(';')
+      } finally {
+        stack.close()
+      }
+    }
+
   }
 
   object Program {
