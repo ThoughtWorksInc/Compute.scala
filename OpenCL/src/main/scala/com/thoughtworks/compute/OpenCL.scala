@@ -784,12 +784,6 @@ object OpenCL {
       extends AnyVal
       with MonadicCloseable[UnitContinuation] {
 
-    private def numberOfKernels: Int = {
-      val result = Array.ofDim[Int](1)
-      checkErrorCode(clCreateKernelsInProgram(handle, null, result))
-      result(0)
-    }
-
     def deviceIds: Seq[DeviceId[Owner]] = {
       val stack = stackPush()
       try {
@@ -797,7 +791,7 @@ object OpenCL {
         checkErrorCode(clGetProgramInfo(this.handle, CL_PROGRAM_DEVICES, null: PointerBuffer, sizeBuffer))
         val numberOfDeviceIds = sizeBuffer.get(0).toInt / POINTER_SIZE
         val programDevicesBuffer = stack.mallocPointer(numberOfDeviceIds)
-        checkErrorCode(clGetProgramInfo(this.handle, CL_PROGRAM_DEVICES, programDevicesBuffer, sizeBuffer))
+        checkErrorCode(clGetProgramInfo(this.handle, CL_PROGRAM_DEVICES, programDevicesBuffer, null: PointerBuffer))
         (0 until numberOfDeviceIds).map { i =>
           DeviceId[Owner](programDevicesBuffer.get(i))
         }
@@ -806,27 +800,16 @@ object OpenCL {
       }
     }
 
-    def createKernels(): Seq[Kernel[Owner]] = {
-      (0 until createKernelBuffer().capacity).map { i =>
-        Kernel[Owner](createKernelBuffer().get(i))
-      }
+    def createKernels()(implicit witness: Witness.Aux[Owner]): Seq[Kernel[Owner]] = {
+      witness.value.createKernels(this.asInstanceOf[witness.value.Program]).asInstanceOf[Seq[Kernel[Owner]]]
     }
 
-    private def createKernelBuffer(): PointerBuffer = {
-      val kernelBuffer = BufferUtils.createPointerBuffer(numberOfKernels)
-      checkErrorCode(clCreateKernelsInProgram(handle, kernelBuffer, null: IntBuffer))
-      kernelBuffer
-    }
-
-    def createFirstKernel(): Kernel[Owner] = {
-      val stack = stackPush()
-      try {
-        val kernelBuffer = stack.mallocPointer(1)
-        checkErrorCode(clCreateKernelsInProgram(handle, kernelBuffer, null: IntBuffer))
-        Kernel(kernelBuffer.get(0))
-      } finally {
-        stack.close()
-      }
+    /** Creates single kernel from this [[Program]].
+      *
+      * @throws InvalidValue if the this [[Program]] has more than one kernel.
+      */
+    def createKernel()(implicit witness: Witness.Aux[Owner]): Kernel[Owner] = {
+      witness.value.createKernel(this.asInstanceOf[witness.value.Program]).asInstanceOf[Kernel[Owner]]
     }
 
     private def buildLogs(deviceIds: Seq[DeviceId[Owner]]): Map[DeviceId[Owner], String] = {
@@ -1044,10 +1027,57 @@ object OpenCL {
     }
   }
 
+  /** Make the calls to [[createKernels]] and [[createKernel]] synchronized.
+    *
+    * @note If you are using Intel OpenCL SDK, you will need this plug-in as a workaround
+    * @see [[https://software.intel.com/en-us/forums/opencl/topic/760981
+    *      Bug report: clCreateKernelsInProgram is not thread-safe]]
+    */
+  trait SynchronizedCreatingKernel extends OpenCL {
+    override protected def createKernels(program: Program): Seq[Kernel] = synchronized {
+      super.createKernels(program)
+    }
+
+    override protected def createKernel(program: Program): Kernel = synchronized {
+      super.createKernel(program)
+    }
+  }
+
 }
 
 trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton with DefaultCloseable {
   import OpenCL._
+
+  protected def createKernels(program: Program): Seq[Kernel] = {
+    val stack = stackPush()
+    try {
+      val numberOfKernelsBuffer = stack.mallocInt(1)
+      checkErrorCode(clCreateKernelsInProgram(program.handle, null, numberOfKernelsBuffer))
+      val numberOfKernels = numberOfKernelsBuffer.get(0)
+      val kernelBuffer = stack.mallocPointer(numberOfKernels)
+      checkErrorCode(clCreateKernelsInProgram(program.handle, kernelBuffer, null: IntBuffer))
+      (0 until kernelBuffer.capacity).map { i =>
+        new Kernel(kernelBuffer.get(i))
+      }
+    } finally {
+      stack.close()
+    }
+  }
+
+  /** Creates single kernel from this [[Program]].
+    *
+    * @throws InvalidValue if the this [[Program]] has more than one kernel.
+    */
+  protected def createKernel(program: Program): Kernel = {
+    val stack = stackPush()
+    try {
+      val kernelBuffer = stack.mallocPointer(1)
+      checkErrorCode(clCreateKernelsInProgram(program.handle, kernelBuffer, null: IntBuffer))
+      new Kernel(kernelBuffer.get(0))
+    } finally {
+      stack.close()
+    }
+  }
 
   protected val logger: Logger
 

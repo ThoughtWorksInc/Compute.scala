@@ -461,7 +461,7 @@ trait Tensors extends OpenCL {
         val doBuffer: Do[PendingBuffer[Float]] = {
           val size = shape.product
           allocateBuffer[Float](size).flatMap { buffer =>
-            Do.monadicCloseable(randomProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
+            Do.monadicCloseable(randomProgram.createKernel()).intransitiveFlatMap { kernel =>
               kernel(0) = buffer
               kernel(1) = seed
               dispatch(kernel.enqueue(_, globalWorkSize = Array(size.toLong))).map(EventBuffer[Float](buffer, _))
@@ -487,7 +487,7 @@ trait Tensors extends OpenCL {
             size
           }
           allocateBuffer[Float](paddingSize).flatMap { buffer =>
-            Do.monadicCloseable(randomNormalProgram.createFirstKernel()).intransitiveFlatMap { kernel =>
+            Do.monadicCloseable(randomNormalProgram.createKernel()).intransitiveFlatMap { kernel =>
               kernel(0) = buffer
               kernel(1) = seed
               val globalWorkSize = Array((paddingSize / 2).toLong)
@@ -578,7 +578,7 @@ trait Tensors extends OpenCL {
               dispatch { commandQueue =>
                 commandQueue.deviceId.deviceType match {
                   case CL_DEVICE_TYPE_CPU =>
-                    Do.monadicCloseable(programs.sequentialReductionProgram.createFirstKernel()).intransitiveFlatMap {
+                    Do.monadicCloseable(programs.sequentialReductionProgram.createKernel()).intransitiveFlatMap {
                       kernel1: Kernel =>
                         kernel1(0) = inputPendingBuffer.buffer
                         kernel1(1) = length
@@ -592,7 +592,7 @@ trait Tensors extends OpenCL {
                           )
                     }
                   case _ =>
-                    Do.monadicCloseable(programs.parallelReductionProgram.createFirstKernel()).intransitiveFlatMap {
+                    Do.monadicCloseable(programs.parallelReductionProgram.createKernel()).intransitiveFlatMap {
                       kernel1: Kernel =>
                         val stage1LocalWorkSize: Long = math.min(length, kernel1.workGroupSize(commandQueue.deviceId))
                         val maxNumberOfReductionGroups = commandQueue.deviceId.maxComputeUnits
@@ -627,7 +627,7 @@ trait Tensors extends OpenCL {
                                 waitingEvents = inputPendingBuffer.eventOption.map(_.handle).toSeq
                               )
                               .intransitiveFlatMap { scratchEvent: Event =>
-                                Do.monadicCloseable(programs.parallelReductionProgram.createFirstKernel())
+                                Do.monadicCloseable(programs.parallelReductionProgram.createKernel())
                                   .intransitiveFlatMap { kernel2: Kernel =>
                                     // FIXME: An exception thrown here will not be handled. Need further investigation.
 
@@ -1005,7 +1005,7 @@ trait Tensors extends OpenCL {
                     }
                     .unwrap
                     .intransitiveFlatMap { arguments: List[PendingBuffer[_]] =>
-                      Do.monadicCloseable(program.createFirstKernel()).intransitiveFlatMap { kernel: Kernel =>
+                      Do.monadicCloseable(program.createKernel()).intransitiveFlatMap { kernel: Kernel =>
                         val valueType = convertedTerm.valueType.asInstanceOf[ValueType]
                         val memory = valueType.memory.asInstanceOf[Memory[convertedTerm.JvmValue]]
                         allocateBuffer[convertedTerm.JvmValue](shape.product)(memory).flatMap { outputBuffer =>
