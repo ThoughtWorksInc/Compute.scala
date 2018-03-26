@@ -711,7 +711,7 @@ trait Tensors extends OpenCL {
         if (i < length) {
           shape(i) match {
             case di if di == newShape(i) =>
-              matrix1(i * (length + 1) + i) = 1.0
+              matrix1(i * (newLength + 1) + i) = 1.0
             case 1 =>
             case _ =>
               throw new IllegalArgumentException(

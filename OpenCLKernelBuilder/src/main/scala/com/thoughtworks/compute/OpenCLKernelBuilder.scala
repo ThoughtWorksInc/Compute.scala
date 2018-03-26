@@ -298,7 +298,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
     def extract: Element = {
       val numberOfRows = originalShape.length
       val numberOfColumns = matrix.length / numberOfRows
-      if (matrix.length % numberOfRows != 0) {
+      if (matrix.length != numberOfRows * numberOfColumns) {
         throw new IllegalStateException()
       }
 
