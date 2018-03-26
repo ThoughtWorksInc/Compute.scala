@@ -1216,7 +1216,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
       val cl20Properties = (properties.view.flatMap { case (key, value) => Seq(key, value) } ++ Seq(0L)).toArray
       val a = Array(0)
       val commandQueue =
-        clCreateCommandQueueWithProperties(platformId.handle, deviceId.handle, cl20Properties, a)
+        clCreateCommandQueueWithProperties(context, deviceId.handle, cl20Properties, a)
       checkErrorCode(a(0))
       commandQueue
     } else {
