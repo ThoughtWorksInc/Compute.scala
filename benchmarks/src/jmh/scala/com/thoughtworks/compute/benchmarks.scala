@@ -74,16 +74,106 @@ object benchmarks {
     }
   }
 
+  trait MultiLayerNetworkState {
+    @Param(Array("100", "10", "1"))
+    protected var numberOfLayers: Int = _
+
+    @Param(Array("10", "20", "30"))
+    protected var featuresPerLayer: Int = _
+
+    @Param(Array("4096", "256", "32"))
+    protected var batchSize: Int = _
+
+  }
+
+  @Threads(value = Threads.MAX)
+  @State(Scope.Benchmark)
+  class Nd4jMultiLayerNetwork extends MultiLayerNetworkState with TensorState {
+
+    @transient
+    private lazy val input = Nd4j.randn(Array(batchSize, featuresPerLayer))
+
+    @transient
+    private lazy val weights = Seq.fill(numberOfLayers)(Nd4j.randn(Array(featuresPerLayer, featuresPerLayer)))
+
+    @Benchmark
+    final def nd4jMultiLayerNetworkBenchmark(): Array[Float] = {
+      weights
+        .foldLeft(input) { (input, weight) =>
+          Transforms.tanh(input.mmul(weight))
+        }
+        .data()
+        .asFloat()
+    }
+  }
+  @Threads(value = Threads.MAX)
+  @State(Scope.Benchmark)
+  class TensorMultiLayerNetwork extends MultiLayerNetworkState with TensorState {
+    trait Benchmarks extends BenchmarkTensors {
+
+      protected val numberOfCommandQueuesPerDevice: Int = 2
+
+      def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
+        val Array(i, j) = matrix1.shape
+        val Array(`j`, k) = matrix2.shape
+        val product = matrix1.broadcast(Array(i, j, k)) * matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
+
+        product.unzip(1).reduce(_ + _)
+
+      }
+
+      def doBenchmark(): Do[() => Array[Float]] = {
+        val weights = Seq.fill(numberOfLayers) {
+          Tensor.randomNormal(Array(featuresPerLayer, featuresPerLayer))
+        }
+        val input = Tensor.randomNormal(Array(batchSize, featuresPerLayer))
+
+        input.doBuffer.map { _ =>
+          { () =>
+            weights
+              .foldLeft(input) { (input, weight) =>
+                Tensor.tanh(matrixMultiply(input, weight))
+              }
+              .flatArray
+              .run
+              .blockingAwait
+          }
+        }
+      }
+    }
+
+    private var benchmarkResouce: Resource[UnitContinuation, Try[() => Array[Float]]] = _
+
+    @Setup
+    final def setup(): Unit = {
+      //      Configuration.OPENCL_LIBRARY_NAME.set("/opt/pocl-1.1/lib/libOpenCL.dylib")
+      assert(benchmarkResouce == null)
+      val Do(TryT(ResourceT(resourceContinuation))) =
+        Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
+      benchmarkResouce = resourceContinuation.blockingAwait()
+    }
+
+    @TearDown(Level.Trial)
+    final def tearDown(): Unit = {
+      val benchmarkResouce = this.benchmarkResouce
+      this.benchmarkResouce = null
+      benchmarkResouce.release.blockingAwait
+    }
+
+    @Benchmark
+    final def tensorMultiLayerNetworkBenchmark(): Array[Float] = {
+      benchmarkResouce.value.get.apply()
+    }
+
+  }
+
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
   class Nd4jTanh extends TanhState {
 
     @transient
     private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
-    private def tanh(x: INDArray): INDArray = {
-      val expX = Transforms.exp(x)
-      expX.div(expX.add(1.0))
-    }
+
     @Benchmark
     final def nd4jTanhBenchmark(): Array[Float] = {
       (0 until numberOfIterations)
