@@ -36,6 +36,7 @@ object benchmarks {
         with OpenCL.GlobalExecutionContext
         with OpenCL.CommandQueuePool
         with OpenCL.DontReleaseEventTooEarly
+        with OpenCL.SynchronizedCreatingKernel
         with Tensors.WangHashingRandomNumberGenerator {
       @transient
       protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
