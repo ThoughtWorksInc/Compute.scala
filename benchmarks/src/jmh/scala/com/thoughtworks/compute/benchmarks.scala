@@ -173,10 +173,7 @@ object benchmarks {
 
     @transient
     private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
-    private def tanh(x: INDArray): INDArray = {
-      val expX = Transforms.exp(x)
-      expX.div(expX.add(1.0))
-    }
+
     @Benchmark
     final def nd4jTanhBenchmark(): Array[Float] = {
       (0 until numberOfIterations)
