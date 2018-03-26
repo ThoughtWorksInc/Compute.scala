@@ -293,6 +293,29 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     .run
     .toScalaFuture
 
+  "matrix multiplication" in doTensors
+    .map { tensors =>
+      import tensors._
+
+      def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
+        val Array(i, j) = matrix1.shape
+        val Array(`j`, k) = matrix2.shape
+        val product = matrix1.broadcast(Array(i, j, k)) * matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
+
+        product.unzip(1).reduce(_ + _)
+
+      }
+
+      val matrix1 = Tensor(Array(Array(1.0f, 2.0f, 3.0f), Array(4.0f, 5.0f, 6.0f)))
+      val matrix2 = Tensor(
+        Array(Array(7.0f, 8.0f, 9.0f, 10.0f), Array(11.0f, 12.0f, 13.0f, 14.0f), Array(15.0f, 16.0f, 17.0f, 18.0f)))
+
+      matrixMultiply(matrix1, matrix2).toString should be("[[74.0,80.0,86.0,92.0],[173.0,188.0,203.0,218.0]]")
+
+    }
+    .run
+    .toScalaFuture
+
   "broadcast" in doTensors
     .map { tensors =>
       import tensors._
@@ -303,4 +326,33 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     }
     .run
     .toScalaFuture
+
+  "unrolled matrix multiplication" in doTensors
+    .map { tensors =>
+      import tensors._
+
+      def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
+
+        val columns1 = matrix1.unzip(1)
+
+        Tensor.zip(matrix2.unzip(1).map { column2: Tensor =>
+          (columns1 zip column2.unzip(0))
+            .map {
+              case (l: Tensor, r: Tensor) =>
+                l * r.broadcast(l.shape)
+            }
+            .reduce[Tensor](_ + _)
+        })
+      }
+
+      matrixMultiply(
+        Tensor(Array(Array(1.0f, 2.0f, 3.0f), Array(4.0f, 5.0f, 6.0f))),
+        Tensor(
+          Array(Array(7.0f, 8.0f, 9.0f, 10.0f), Array(11.0f, 12.0f, 13.0f, 14.0f), Array(15.0f, 16.0f, 17.0f, 18.0f)))
+      ).toString should be("[[74.0,80.0,86.0,92.0],[173.0,188.0,203.0,218.0]]")
+
+    }
+    .run
+    .toScalaFuture
+
 }
