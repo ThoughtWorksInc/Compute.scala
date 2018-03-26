@@ -293,4 +293,14 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     .run
     .toScalaFuture
 
+  "broadcast" in doTensors
+    .map { tensors =>
+      import tensors._
+
+      val matrix1 = Tensor(Array(Array(1.0f, 2.0f, 3.0f), Array(4.0f, 5.0f, 6.0f)))
+      matrix1.broadcast(Array(2, 3, 4)).toString should be(
+        "[[[1.0,1.0,1.0,1.0],[2.0,2.0,2.0,2.0],[3.0,3.0,3.0,3.0]],[[4.0,4.0,4.0,4.0],[5.0,5.0,5.0,5.0],[6.0,6.0,6.0,6.0]]]")
+    }
+    .run
+    .toScalaFuture
 }
