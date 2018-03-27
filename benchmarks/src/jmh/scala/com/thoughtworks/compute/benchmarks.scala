@@ -117,12 +117,15 @@ object benchmarks {
       protected val numberOfCommandQueuesPerDevice: Int = 2
 
       def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
-        val Array(i, j) = matrix1.shape
-        val Array(`j`, k) = matrix2.shape
-        val product = matrix1.broadcast(Array(i, j, k)) * matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
-
-        product.unzip(1).reduce(_ + _)
-
+        val columns1 = matrix1.unzip(1)
+        Tensor.zip(matrix2.unzip(1).map { column2: Tensor =>
+          (columns1 zip column2.unzip(0))
+            .map {
+              case (l: Tensor, r: Tensor) =>
+                l * r.broadcast(l.shape)
+            }
+            .reduce[Tensor](_ + _)
+        })
       }
 
       def doBenchmark(): Do[() => Array[Float]] = {
