@@ -369,6 +369,9 @@ object OpenCL {
     *       Intel's and AMD's OpenCL implementation.
     */
   trait HandleEventInExecutionContext extends OpenCL {
+
+    // FIXME: this plug-in will cause Nvidia OpenCL hang up. Need investigation.
+
     val executionContext: ExecutionContext
 
     override protected def waitForStatus(event: Event, callbackType: Status): UnitContinuation[Status] =
