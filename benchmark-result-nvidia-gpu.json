@@ -18842,7 +18842,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -19128,7 +19128,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -19408,7 +19408,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -19694,7 +19694,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -19978,7 +19978,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -20262,7 +20262,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -20544,7 +20544,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -20826,7 +20826,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -21110,7 +21110,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -21392,7 +21392,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -21736,7 +21736,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -22080,7 +22080,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -22424,7 +22424,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -22768,7 +22768,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -23112,7 +23112,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -23456,7 +23456,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -23800,7 +23800,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -24144,7 +24144,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorRandomNormal.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.RandomNormal.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -24488,7 +24488,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -24762,7 +24762,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -25033,7 +25033,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -25307,7 +25307,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -25587,7 +25587,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -25869,7 +25869,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -26097,7 +26097,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -26381,7 +26381,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -26655,7 +26655,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.computeDotScala",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.computeDotScala",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -26929,7 +26929,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -27273,7 +27273,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -27617,7 +27617,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -27961,7 +27961,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -28305,7 +28305,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -28649,7 +28649,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -28993,7 +28993,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -29348,7 +29348,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
@@ -29692,7 +29692,7 @@
     },
     {
         "jmhVersion" : "1.19",
-        "benchmark" : "com.thoughtworks.compute.benchmarks.TensorSum.nd4j",
+        "benchmark" : "com.thoughtworks.compute.benchmarks.Sum.nd4j",
         "mode" : "thrpt",
         "threads" : 12,
         "forks" : 1,
