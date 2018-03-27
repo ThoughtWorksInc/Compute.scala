@@ -74,41 +74,36 @@ object benchmarks {
     }
   }
 
-  trait MultiLayerNetworkState {
-    @Param(Array("100", "10", "1"))
-    protected var numberOfLayers: Int = _
+  trait MatrixMultiplicationState {
+    @Param(Array("8", "16", "32"))
+    protected var inputDepth: Int = _
 
-    @Param(Array("10", "20", "30"))
-    protected var featuresPerLayer: Int = _
+    @Param(Array("8", "16", "32"))
+    protected var outputDepth: Int = _
 
-    @Param(Array("4096", "256", "32"))
+    @Param(Array("65536", "4096", "256", "32"))
     protected var batchSize: Int = _
 
   }
 
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
-  class Nd4jMultiLayerNetwork extends MultiLayerNetworkState with TensorState {
+  class Nd4jMatrixMultiplication extends MatrixMultiplicationState with TensorState {
 
     @transient
-    private lazy val input = Nd4j.randn(Array(batchSize, featuresPerLayer))
+    private lazy val input = Nd4j.randn(Array(batchSize, inputDepth))
 
     @transient
-    private lazy val weights = Seq.fill(numberOfLayers)(Nd4j.randn(Array(featuresPerLayer, featuresPerLayer)))
+    private lazy val weight = Nd4j.randn(Array(inputDepth, outputDepth))
 
     @Benchmark
-    final def nd4jMultiLayerNetworkBenchmark(): Array[Float] = {
-      weights
-        .foldLeft(input) { (input, weight) =>
-          Transforms.tanh(input.mmul(weight))
-        }
-        .data()
-        .asFloat()
+    final def nd4jMatrixMultiplicationBenchmark(): Array[Float] = {
+      input.mmul(weight).data().asFloat()
     }
   }
   @Threads(value = Threads.MAX)
   @State(Scope.Benchmark)
-  class TensorMultiLayerNetwork extends MultiLayerNetworkState with TensorState {
+  class TensorMatrixMultiplication extends MatrixMultiplicationState with TensorState {
     trait Benchmarks extends BenchmarkTensors {
 
       protected val numberOfCommandQueuesPerDevice: Int = 2
@@ -123,20 +118,15 @@ object benchmarks {
       }
 
       def doBenchmark(): Do[() => Array[Float]] = {
-        val weights = Seq.fill(numberOfLayers) {
-          Tensor.randomNormal(Array(featuresPerLayer, featuresPerLayer))
-        }
-        val input = Tensor.randomNormal(Array(batchSize, featuresPerLayer))
+        val weight: BufferedTensor = Tensor.randomNormal(Array(inputDepth, outputDepth))
 
-        input.doBuffer.map { _ =>
-          { () =>
-            weights
-              .foldLeft(input) { (input, weight) =>
-                Tensor.tanh(matrixMultiply(input, weight))
-              }
-              .flatArray
-              .run
-              .blockingAwait
+        val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, inputDepth))
+
+        weight.doBuffer.flatMap { _ =>
+          input.doBuffer.map { _ =>
+            { () =>
+              matrixMultiply(input, weight).flatArray.run.blockingAwait
+            }
           }
         }
       }
@@ -161,9 +151,21 @@ object benchmarks {
     }
 
     @Benchmark
-    final def tensorMultiLayerNetworkBenchmark(): Array[Float] = {
+    final def tensorMatrixMultiplicationBenchmark(): Array[Float] = {
       benchmarkResouce.value.get.apply()
     }
+
+  }
+
+  trait MultiLayerNetworkState {
+    @Param(Array("100", "10", "1"))
+    protected var numberOfLayers: Int = _
+
+    @Param(Array("10", "20", "30"))
+    protected var featuresPerLayer: Int = _
+
+    @Param(Array("100000", "4096", "256", "32"))
+    protected var batchSize: Int = _
 
   }
 
@@ -267,7 +269,7 @@ object benchmarks {
       protected val numberOfCommandQueuesPerDevice: Int = 2
 
       def doBenchmark(): Do[() => Float] = {
-        val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
+        val input: BufferedTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
         input.doBuffer.map { _ =>
           { () =>
@@ -415,7 +417,7 @@ object benchmarks {
       protected val numberOfCommandQueuesPerDevice = 2
 
       def doBenchmark(): Do[() => Array[Float]] = {
-        val input = Tensor.randomNormal(Array(batchSize, imageHeight, imageWidth, depth))
+        val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, imageHeight, imageWidth, depth))
         val layers = (for (i <- (0 until numberOfLayers).view) yield {
           ConvolutionalLayer(weight = Tensor.randomNormal(Array(kernelHeight, kernelWidth, depth, depth)),
                              bias = Tensor.randomNormal(Array(depth)))
@@ -495,7 +497,7 @@ object benchmarks {
   }
 
   trait ConvolutionTensors extends Tensors {
-    final case class ConvolutionalLayer(weight: Tensor, bias: Tensor) {
+    final case class ConvolutionalLayer(weight: BufferedTensor, bias: BufferedTensor) {
       def forward(input: Tensor): Tensor = {
         convolute(input, weight, bias)
       }
