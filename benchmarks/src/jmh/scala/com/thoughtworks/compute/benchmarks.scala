@@ -76,13 +76,13 @@ object benchmarks {
   }
 
   trait MatrixMultiplicationState {
-    @Param(Array("8", "16", "32"))
+    @Param(Array("8", "32"))
     protected var inputDepth: Int = _
 
-    @Param(Array("8", "16", "32"))
+    @Param(Array("8", "32"))
     protected var outputDepth: Int = _
 
-    @Param(Array("65536", "4096", "256", "32"))
+    @Param(Array("65536", "4096", "32"))
     protected var batchSize: Int = _
 
   }
@@ -319,7 +319,7 @@ object benchmarks {
     @Param(Array("3", "2", "1"))
     protected var numberOfDimensions: Int = _
 
-    @Param(Array("128", "64", "32", "16"))
+    @Param(Array("128", "32", "16"))
     protected var size: Int = _
   }
 
@@ -375,7 +375,7 @@ object benchmarks {
     @Param(Array("3", "2", "1"))
     protected var numberOfDimensions: Int = _
 
-    @Param(Array("128", "64", "32", "16"))
+    @Param(Array("128", "32", "16"))
     protected var size: Int = _
 
   }
@@ -496,25 +496,24 @@ object benchmarks {
   }
 
   trait ConvolutionState {
-    @Param(Array("5", "1", "2", "10"))
+    @Param(Array("1", "10"))
     protected var numberOfLayers: Int = _
 
-    @Param(Array("3", "1"))
+    @Param(Array("3"))
     protected var kernelWidth: Int = _
 
-    @Param(Array("3", "1"))
+    @Param(Array("3"))
     protected var kernelHeight: Int = _
 
-    @Param(Array("32", "64"))
-    protected var imageHeight: Int = _
-
-    @Param(Array("32", "64"))
+    @Param(Array("32", "128"))
     protected var imageWidth: Int = _
 
-    @Param(Array("32", "64"))
+    protected def imageHeight: Int = imageWidth
+
+    @Param(Array("32", "128"))
     protected var batchSize: Int = _
 
-    @Param(Array("3", "10", "20"))
+    @Param(Array("8", "32"))
     protected var depth: Int = _
 
   }
