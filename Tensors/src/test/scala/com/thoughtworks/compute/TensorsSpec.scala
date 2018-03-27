@@ -49,9 +49,9 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         floatBuffer.position() should be(0)
         floatBuffer.limit() should be(shape.product)
         floatBuffer.capacity() should be(shape.product)
-        tensors.kernelCache.getIfPresent(filled.closure) should not be null
+        tensors.kernelCache.getIfPresent(filled.getClosure) should not be null
         val zeros2 = tensors.Tensor.fill(element, shape)
-        tensors.kernelCache.getIfPresent(zeros2.closure) should not be null
+        tensors.kernelCache.getIfPresent(zeros2.getClosure) should not be null
       }
     }
   }.run.toScalaFuture

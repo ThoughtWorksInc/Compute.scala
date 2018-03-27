@@ -419,7 +419,8 @@ trait Tensors extends OpenCL {
       program
     }
 
-    def apply[A](elements: A, padding: Float = 0.0f)(implicit tensorBuilder: TensorBuilder.Aux[A, Float]) = {
+    def apply[A](elements: A, padding: Float = 0.0f)(
+        implicit tensorBuilder: TensorBuilder.Aux[A, Float]): BufferedTensor = {
       val padding0 = padding
       new {
         val shape: Array[Int] = tensorBuilder.shape(elements).toArray
@@ -438,11 +439,11 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def scalar(value: Float, padding: Float = 0.0f): Tensor = {
+    def scalar(value: Float, padding: Float = 0.0f): InlineTensor = {
       fill(value, Tensors.ScalarShape, padding)
     }
 
-    def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f): Tensor = {
+    def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f): InlineTensor = {
       val padding0 = padding
       new {
         val padding: Float = padding0
@@ -451,7 +452,7 @@ trait Tensors extends OpenCL {
       } with InlineTensor
     }
 
-    def random(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): Tensor = {
+    def random(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): BufferedTensor = {
       val shape0 = shape
       val padding0 = padding
       new {
@@ -472,7 +473,7 @@ trait Tensors extends OpenCL {
     }
 
     /** Generate random numbers in normal distribution. */
-    def randomNormal(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): Tensor = {
+    def randomNormal(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): BufferedTensor = {
       val shape0 = shape
       val padding0 = padding
       new {
@@ -498,27 +499,27 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def abs(leftHandSide: Tensor): Tensor = {
+    def abs(leftHandSide: Tensor): InlineTensor = {
       leftHandSide.derivedTensor(trees.float.abs(leftHandSide.closure.asInstanceOf[FloatTerm]))
     }
 
-    def sqrt(leftHandSide: Tensor): Tensor = {
+    def sqrt(leftHandSide: Tensor): InlineTensor = {
       leftHandSide.derivedTensor(trees.float.sqrt(leftHandSide.closure.asInstanceOf[FloatTerm]))
     }
 
-    def tanh(leftHandSide: Tensor): Tensor = {
+    def tanh(leftHandSide: Tensor): InlineTensor = {
       leftHandSide.derivedTensor(trees.float.tanh(leftHandSide.closure.asInstanceOf[FloatTerm]))
     }
 
-    def exp(leftHandSide: Tensor): Tensor = {
+    def exp(leftHandSide: Tensor): InlineTensor = {
       leftHandSide.derivedTensor(trees.float.exp(leftHandSide.closure.asInstanceOf[FloatTerm]))
     }
 
-    def log(leftHandSide: Tensor): Tensor = {
+    def log(leftHandSide: Tensor): InlineTensor = {
       leftHandSide.derivedTensor(trees.float.log(leftHandSide.closure.asInstanceOf[FloatTerm]))
     }
 
-    def min(leftHandSide: Tensor, rightHandSide: Tensor): Tensor = {
+    def min(leftHandSide: Tensor, rightHandSide: Tensor): InlineTensor = {
       def newClosure =
         trees.float.min(leftHandSide.closure.asInstanceOf[FloatTerm], rightHandSide.closure.asInstanceOf[FloatTerm])
       if (java.util.Arrays.equals(leftHandSide.shape, rightHandSide.shape)) {
@@ -528,7 +529,7 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def max(leftHandSide: Tensor, rightHandSide: Tensor): Tensor = {
+    def max(leftHandSide: Tensor, rightHandSide: Tensor): InlineTensor = {
       def newClosure =
         trees.float.max(leftHandSide.closure.asInstanceOf[FloatTerm], rightHandSide.closure.asInstanceOf[FloatTerm])
       if (java.util.Arrays.equals(leftHandSide.shape, rightHandSide.shape)) {
@@ -556,8 +557,8 @@ trait Tensors extends OpenCL {
       } with BufferedTensor {
         val doBuffer = {
           val elements = tensors.map(_.closure)
-          enqueueClosure(trees.tuple.zip(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]].shared
-        }
+          enqueueClosure(trees.tuple.zip(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]]
+        }.shared
       }
     }
 
@@ -567,7 +568,7 @@ trait Tensors extends OpenCL {
 
     def toBufferedTensor: BufferedTensor
 
-    private def reduce(programs: MonoidPrograms): Tensor = {
+    private def reduce(programs: MonoidPrograms): BufferedTensor = {
       new {
         val padding: Float = thisTensor.padding
 
@@ -655,8 +656,8 @@ trait Tensors extends OpenCL {
                 EventBuffer[Float](outputBuffer, stage2Event)
               }
             }
-          }.shared
-        }
+          }
+        }.shared
       } with BufferedTensor {
         def shape: Array[Int] = Tensors.ScalarShape
       }
@@ -701,7 +702,7 @@ trait Tensors extends OpenCL {
         .blockingAwait
     }
 
-    def broadcast(newShape: Array[Int]): Tensor = {
+    def broadcast(newShape: Array[Int]): TransformedTensor = {
       val newLength = newShape.length
       val length = shape.length
       val matrix1 = Array.ofDim[Double]((newLength + 1) * length)
@@ -733,7 +734,7 @@ trait Tensors extends OpenCL {
       } with InlineTensor
     }
 
-    def reshape(newShape: Array[Int]): Tensor = {
+    def reshape(newShape: Array[Int]): BufferedTensor = {
       if (newShape.product != shape.product) {
         throw new IllegalArgumentException
       }
@@ -744,13 +745,13 @@ trait Tensors extends OpenCL {
       } with BufferedTensor
     }
 
-    def unary_- : Tensor = {
+    def unary_- : InlineTensor = {
       derivedTensor(closure.asInstanceOf[FloatTerm].unary_-)
     }
 
-    def unary_+ : Tensor = this
+    def unary_+ : this.type = this
 
-    def *(rightHandSide: Tensor): Tensor = {
+    def *(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] * rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
         derivedTensor(newClosure)
@@ -759,7 +760,7 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def +(rightHandSide: Tensor): Tensor = {
+    def +(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] + rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
         derivedTensor(newClosure)
@@ -768,7 +769,7 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def -(rightHandSide: Tensor): Tensor = {
+    def -(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] - rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
         derivedTensor(newClosure)
@@ -777,7 +778,7 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def /(rightHandSide: Tensor): Tensor = {
+    def /(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] / rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
         derivedTensor(newClosure)
@@ -786,7 +787,7 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def %(rightHandSide: Tensor): Tensor = {
+    def %(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] % rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
         derivedTensor(newClosure)
@@ -795,7 +796,7 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def scale(newShape: Array[Int]): Tensor = {
+    def scale(newShape: Array[Int]): TransformedTensor = {
       val length = newShape.length
       if (length != shape.length) {
         throw new IllegalArgumentException
@@ -812,7 +813,7 @@ trait Tensors extends OpenCL {
       transform(newShape, matrix1)
     }
 
-    def translate(offset: Array[Double], newShape: Array[Int] = shape): Tensor = {
+    def translate(offset: Array[Double], newShape: Array[Int] = shape): TransformedTensor = {
       if (offset.length != thisTensor.shape.length) {
         throw new IllegalArgumentException
       }
@@ -904,11 +905,13 @@ trait Tensors extends OpenCL {
       }
     }
 
-    //    def debuggingInformation: Implicitly[DebuggingInformation]
-
     def shape: Array[Int]
 
-    val closure: FloatTerm // FIXME: Allow element types other than float
+    protected val closure: FloatTerm // FIXME: Allow element types other than float
+
+    /** The back door to access [[closure]] for test purpose only.
+      */
+    private[compute] def getClosure = closure
 
     def doBuffer: Do[PendingBuffer[closure.JvmValue]]
 
@@ -918,7 +921,8 @@ trait Tensors extends OpenCL {
 
     def padding: Float
 
-    @transient lazy val arrayTerm = {
+    @transient
+    private[Tensors] lazy val arrayTerm = {
       if (shape == null) {
         throw new IllegalArgumentException
       }
@@ -1041,10 +1045,10 @@ trait Tensors extends OpenCL {
     *       the computation for the tensor may be evaluated more than once.
     * @see [[buffered]] to create a tensor that will cache the result.
     */
-  protected trait InlineTensor extends Tensor { thisInlineTensor =>
+  trait InlineTensor extends Tensor { thisInlineTensor =>
     val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
-      enqueueClosure(closure, shape).shared
-    }
+      enqueueClosure(closure, shape)
+    }.shared
 
     def toBufferedTensor: BufferedTensor =
       new {
@@ -1054,7 +1058,7 @@ trait Tensors extends OpenCL {
       } with BufferedTensor
   }
 
-  protected trait TransformedTensor extends InlineTensor {
+  trait TransformedTensor extends InlineTensor {
 
     def checkpoint: Tensor
 
@@ -1064,7 +1068,8 @@ trait Tensors extends OpenCL {
       */
     def matrix: MatrixData
 
-    @transient lazy val closure: FloatTerm = {
+    @transient
+    protected lazy val closure: FloatTerm = {
       checkpoint.arrayTerm.transform(matrix).extract
     }
 
@@ -1074,8 +1079,8 @@ trait Tensors extends OpenCL {
 
     def toBufferedTensor: BufferedTensor = this
 
-    // TODO: Allow other types
-    @transient lazy val closure: FloatTerm = {
+    @transient
+    protected lazy val closure = {
       arrayTerm.extract
     }
   }
