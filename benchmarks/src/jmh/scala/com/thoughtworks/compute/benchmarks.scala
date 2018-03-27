@@ -39,6 +39,7 @@ object benchmarks {
         with OpenCL.SynchronizedCreatingKernel
         with OpenCL.HandleEventInExecutionContext
         with Tensors.WangHashingRandomNumberGenerator {
+
       @transient
       protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
         val deviceType = classOf[CL10].getField(s"CL_DEVICE_TYPE_$tensorDeviceType").get(null).asInstanceOf[Int]
@@ -87,6 +88,9 @@ object benchmarks {
   }
 
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jMatrixMultiplication extends MatrixMultiplicationState with TensorState {
 
@@ -101,7 +105,11 @@ object benchmarks {
       input.mmul(weight).data().asFloat()
     }
   }
+
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class TensorMatrixMultiplication extends MatrixMultiplicationState with TensorState {
     trait Benchmarks extends BenchmarkTensors {
@@ -170,6 +178,9 @@ object benchmarks {
   }
 
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jTanh extends TanhState {
 
@@ -189,6 +200,9 @@ object benchmarks {
   }
 
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class TensorTanh extends TanhState with TensorState {
     trait Benchmarks extends BenchmarkTensors {
@@ -201,7 +215,7 @@ object benchmarks {
         input.doBuffer.map { _ =>
           { () =>
             (0 until numberOfIterations)
-              .foldLeft(input) { (input, _) =>
+              .foldLeft[Tensor](input) { (input, _) =>
                 Tensor.tanh(input)
               }
               .flatArray
@@ -216,7 +230,6 @@ object benchmarks {
 
     @Setup
     final def setup(): Unit = {
-//      Configuration.OPENCL_LIBRARY_NAME.set("/opt/pocl-1.1/lib/libOpenCL.dylib")
       assert(benchmarkResouce == null)
       val Do(TryT(ResourceT(resourceContinuation))) =
         Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
@@ -241,13 +254,17 @@ object benchmarks {
     @Param(Array("100", "10", "1"))
     protected var numberOfIterations: Int = _
 
-    @Param(Array("2", "3", "1"))
+    @Param(Array("2", "3"))
     protected var numberOfDimensions: Int = _
 
-    @Param(Array("128", "64", "32", "16"))
+    @Param(Array("128", "32"))
     protected var size: Int = _
   }
+
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jSum extends SumState {
 
@@ -262,6 +279,9 @@ object benchmarks {
   }
 
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class TensorSum extends SumState with TensorState {
     trait Benchmarks extends BenchmarkTensors {
@@ -313,6 +333,9 @@ object benchmarks {
   }
 
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jRandomNormal extends RandomNormalState {
 
@@ -323,6 +346,9 @@ object benchmarks {
   }
 
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class TensorRandomNormal extends RandomNormalState with TensorState {
     trait Benchmarks extends BenchmarkTensors {
@@ -364,6 +390,9 @@ object benchmarks {
   }
 
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jConvolution extends ConvolutionState {
 
@@ -409,6 +438,9 @@ object benchmarks {
   }
 
   @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Fork(1)
   @State(Scope.Benchmark)
   class TensorConvolution extends ConvolutionState with TensorState {
 
@@ -435,7 +467,7 @@ object benchmarks {
             }
             .map { _ => () =>
               layers
-                .foldLeft(input) { (input, layer) =>
+                .foldLeft[Tensor](input) { (input, layer) =>
                   layer.forward(input)
                 }
                 .flatArray
