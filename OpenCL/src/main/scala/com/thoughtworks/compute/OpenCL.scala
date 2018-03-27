@@ -1048,7 +1048,7 @@ object OpenCL {
 
 }
 
-trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton with DefaultCloseable {
+trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
   import OpenCL._
 
   protected def createKernels(program: Program): Seq[Kernel] = {
@@ -1301,10 +1301,6 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with ImplicitsSingleton 
       stack.close()
     }
   }
-  trait ImplicitsApi {}
-  type Implicits <: ImplicitsApi
-
-  val implicits: Implicits
 
   type DeviceBuffer[Element] = OpenCL.DeviceBuffer[this.type, Element]
 
