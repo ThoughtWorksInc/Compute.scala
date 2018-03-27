@@ -27,7 +27,7 @@ import scala.util.Try
 object benchmarks {
 
   trait TensorState {
-    @Param(Array("CPU", "GPU"))
+    @Param(Array("GPU"))
     protected var tensorDeviceType: String = _
 
     trait BenchmarkTensors
@@ -37,9 +37,7 @@ object benchmarks {
         with OpenCL.LogContextNotification
         with OpenCL.GlobalExecutionContext
         with OpenCL.CommandQueuePool
-        with OpenCL.DontReleaseEventTooEarly
         with OpenCL.SynchronizedCreatingKernel
-        with OpenCL.HandleEventInExecutionContext
         with Tensors.WangHashingRandomNumberGenerator {
 
       @transient
