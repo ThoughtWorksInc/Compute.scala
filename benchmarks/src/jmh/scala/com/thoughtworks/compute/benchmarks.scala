@@ -236,7 +236,7 @@ object benchmarks {
   @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
-  class TensorSum extends TensorState {
+  class Sum extends TensorState {
 
     @transient
     private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
@@ -297,7 +297,7 @@ object benchmarks {
   @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
-  class TensorRandomNormal extends TensorState {
+  class RandomNormal extends TensorState {
 
     @Param(Array("3", "2", "1"))
     protected var numberOfDimensions: Int = _
