@@ -403,11 +403,11 @@ object benchmarks {
 
     @transient
     private lazy val layers = (for (i <- (0 until numberOfLayers).view) yield {
-      (Nd4j.randn(Array(kernelHeight, kernelWidth, depth, depth)), Nd4j.randn(Array(depth)))
+      (Nd4j.randn(Array(depth, kernelHeight, kernelWidth, depth)), Nd4j.randn(Array(depth)))
     }).toList
 
-    private def conv2d(input: INDArray /* batchSize × height × width × depth */,
-                       weight: INDArray /* kernelHeight × kernelWidth × depth × filterSize */,
+    private def conv2d(input: INDArray /* batchSize × depth × height × width */,
+                       weight: INDArray /* filterSize × kernelHeight × kernelWidth × depth */,
                        bias: INDArray): INDArray = {
       val Array(numberOfImages, depth, height, width) = input.shape()
 
