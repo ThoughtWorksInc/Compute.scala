@@ -508,14 +508,15 @@ object benchmarks {
   }
 
   trait ConvolutionState {
-    @Param(Array("5", "1"))
+
+    // ND4J is too slow when increasing the number of layers.
+    @Param(Array("1"))
     protected var numberOfLayers: Int = _
 
     @Param(Array("3", "1"))
     protected var kernelWidth: Int = _
 
-    @Param(Array("3", "1"))
-    protected var kernelHeight: Int = _
+    protected def kernelHeight: Int = kernelWidth
 
     @Param(Array("32"))
     protected var imageHeight: Int = _
