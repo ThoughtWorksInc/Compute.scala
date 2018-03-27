@@ -1,5 +1,7 @@
 package com.thoughtworks.compute
 
+import java.util.concurrent.TimeUnit
+
 import com.thoughtworks.compute.OpenCL.Exceptions.DeviceNotFound
 import com.thoughtworks.compute.benchmarks.RandomNormalState
 import com.thoughtworks.feature.Factory
@@ -90,6 +92,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jMatrixMultiplication extends MatrixMultiplicationState with TensorState {
@@ -109,6 +112,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class TensorMatrixMultiplication extends MatrixMultiplicationState with TensorState {
@@ -171,6 +175,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jTanh extends TanhState {
@@ -193,6 +198,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class TensorTanh extends TanhState with TensorState {
@@ -255,6 +261,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jSum extends SumState {
@@ -272,6 +279,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class TensorSum extends SumState with TensorState {
@@ -326,6 +334,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jRandomNormal extends RandomNormalState {
@@ -339,6 +348,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class TensorRandomNormal extends RandomNormalState with TensorState {
@@ -383,6 +393,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class Nd4jConvolution extends ConvolutionState {
@@ -431,6 +442,7 @@ object benchmarks {
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
   class TensorConvolution extends ConvolutionState with TensorState {
