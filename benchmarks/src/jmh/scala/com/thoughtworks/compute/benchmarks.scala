@@ -3,7 +3,6 @@ package com.thoughtworks.compute
 import java.util.concurrent.TimeUnit
 
 import com.thoughtworks.compute.OpenCL.Exceptions.DeviceNotFound
-import com.thoughtworks.compute.benchmarks.RandomNormalState
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
 import com.thoughtworks.continuation._
@@ -11,8 +10,7 @@ import com.thoughtworks.raii.asynchronous._
 import com.thoughtworks.raii.covariant._
 import com.thoughtworks.tryt.covariant._
 import com.typesafe.scalalogging.StrictLogging
-import org.lwjgl.opencl.{CL10, CLCapabilities}
-import org.lwjgl.system.Configuration
+import org.lwjgl.opencl.CL10
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.convolution.Convolution
 import org.nd4j.linalg.factory.Nd4j
@@ -21,7 +19,6 @@ import org.openjdk.jmh.annotations._
 import scalaz.syntax.all._
 import scalaz.std.list._
 
-import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 object benchmarks {
@@ -75,7 +72,13 @@ object benchmarks {
     }
   }
 
-  trait MatrixMultiplicationState {
+  @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
+  @Fork(1)
+  @State(Scope.Benchmark)
+  class MatrixMultiplication extends TensorState {
     @Param(Array("8", "32"))
     protected var inputDepth: Int = _
 
@@ -85,16 +88,6 @@ object benchmarks {
     @Param(Array("65536", "4096", "32"))
     protected var batchSize: Int = _
 
-  }
-
-  @Threads(value = Threads.MAX)
-  @Warmup(iterations = 5)
-  @Measurement(iterations = 5)
-  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
-  @Fork(1)
-  @State(Scope.Benchmark)
-  class Nd4jMatrixMultiplication extends MatrixMultiplicationState with TensorState {
-
     @transient
     private lazy val input = Nd4j.randn(Array(batchSize, inputDepth))
 
@@ -102,18 +95,10 @@ object benchmarks {
     private lazy val weight = Nd4j.randn(Array(inputDepth, outputDepth))
 
     @Benchmark
-    final def nd4jMatrixMultiplicationBenchmark(): Array[Float] = {
+    final def nd4j(): Array[Float] = {
       input.mmul(weight).data().asFloat()
     }
-  }
 
-  @Threads(value = Threads.MAX)
-  @Warmup(iterations = 5)
-  @Measurement(iterations = 5)
-  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
-  @Fork(1)
-  @State(Scope.Benchmark)
-  class TensorMatrixMultiplication extends MatrixMultiplicationState with TensorState {
     trait Benchmarks extends BenchmarkTensors {
 
       protected val numberOfCommandQueuesPerDevice: Int = 2
@@ -145,29 +130,28 @@ object benchmarks {
       }
     }
 
-    private var benchmarkResouce: Resource[UnitContinuation, Try[() => Array[Float]]] = _
+    private var benchmarkResource: Resource[UnitContinuation, Try[() => Array[Float]]] = _
 
     @Setup
     final def setup(): Unit = {
       //      Configuration.OPENCL_LIBRARY_NAME.set("/opt/pocl-1.1/lib/libOpenCL.dylib")
-      assert(benchmarkResouce == null)
+      assert(benchmarkResource == null)
       val Do(TryT(ResourceT(resourceContinuation))) =
         Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
-      benchmarkResouce = resourceContinuation.blockingAwait()
+      benchmarkResource = resourceContinuation.blockingAwait()
     }
 
     @TearDown(Level.Trial)
     final def tearDown(): Unit = {
-      val benchmarkResouce = this.benchmarkResouce
-      this.benchmarkResouce = null
-      benchmarkResouce.release.blockingAwait
+      val benchmarkResource = this.benchmarkResource
+      this.benchmarkResource = null
+      benchmarkResource.release.blockingAwait
     }
 
     @Benchmark
-    final def tensorMatrixMultiplicationBenchmark(): Array[Float] = {
-      benchmarkResouce.value.get.apply()
+    final def computeDotScala(): Array[Float] = {
+      benchmarkResource.value.get.apply()
     }
-
   }
 
   @Threads(value = Threads.MAX)
@@ -176,13 +160,13 @@ object benchmarks {
   @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
-  class Nd4jTanh extends TanhState {
+  class Tanh extends TensorState {
 
     @transient
     private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
 
     @Benchmark
-    final def nd4jTanhBenchmark(): Array[Float] = {
+    final def nd4j(): Array[Float] = {
       (0 until numberOfIterations)
         .foldLeft(input) { (input, _) =>
           Transforms.tanh(input)
@@ -191,15 +175,6 @@ object benchmarks {
         .asFloat()
     }
 
-  }
-
-  @Threads(value = Threads.MAX)
-  @Warmup(iterations = 5)
-  @Measurement(iterations = 5)
-  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
-  @Fork(1)
-  @State(Scope.Benchmark)
-  class TensorTanh extends TanhState with TensorState {
     trait Benchmarks extends BenchmarkTensors {
 
       protected val numberOfCommandQueuesPerDevice: Int = 2
@@ -221,31 +196,28 @@ object benchmarks {
       }
     }
 
-    private var benchmarkResouce: Resource[UnitContinuation, Try[() => Array[Float]]] = _
+    private var benchmarkResource: Resource[UnitContinuation, Try[() => Array[Float]]] = _
 
     @Setup
     final def setup(): Unit = {
-      assert(benchmarkResouce == null)
+      assert(benchmarkResource == null)
       val Do(TryT(ResourceT(resourceContinuation))) =
         Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
-      benchmarkResouce = resourceContinuation.blockingAwait()
+      benchmarkResource = resourceContinuation.blockingAwait()
     }
 
     @TearDown(Level.Trial)
     final def tearDown(): Unit = {
-      val benchmarkResouce = this.benchmarkResouce
-      this.benchmarkResouce = null
-      benchmarkResouce.release.blockingAwait
+      val benchmarkResource = this.benchmarkResource
+      this.benchmarkResource = null
+      benchmarkResource.release.blockingAwait
     }
 
     @Benchmark
-    final def tensorTanhBenchmark(): Array[Float] = {
-      benchmarkResouce.value.get.apply()
+    final def computeDotScala(): Array[Float] = {
+      benchmarkResource.value.get.apply()
     }
 
-  }
-
-  trait TanhState {
     @Param(Array("100", "10", "1"))
     protected var numberOfIterations: Int = _
 
@@ -262,25 +234,16 @@ object benchmarks {
   @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
-  class Nd4jSum extends SumState {
+  class TensorSum extends TensorState {
 
     @transient
     private lazy val input = Nd4j.randn(Array.fill(numberOfDimensions)(size))
 
     @Benchmark
-    final def nd4jSumBenchmark(): Float = {
+    final def nd4j(): Float = {
       input.sumNumber().floatValue()
     }
 
-  }
-
-  @Threads(value = Threads.MAX)
-  @Warmup(iterations = 5)
-  @Measurement(iterations = 5)
-  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
-  @Fork(1)
-  @State(Scope.Benchmark)
-  class TensorSum extends SumState with TensorState {
     trait Benchmarks extends BenchmarkTensors {
 
       protected val numberOfCommandQueuesPerDevice: Int = 2
@@ -297,31 +260,28 @@ object benchmarks {
       }
     }
 
-    private var benchmarkResouce: Resource[UnitContinuation, Try[() => Float]] = _
+    private var benchmarkResource: Resource[UnitContinuation, Try[() => Float]] = _
 
     @Setup
     final def setup(): Unit = {
-      assert(benchmarkResouce == null)
+      assert(benchmarkResource == null)
       val Do(TryT(ResourceT(resourceContinuation))) =
         Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
-      benchmarkResouce = resourceContinuation.blockingAwait()
+      benchmarkResource = resourceContinuation.blockingAwait()
     }
 
     @TearDown(Level.Trial)
     final def tearDown(): Unit = {
-      val benchmarkResouce = this.benchmarkResouce
-      this.benchmarkResouce = null
-      benchmarkResouce.release.blockingAwait
+      val benchmarkResource = this.benchmarkResource
+      this.benchmarkResource = null
+      benchmarkResource.release.blockingAwait
     }
 
     @Benchmark
-    final def tensorSumBenchmark(): Float = {
-      benchmarkResouce.value.get.apply()
+    final def computeDotScala(): Float = {
+      benchmarkResource.value.get.apply()
     }
 
-  }
-
-  trait SumState {
     @Param(Array("3", "2", "1"))
     protected var numberOfDimensions: Int = _
 
@@ -335,21 +295,18 @@ object benchmarks {
   @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
-  class Nd4jRandomNormal extends RandomNormalState {
+  class TensorRandomNormal extends TensorState {
+
+    @Param(Array("3", "2", "1"))
+    protected var numberOfDimensions: Int = _
+
+    @Param(Array("128", "32", "16"))
+    protected var size: Int = _
 
     @Benchmark
-    final def nd4jRandomNormalBenchmark(): Array[Float] = {
+    final def nd4j(): Array[Float] = {
       Nd4j.randn(Array.fill(numberOfDimensions)(size)).data().asFloat()
     }
-  }
-
-  @Threads(value = Threads.MAX)
-  @Warmup(iterations = 5)
-  @Measurement(iterations = 5)
-  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
-  @Fork(1)
-  @State(Scope.Benchmark)
-  class TensorRandomNormal extends RandomNormalState with TensorState {
     trait Benchmarks extends BenchmarkTensors {
 
       protected val numberOfCommandQueuesPerDevice: Int = 2
@@ -373,19 +330,9 @@ object benchmarks {
     }
 
     @Benchmark
-    final def tensorRandomNormalBenchmark(): Array[Float] = {
+    final def computeDotScala(): Array[Float] = {
       benchmarks.Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).flatArray.run.blockingAwait
     }
-  }
-
-  trait RandomNormalState {
-
-    @Param(Array("3", "2", "1"))
-    protected var numberOfDimensions: Int = _
-
-    @Param(Array("128", "32", "16"))
-    protected var size: Int = _
-
   }
 
   @Threads(value = Threads.MAX)
@@ -394,7 +341,7 @@ object benchmarks {
   @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
   @Fork(1)
   @State(Scope.Benchmark)
-  class Nd4jConvolution extends ConvolutionState {
+  class Convolution extends TensorState {
 
     @transient
     private lazy val input = Nd4j.randn(Array(batchSize, depth, imageHeight, imageWidth))
@@ -426,7 +373,7 @@ object benchmarks {
     }
 
     @Benchmark
-    final def nd4jConv2dBenchmark(): Array[Float] = {
+    final def nd4j(): Array[Float] = {
       layers
         .foldLeft(input) { (input, layer) =>
           val (weight, bias) = layer
@@ -435,17 +382,109 @@ object benchmarks {
         .data()
         .asFloat()
     }
-  }
 
-  @Threads(value = Threads.MAX)
-  @Warmup(iterations = 5)
-  @Measurement(iterations = 5)
-  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
-  @Fork(1)
-  @State(Scope.Benchmark)
-  class TensorConvolution extends ConvolutionState with TensorState {
+    trait Benchmarks extends BenchmarkTensors {
 
-    trait Benchmarks extends BenchmarkTensors with ConvolutionTensors {
+      final case class ConvolutionalLayer(weight: BufferedTensor, bias: BufferedTensor) {
+        def forward(input: Tensor): Tensor = {
+          convolute(input, weight, bias)
+        }
+      }
+
+      def convolute(input: Tensor /* batchSize × height × width × depth */,
+                    weight: Tensor /* kernelHeight × kernelWidth × depth × filterSize */,
+                    bias: Tensor /* filterSize */ ): Tensor = {
+        input.shape match {
+          case Array(batchSize, height, width, depth) =>
+            weight.shape match {
+              case Array(kernelHeight, kernelWidth, `depth`, filterSize) =>
+                bias.shape match {
+                  case Array(`filterSize`) =>
+                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.unzip(dimension = 3)
+
+                    if (inputSeq.size != depth) {
+                      throw new IllegalArgumentException
+                    }
+
+                    inputSeq.head.shape match {
+                      case Array(batchSize, height, width) =>
+                      case _ =>
+                        throw new IllegalArgumentException
+                    }
+
+                    val weightSeq: Seq[Seq[Seq[Seq[Tensor]]]] /* filterSize × kernelHeight × kernelWidth × depth */ =
+                      weight.unzip(dimension = 3).map { khKwD =>
+                        khKwD.shape match {
+                          case Array(kernelHeight, kernelWidth, depth) =>
+                          case _ =>
+                            throw new IllegalArgumentException
+                        }
+
+                        khKwD.unzip(dimension = 0).map { kwD =>
+                          kwD.shape match {
+                            case Array(kernelWidth, depth) =>
+                            case _ =>
+                              throw new IllegalArgumentException
+                          }
+
+                          kwD.unzip(dimension = 0).map { d =>
+                            d.shape match {
+                              case Array(depth) =>
+                              case _ =>
+                                throw new IllegalArgumentException
+                            }
+                            d.unzip(dimension = 0)
+                          }
+                        }
+                      }
+
+                    weightSeq match {
+                      case Seq(h @ Seq(w @ Seq(d, _*), _*), _*)
+                          if h.length == kernelHeight && w.length == kernelWidth && d.length == depth =>
+                      case _ =>
+                        throw new IllegalArgumentException
+                    }
+                    if (weightSeq.length != filterSize) {
+                      throw new IllegalArgumentException
+                    }
+
+                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
+
+                    val outputChannels: Seq[Tensor] = weightSeq.view
+                      .zip(biasSeq)
+                      .map {
+                        case (weightPerFilter, biasPerFilter) =>
+                          val summands: Seq[Tensor] = for {
+                            (offsetY, weightPerRow) <- (-1 to 1).view.zip(weightPerFilter)
+                            (offsetX, weightPerPixel) <- (-1 to 1).view.zip(weightPerRow)
+                            (
+                              inputPerChannel /* batchSize × height × width */,
+                              weightPerChannel /* scalar */
+                            ) <- inputSeq.view.zip(weightPerPixel)
+                          } yield {
+
+                            if (weightPerChannel.shape.nonEmpty) {
+                              throw new IllegalArgumentException
+                            }
+
+                            inputPerChannel.translate(Array(0, offsetY, offsetX)) *
+                              weightPerChannel.broadcast(Array(batchSize, height, width))
+                          }
+
+                          biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
+                      }
+
+                    Tensor.zip(outputChannels)
+                  case _ =>
+                    throw new IllegalArgumentException
+                }
+              case _ =>
+                throw new IllegalArgumentException
+            }
+          case _ =>
+            throw new IllegalArgumentException
+        }
+      }
 
       protected val numberOfCommandQueuesPerDevice = 2
 
@@ -481,31 +520,27 @@ object benchmarks {
 
     }
 
-    private var benchmarkResouce: Resource[UnitContinuation, Try[() => Array[Float]]] = _
+    private var benchmarkResource: Resource[UnitContinuation, Try[() => Array[Float]]] = _
 
     @Setup
     final def setup(): Unit = {
-      assert(benchmarkResouce == null)
+      assert(benchmarkResource == null)
       val Do(TryT(ResourceT(resourceContinuation))) =
         Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
-      benchmarkResouce = resourceContinuation.blockingAwait()
+      benchmarkResource = resourceContinuation.blockingAwait()
     }
 
     @TearDown(Level.Trial)
     final def tearDown(): Unit = {
-      val benchmarkResouce = this.benchmarkResouce
-      this.benchmarkResouce = null
-      benchmarkResouce.release.blockingAwait
+      val benchmarkResource = this.benchmarkResource
+      this.benchmarkResource = null
+      benchmarkResource.release.blockingAwait
     }
 
     @Benchmark
-    final def tensorConv2dBenchmark(): Array[Float] = {
-      benchmarkResouce.value.get.apply()
+    final def computeDotScala(): Array[Float] = {
+      benchmarkResource.value.get.apply()
     }
-
-  }
-
-  trait ConvolutionState {
 
     // ND4J is too slow when increasing the number of layers.
     @Param(Array("1"))
@@ -527,110 +562,6 @@ object benchmarks {
 
     @Param(Array("8", "3"))
     protected var depth: Int = _
-
-  }
-
-  trait ConvolutionTensors extends Tensors {
-    final case class ConvolutionalLayer(weight: BufferedTensor, bias: BufferedTensor) {
-      def forward(input: Tensor): Tensor = {
-        convolute(input, weight, bias)
-      }
-    }
-
-    def convolute(input: Tensor /* batchSize × height × width × depth */,
-                  weight: Tensor /* kernelHeight × kernelWidth × depth × filterSize */,
-                  bias: Tensor /* filterSize */ ): Tensor = {
-      input.shape match {
-        case Array(batchSize, height, width, depth) =>
-          weight.shape match {
-            case Array(kernelHeight, kernelWidth, `depth`, filterSize) =>
-              bias.shape match {
-                case Array(`filterSize`) =>
-                  val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.unzip(dimension = 3)
-
-                  if (inputSeq.size != depth) {
-                    throw new IllegalArgumentException
-                  }
-
-                  inputSeq.head.shape match {
-                    case Array(batchSize, height, width) =>
-                    case _ =>
-                      throw new IllegalArgumentException
-                  }
-
-                  val weightSeq: Seq[Seq[Seq[Seq[Tensor]]]] /* filterSize × kernelHeight × kernelWidth × depth */ =
-                    weight.unzip(dimension = 3).map { khKwD =>
-                      khKwD.shape match {
-                        case Array(kernelHeight, kernelWidth, depth) =>
-                        case _ =>
-                          throw new IllegalArgumentException
-                      }
-
-                      khKwD.unzip(dimension = 0).map { kwD =>
-                        kwD.shape match {
-                          case Array(kernelWidth, depth) =>
-                          case _ =>
-                            throw new IllegalArgumentException
-                        }
-
-                        kwD.unzip(dimension = 0).map { d =>
-                          d.shape match {
-                            case Array(depth) =>
-                            case _ =>
-                              throw new IllegalArgumentException
-                          }
-                          d.unzip(dimension = 0)
-                        }
-                      }
-                    }
-
-                  weightSeq match {
-                    case Seq(h @ Seq(w @ Seq(d, _*), _*), _*)
-                        if h.length == kernelHeight && w.length == kernelWidth && d.length == depth =>
-                    case _ =>
-                      throw new IllegalArgumentException
-                  }
-                  if (weightSeq.length != filterSize) {
-                    throw new IllegalArgumentException
-                  }
-
-                  val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
-
-                  val outputChannels: Seq[Tensor] = weightSeq.view
-                    .zip(biasSeq)
-                    .map {
-                      case (weightPerFilter, biasPerFilter) =>
-                        val summands: Seq[Tensor] = for {
-                          (offsetY, weightPerRow) <- (-1 to 1).view.zip(weightPerFilter)
-                          (offsetX, weightPerPixel) <- (-1 to 1).view.zip(weightPerRow)
-                          (
-                            inputPerChannel /* batchSize × height × width */,
-                            weightPerChannel /* scalar */
-                          ) <- inputSeq.view.zip(weightPerPixel)
-                        } yield {
-
-                          if (weightPerChannel.shape.nonEmpty) {
-                            throw new IllegalArgumentException
-                          }
-
-                          inputPerChannel.translate(Array(0, offsetY, offsetX)) *
-                            weightPerChannel.broadcast(Array(batchSize, height, width))
-                        }
-
-                        biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
-                    }
-
-                  Tensor.zip(outputChannels)
-                case _ =>
-                  throw new IllegalArgumentException
-              }
-            case _ =>
-              throw new IllegalArgumentException
-          }
-        case _ =>
-          throw new IllegalArgumentException
-      }
-    }
 
   }
 
