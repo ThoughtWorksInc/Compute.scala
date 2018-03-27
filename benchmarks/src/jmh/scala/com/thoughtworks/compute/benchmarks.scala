@@ -168,18 +168,6 @@ object benchmarks {
 
   }
 
-  trait MultiLayerNetworkState {
-    @Param(Array("100", "10", "1"))
-    protected var numberOfLayers: Int = _
-
-    @Param(Array("10", "20", "30"))
-    protected var featuresPerLayer: Int = _
-
-    @Param(Array("100000", "4096", "256", "32"))
-    protected var batchSize: Int = _
-
-  }
-
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
