@@ -508,24 +508,25 @@ object benchmarks {
   }
 
   trait ConvolutionState {
-    @Param(Array("1", "10"))
+    @Param(Array("5", "1"))
     protected var numberOfLayers: Int = _
 
-    @Param(Array("3"))
+    @Param(Array("3", "1"))
     protected var kernelWidth: Int = _
 
-    @Param(Array("3"))
+    @Param(Array("3", "1"))
     protected var kernelHeight: Int = _
 
-    @Param(Array("32", "128"))
+    @Param(Array("32"))
+    protected var imageHeight: Int = _
+
+    @Param(Array("32"))
     protected var imageWidth: Int = _
 
-    protected def imageHeight: Int = imageWidth
-
-    @Param(Array("32", "128"))
+    @Param(Array("128", "32"))
     protected var batchSize: Int = _
 
-    @Param(Array("8", "32"))
+    @Param(Array("8", "3"))
     protected var depth: Int = _
 
   }
