@@ -576,7 +576,7 @@ trait Tensors extends OpenCL {
     * @groupprio slow 2
     * @groupdesc slow
     *            Actions that can actually perform delayed operations
-    *            in order to read the data of this buffer from the device to JVM,
+    *            in order to read the data from the device to JVM,
     *            or change the internal state of this [[Tensor]].
     *
     * @groupname delayed Delayed operators
