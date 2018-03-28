@@ -377,7 +377,7 @@ object OpenCL {
 
     // FIXME: this plug-in will cause Nvidia OpenCL hang up. Need investigation.
 
-    val executionContext: ExecutionContext
+    protected val executionContext: ExecutionContext
 
     override protected def waitForStatus(event: Event, callbackType: Status): UnitContinuation[Status] =
       super.waitForStatus(event, callbackType).flatMap { status =>
@@ -386,11 +386,11 @@ object OpenCL {
   }
 
   trait GlobalExecutionContext {
-    val executionContext: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
+    protected val executionContext: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
   }
 
   trait SingleThreadExecutionContext {
-    val executionContext: ExecutionContextExecutor =
+    protected val executionContext: ExecutionContextExecutor =
       scala.concurrent.ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
   }
 
@@ -412,7 +412,7 @@ object OpenCL {
     }
 
     @transient
-    lazy val Resource(acquireCommandQueue, shutdownCommandQueues) = AsynchronousPool.preloaded(commandQueues)
+    protected lazy val Resource(acquireCommandQueue, shutdownCommandQueues) = AsynchronousPool.preloaded(commandQueues)
 
     override def monadicClose: UnitContinuation[Unit] = {
       import scalaz.std.iterable._
@@ -1092,13 +1092,13 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
 
   protected val logger: Logger
 
-  type Program = OpenCL.Program[this.type]
-  type Event = OpenCL.Event[this.type]
-  type CommandQueue = OpenCL.CommandQueue[this.type]
-  type DeviceId = OpenCL.DeviceId[this.type]
-  type PlatformId = OpenCL.PlatformId[this.type]
+  protected type Program = OpenCL.Program[this.type]
+  protected type Event = OpenCL.Event[this.type]
+  protected type CommandQueue = OpenCL.CommandQueue[this.type]
+  protected type DeviceId = OpenCL.DeviceId[this.type]
+  protected type PlatformId = OpenCL.PlatformId[this.type]
 
-  def platformIds: Seq[PlatformId] = {
+  protected def platformIds: Seq[PlatformId] = {
     val stack = stackPush()
     try {
       val numberOfPlatformsBuffer = stack.mallocInt(1)
@@ -1180,7 +1180,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
       }
   }
 
-  type Kernel = OpenCL.Kernel[this.type]
+  protected type Kernel = OpenCL.Kernel[this.type]
   protected def createProgramWithSource(sourceCode: TraversableOnce[CharSequence]): Program = {
     val stack = stackPush()
     try {
@@ -1310,11 +1310,11 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
     }
   }
 
-  type DeviceBuffer[Element] = OpenCL.DeviceBuffer[this.type, Element]
+  protected type DeviceBuffer[Element] = OpenCL.DeviceBuffer[this.type, Element]
 
   /** Returns an uninitialized buffer of `Element` on device.
     */
-  def allocateBuffer[Element](size: Long)(implicit memory: Memory[Element]): Do[DeviceBuffer[Element]] =
+  protected def allocateBuffer[Element](size: Long)(implicit memory: Memory[Element]): Do[DeviceBuffer[Element]] =
     Do.monadicCloseable {
       val stack = stackPush()
       try {
@@ -1330,7 +1330,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
 
   /** Returns a buffer of `Element` on device whose content is copied from `hostBuffer`.
     */
-  def allocateBufferFrom[Element, HostBuffer](hostBuffer: HostBuffer)(
+  protected def allocateBufferFrom[Element, HostBuffer](hostBuffer: HostBuffer)(
       implicit memory: Memory.Aux[Element, HostBuffer]): Do[DeviceBuffer[Element]] =
     Do.monadicCloseable {
       val stack = stackPush()

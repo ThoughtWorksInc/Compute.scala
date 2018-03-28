@@ -109,10 +109,10 @@ object benchmarks {
 
         val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, inputDepth))
 
-        weight.doBuffer.flatMap { _ =>
-          input.doBuffer.map { _ =>
+        weight.doCache.flatMap { weight =>
+          input.doCache.map { input =>
             { () =>
-              matrixMultiply(input, weight).flatArray.run.blockingAwait
+              matrixMultiply(input, weight).flatArray.blockingAwait
             }
           }
         }
@@ -169,14 +169,13 @@ object benchmarks {
       def doBenchmark(): Do[() => Array[Float]] = {
         val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
-        input.doBuffer.map { _ =>
+        input.doCache.map { input =>
           { () =>
             (0 until numberOfIterations)
               .foldLeft[Tensor](input) { (input, _) =>
                 Tensor.tanh(input)
               }
               .flatArray
-              .run
               .blockingAwait
           }
         }
@@ -236,9 +235,9 @@ object benchmarks {
       def doBenchmark(): Do[() => Float] = {
         val input: BufferedTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
-        input.doBuffer.map { _ =>
+        input.doCache.map { input =>
           { () =>
-            val Array(v) = input.sum.flatArray.run.blockingAwait
+            val Array(v) = input.sum.flatArray.blockingAwait
             v
           }
         }
@@ -312,7 +311,7 @@ object benchmarks {
 
     @Benchmark
     final def computeDotScala(): Array[Float] = {
-      benchmarks.Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).flatArray.run.blockingAwait
+      benchmarks.Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).flatArray.blockingAwait
     }
   }
 
@@ -474,13 +473,13 @@ object benchmarks {
                              bias = Tensor.randomNormal(Array(depth)))
         }).toList
 
-        input.doBuffer.flatMap { _ =>
+        input.doCache.flatMap { input =>
           layers
             .traverseM {
               case ConvolutionalLayer(weight, bias) =>
-                weight.doBuffer.flatMap { weightBuffer =>
-                  bias.doBuffer.map { biasBuffer =>
-                    List(weightBuffer, biasBuffer)
+                weight.doCache.flatMap { weight =>
+                  bias.doCache.map { bias =>
+                    List(weight, bias)
                   }
                 }
             }
@@ -490,7 +489,6 @@ object benchmarks {
                   layer.forward(input)
                 }
                 .flatArray
-                .run
                 .blockingAwait
 
             }

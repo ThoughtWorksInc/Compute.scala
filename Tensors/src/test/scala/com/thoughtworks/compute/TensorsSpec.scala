@@ -235,7 +235,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
       )
       outputTensor.shape should be(Array(2, 4, 5, 2)) /* batchSize × height × width × filterSize */
 
-      outputTensor.flatArray.map { a =>
+      Do.garbageCollected(outputTensor.flatArray).map { a =>
         val outputArray = a.grouped(2).toArray.grouped(5).toArray.grouped(4).toArray
         outputArray.length should be(2)
 
