@@ -22,7 +22,7 @@ import com.thoughtworks.each.Monadic._
 import com.thoughtworks.compute.Memory.Box
 import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}
 import Event.Status
-import com.thoughtworks.compute.OpenCL.Exceptions.DeviceNotFound
+import com.thoughtworks.compute.OpenCL.Exceptions.{DeviceNotFound, InvalidValue}
 import org.lwjgl.system.jni.JNINativeInterface
 import org.lwjgl.system._
 
@@ -1067,7 +1067,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
       val numberOfKernels = numberOfKernelsBuffer.get(0)
       val kernelBuffer = stack.mallocPointer(numberOfKernels)
       checkErrorCode(clCreateKernelsInProgram(program.handle, kernelBuffer, null: IntBuffer))
-      (0 until kernelBuffer.capacity).map { i =>
+      (kernelBuffer.position() until kernelBuffer.limit()).map { i =>
         new Kernel(kernelBuffer.get(i))
       }
     } finally {
@@ -1077,7 +1077,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
 
   /** Creates single kernel from this [[Program]].
     *
-    * @throws InvalidValue if the this [[Program]] has more than one kernel.
+    * @throws com.thoughtworks.compute.OpenCL.Exceptions.InvalidValue if the this [[Program]] has more than one kernel.
     */
   protected def createKernel(program: Program): Kernel = {
     val stack = stackPush()

@@ -215,7 +215,6 @@ object Tensors {
   }
 }
 
-// TODO: Rename to VirtualTensors, like virtual-dom
 trait Tensors extends OpenCL {
 
   protected val trees
@@ -567,9 +566,32 @@ trait Tensors extends OpenCL {
 
   }
 
+  /**
+    * @groupname metadata General information
+    * @groupprio metadata 1
+    * @groupdesc metadata
+    *            Methods that provides general information of this [[Tensor]].
+    *
+    * @groupname slow Slow actions
+    * @groupprio slow 2
+    * @groupdesc slow
+    *            Actions that can actually perform delayed operations
+    *            in order to read the data of this buffer from the device to JVM,
+    *            or change the internal state of this [[Tensor]].
+    *
+    * @groupname delayed Delayed operators
+    * @groupprio delayed 3
+    * @groupdesc delayed
+    *            Operators that return new [[Tensor]]s of delay-evaluated computational graphs.
+    *            The actually computation will be only performed when '''Slow actions''' are called.
+    *
+    */
   sealed trait Tensor { thisTensor =>
 
-    def toBufferedTensor: BufferedTensor
+    /**
+      * @group delayed
+      */
+    def notInline: BufferedTensor
 
     private def reduce(programs: MonoidPrograms): BufferedTensor = {
       new {
@@ -666,8 +688,14 @@ trait Tensors extends OpenCL {
       }
     }
 
+    /**
+      * @group delayed
+      */
     def sum = reduce(PlusPrograms)
 
+    /**
+      * @group slow
+      */
     override def toString: String = {
       doBuffer
         .intransitiveFlatMap { pendingBuffer =>
@@ -705,6 +733,9 @@ trait Tensors extends OpenCL {
         .blockingAwait
     }
 
+    /**
+      * @group delayed
+      */
     def broadcast(newShape: Array[Int]): TransformedTensor = {
       val newLength = newShape.length
       val length = shape.length
@@ -737,6 +768,9 @@ trait Tensors extends OpenCL {
       } with InlineTensor
     }
 
+    /**
+      * @group delayed
+      */
     def reshape(newShape: Array[Int]): BufferedTensor = {
       if (newShape.product != shape.product) {
         throw new IllegalArgumentException
@@ -748,12 +782,21 @@ trait Tensors extends OpenCL {
       } with BufferedTensor
     }
 
+    /**
+      * @group delayed
+      */
     def unary_- : InlineTensor = {
       derivedTensor(closure.asInstanceOf[FloatTerm].unary_-)
     }
 
+    /**
+      * @group delayed
+      */
     def unary_+ : this.type = this
 
+    /**
+      * @group delayed
+      */
     def *(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] * rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
@@ -763,6 +806,9 @@ trait Tensors extends OpenCL {
       }
     }
 
+    /**
+      * @group delayed
+      */
     def +(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] + rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
@@ -772,6 +818,9 @@ trait Tensors extends OpenCL {
       }
     }
 
+    /**
+      * @group delayed
+      */
     def -(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] - rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
@@ -781,6 +830,9 @@ trait Tensors extends OpenCL {
       }
     }
 
+    /**
+      * @group delayed
+      */
     def /(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] / rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
@@ -790,6 +842,9 @@ trait Tensors extends OpenCL {
       }
     }
 
+    /**
+      * @group delayed
+      */
     def %(rightHandSide: Tensor): InlineTensor = {
       def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] % rightHandSide.closure.asInstanceOf[FloatTerm]
       if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
@@ -799,6 +854,9 @@ trait Tensors extends OpenCL {
       }
     }
 
+    /**
+      * @group delayed
+      */
     def scale(newShape: Array[Int]): TransformedTensor = {
       val length = newShape.length
       if (length != shape.length) {
@@ -816,6 +874,9 @@ trait Tensors extends OpenCL {
       transform(newShape, matrix1)
     }
 
+    /**
+      * @group delayed
+      */
     def translate(offset: Array[Double], newShape: Array[Int] = shape): TransformedTensor = {
       if (offset.length != thisTensor.shape.length) {
         throw new IllegalArgumentException
@@ -851,6 +912,9 @@ trait Tensors extends OpenCL {
       }
     }
 
+    /**
+      * @group delayed
+      */
     def permute(dimensions: Array[Int]): TransformedTensor = {
       val length = shape.length
       if (dimensions.length != length) {
@@ -870,6 +934,9 @@ trait Tensors extends OpenCL {
       transform(newShape, matrix)
     }
 
+    /**
+      * @group delayed
+      */
     def unzip(dimension: Int): IndexedSeq[Tensor] = {
       // TODO: override map/reduce to produce less OpenCL C code
       val newShape = shape.patch(dimension, Nil, 1)
@@ -908,6 +975,14 @@ trait Tensors extends OpenCL {
       }
     }
 
+    /**
+      * Returns the sizes of each dimension of this [[Tensor]].
+      *
+      * @note The return value will be `Array.empty` if this [[Tensor]] is a scalar.
+      * @note The returned array should be considered as immutable.
+      *       Changing the array is an undefined behavior.
+      * @group metadata
+      */
     def shape: Array[Int]
 
     protected val closure: FloatTerm // FIXME: Allow element types other than float
@@ -918,8 +993,23 @@ trait Tensors extends OpenCL {
 
     private[compute] def doBuffer: Do[PendingBuffer[closure.JvmValue]]
 
+    /** Allocates device-side cache that are managed by the [[https://github.com/ThoughtWorksInc/RAII.scala RAII.scala]] library.
+      *
+      * @note This method is similar to [[cache]],
+      *       except the life cycle of the cache can be automatically managed.
+      *
+      * @group slow
+      */
     def doCache: Do[this.type] = doBuffer.map(Function.const(this))
 
+    /** Allocates device-side cache for this [[Tensor]], and returns a [[java.lang.AutoCloseable]] to release the cache.
+      *
+      * @note This method can be called multiple times on one [[Tensor]],
+      *       only one copy of cache will be allocated,
+      *       which will be finally released until all [[java.lang.AutoCloseable]] returned by [[cache]] method are closed.
+      *
+      * @group slow
+      */
     def cache: AutoCloseable = {
       sealed trait State
       case object Openning extends State
@@ -979,6 +1069,9 @@ trait Tensors extends OpenCL {
       state
     }
 
+    /**
+      * @group slow
+      */
     def flatBuffer: Do[FloatBuffer] = {
       doBuffer.intransitiveFlatMap {
         _.toHostBuffer().map { hostBuffer =>
@@ -991,10 +1084,16 @@ trait Tensors extends OpenCL {
       }
     }
 
+    /**
+      * @group slow
+      */
     def flatArray: Future[Array[closure.JvmValue]] = {
       flatBuffer.intransitiveMap(closure.valueType.memory.toArray).run
     }
 
+    /**
+      * @group metadata
+      */
     def padding: Float
 
     @transient
@@ -1119,14 +1218,14 @@ trait Tensors extends OpenCL {
     *
     * @note When this [[InlineTensor]] is referenced more than one expressions,
     *       the computation for the tensor may be evaluated more than once.
-    * @see [[buffered]] to create a tensor that will cache the result.
+    * @see [[notInline]] to create a tensor that will cache the result.
     */
   trait InlineTensor extends Tensor { thisInlineTensor =>
     private[compute] val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
       enqueueClosure(closure, shape)
     }.shared
 
-    def toBufferedTensor: BufferedTensor =
+    def notInline: BufferedTensor =
       new {
         val padding: Float = thisInlineTensor.padding
         private[compute] val doBuffer: Do[PendingBuffer[Float]] = thisInlineTensor.doBuffer
@@ -1153,7 +1252,7 @@ trait Tensors extends OpenCL {
 
   trait BufferedTensor extends Tensor {
 
-    def toBufferedTensor: BufferedTensor = this
+    def notInline: BufferedTensor = this
 
     @transient
     protected lazy val closure = {
