@@ -2,7 +2,7 @@ enablePlugins(Travis)
 
 enablePlugins(SonatypeRelease)
 
-(SettingKey[Seq[String]]("cross-typelevel-scala-versions") in ThisBuild := Nil
+SettingKey[Seq[String]]("cross-typelevel-scala-versions") in ThisBuild := Nil
 
 lazy val secret = project.settings(publishArtifact := false).in {
   val secretDirectory = file(sourcecode.File()).getParentFile / "secret"
