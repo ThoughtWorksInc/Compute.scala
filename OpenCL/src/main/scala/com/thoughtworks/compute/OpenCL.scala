@@ -1180,7 +1180,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
       }
   }
 
-  type Kernel = OpenCL.Kernel[this.type]
+  protected type Kernel = OpenCL.Kernel[this.type]
   protected def createProgramWithSource(sourceCode: TraversableOnce[CharSequence]): Program = {
     val stack = stackPush()
     try {
@@ -1310,7 +1310,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
     }
   }
 
-  type DeviceBuffer[Element] = OpenCL.DeviceBuffer[this.type, Element]
+  protected type DeviceBuffer[Element] = OpenCL.DeviceBuffer[this.type, Element]
 
   /** Returns an uninitialized buffer of `Element` on device.
     */
