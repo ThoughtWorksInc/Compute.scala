@@ -980,11 +980,19 @@ trait Tensors extends OpenCL {
     }
 
     def flatBuffer: Do[FloatBuffer] = {
-      doBuffer.intransitiveFlatMap(_.toHostBuffer())
+      doBuffer.intransitiveFlatMap {
+        _.toHostBuffer().map { hostBuffer =>
+          val shapeProduct = shape.product
+          if (hostBuffer.remaining() > shapeProduct) {
+            hostBuffer.limit(hostBuffer.position() + shapeProduct)
+          }
+          hostBuffer
+        }
+      }
     }
 
     def flatArray: Future[Array[closure.JvmValue]] = {
-      doBuffer.intransitiveFlatMap(_.toArray()(closure.valueType.memory)).run
+      flatBuffer.intransitiveMap(closure.valueType.memory.toArray).run
     }
 
     def padding: Float
