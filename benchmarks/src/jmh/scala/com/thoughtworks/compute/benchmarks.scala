@@ -39,6 +39,8 @@ object benchmarks {
         with OpenCL.HandleEventInExecutionContext
         with Tensors.WangHashingRandomNumberGenerator {
 
+      protected val numberOfCommandQueuesPerDevice: Int = 3
+
       @transient
       protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
         val deviceType = classOf[CL10].getField(s"CL_DEVICE_TYPE_$tensorDeviceType").get(null).asInstanceOf[Int]
@@ -103,18 +105,28 @@ object benchmarks {
 
     trait Benchmarks extends BenchmarkTensors {
 
-      protected val numberOfCommandQueuesPerDevice: Int = 2
+      @transient
+      private lazy val unrollThreshold = deviceIds.head.maxComputeUnits * 128
 
       def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
-        val columns1 = matrix1.unzip(1)
-        Tensor.zip(matrix2.unzip(1).map { column2: Tensor =>
-          (columns1 zip column2.unzip(0))
-            .map {
-              case (l: Tensor, r: Tensor) =>
-                l * r.broadcast(l.shape)
-            }
-            .reduce[Tensor](_ + _)
-        })
+        val Array(i, j) = matrix1.shape
+        if (i >= unrollThreshold) {
+          // unroll j and k
+          val columns1 = matrix1.unzip(1)
+          Tensor.zip(matrix2.unzip(1).map { column2: Tensor =>
+            (columns1 zip column2.unzip(0))
+              .map {
+                case (l: Tensor, r: Tensor) =>
+                  l * r.broadcast(l.shape)
+              }
+              .reduce[Tensor](_ + _)
+          })
+        } else {
+          // unroll only j
+          val Array(`j`, k) = matrix2.shape
+          val product = matrix1.broadcast(Array(i, j, k)) * matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
+          product.unzip(1).reduce(_ + _)
+        }
       }
 
       def doBenchmark(): Do[() => Array[Float]] = {
@@ -487,8 +499,6 @@ object benchmarks {
             throw new IllegalArgumentException
         }
       }
-
-      protected val numberOfCommandQueuesPerDevice = 2
 
       def doBenchmark(): Do[() => Array[Float]] = {
         val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, imageHeight, imageWidth, depth))
