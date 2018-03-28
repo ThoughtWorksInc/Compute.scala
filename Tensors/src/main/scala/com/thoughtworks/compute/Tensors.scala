@@ -915,8 +915,8 @@ trait Tensors extends OpenCL {
 
     def doBuffer: Do[PendingBuffer[closure.JvmValue]]
 
-    def flatArray: Do[Array[closure.JvmValue]] = {
-      doBuffer.intransitiveFlatMap(_.toArray()(closure.valueType.memory))
+    def flatArray: Future[Array[closure.JvmValue]] = {
+      doBuffer.intransitiveFlatMap(_.toArray()(closure.valueType.memory)).run
     }
 
     def padding: Float

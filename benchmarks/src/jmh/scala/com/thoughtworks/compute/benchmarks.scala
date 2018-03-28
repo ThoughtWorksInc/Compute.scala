@@ -112,7 +112,7 @@ object benchmarks {
         weight.doBuffer.flatMap { _ =>
           input.doBuffer.map { _ =>
             { () =>
-              matrixMultiply(input, weight).flatArray.run.blockingAwait
+              matrixMultiply(input, weight).flatArray.blockingAwait
             }
           }
         }
@@ -238,7 +238,7 @@ object benchmarks {
 
         input.doBuffer.map { _ =>
           { () =>
-            val Array(v) = input.sum.flatArray.run.blockingAwait
+            val Array(v) = input.sum.flatArray.blockingAwait
             v
           }
         }
@@ -312,7 +312,7 @@ object benchmarks {
 
     @Benchmark
     final def computeDotScala(): Array[Float] = {
-      benchmarks.Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).flatArray.run.blockingAwait
+      benchmarks.Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).flatArray.blockingAwait
     }
   }
 
