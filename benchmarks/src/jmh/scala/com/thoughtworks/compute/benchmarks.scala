@@ -35,6 +35,7 @@ object benchmarks {
         with Tensors.UnsafeMathOptimizations
         with Tensors.SuppressWarnings
         with OpenCL.LogContextNotification
+        with OpenCL.UseAllDevicesByType
         with OpenCL.GlobalExecutionContext
         with OpenCL.CommandQueuePool
         with OpenCL.DontReleaseEventTooEarly
@@ -42,39 +43,10 @@ object benchmarks {
         with OpenCL.HandleEventInExecutionContext
         with Tensors.WangHashingRandomNumberGenerator {
 
+      protected val deviceType: Int =
+        classOf[CL10].getField(s"CL_DEVICE_TYPE_$tensorDeviceType").get(null).asInstanceOf[Int]
+
       protected val numberOfCommandQueuesPerDevice: Int = TensorState.this.numberOfCommandQueuesPerDevice
-
-      @transient
-      protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
-        val deviceType = classOf[CL10].getField(s"CL_DEVICE_TYPE_$tensorDeviceType").get(null).asInstanceOf[Int]
-
-        object MatchDeviceType {
-          def unapply(platformId: PlatformId): Option[Seq[DeviceId]] = {
-            (try {
-              platformId.deviceIdsByType(deviceType)
-            } catch {
-              case e: DeviceNotFound =>
-                return None
-            }) match {
-              case devices if devices.nonEmpty =>
-                Some(devices)
-              case _ =>
-                None
-            }
-
-          }
-        }
-
-        platformIds.collectFirst {
-          case platformId @ MatchDeviceType(deviceIds) =>
-            (platformId, deviceIds)
-        } match {
-          case None =>
-            throw new DeviceNotFound(s"$tensorDeviceType device is not found")
-          case Some(pair) =>
-            pair
-        }
-      }
 
     }
   }

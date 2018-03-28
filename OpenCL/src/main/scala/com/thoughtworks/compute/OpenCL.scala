@@ -20,7 +20,9 @@ import org.lwjgl.system.Pointer._
 import scala.collection.mutable
 import com.thoughtworks.each.Monadic._
 import com.thoughtworks.compute.Memory.Box
-import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}, Event.Status
+import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}
+import Event.Status
+import com.thoughtworks.compute.OpenCL.Exceptions.DeviceNotFound
 import org.lwjgl.system.jni.JNINativeInterface
 import org.lwjgl.system._
 
@@ -294,23 +296,11 @@ object OpenCL {
     }
   }
 
-  trait UseFirstPlatform extends OpenCL {
+  trait UseFirstDevice extends OpenCL {
     @transient
     protected lazy val platformId: PlatformId = {
       platformIds.head
     }
-  }
-
-  trait UseAllDevices extends OpenCL {
-
-    @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      platformId.deviceIdsByType(CL_DEVICE_TYPE_ALL)
-    }
-
-  }
-
-  trait UseFirstDevice extends OpenCL {
 
     @transient
     protected lazy val deviceIds: Seq[DeviceId] = {
@@ -320,37 +310,52 @@ object OpenCL {
 
   }
 
-  trait UseAllGpuDevices extends OpenCL {
-
-    @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      platformId.deviceIdsByType(CL_DEVICE_TYPE_GPU)
-    }
+  trait UseAllDevices extends UseAllDevicesByType {
+    protected val deviceType: Status = CL_DEVICE_TYPE_ALL
   }
 
-  trait UseFirstGpuDevice extends OpenCL {
-
-    @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      val allDeviceIds = platformId.deviceIdsByType(CL_DEVICE_TYPE_GPU)
-      Seq(allDeviceIds.head)
-    }
-  }
-  trait UseFirstCpuDevice extends OpenCL {
-
-    @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      val allDeviceIds = platformId.deviceIdsByType(CL_DEVICE_TYPE_CPU)
-      Seq(allDeviceIds.head)
-    }
+  trait UseAllCpuDevices extends UseAllDevicesByType {
+    protected val deviceType: Status = CL_DEVICE_TYPE_CPU
   }
 
-  trait UseAllCpuDevices extends OpenCL {
+  trait UseAllGpuDevices extends UseAllDevicesByType {
+    protected val deviceType: Status = CL_DEVICE_TYPE_GPU
+  }
+
+  trait UseAllDevicesByType extends OpenCL {
+    protected val deviceType: Int
 
     @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      platformId.deviceIdsByType(CL_DEVICE_TYPE_CPU)
+    protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
+
+      object MatchDeviceType {
+        def unapply(platformId: PlatformId): Option[Seq[DeviceId]] = {
+          (try {
+            platformId.deviceIdsByType(deviceType)
+          } catch {
+            case e: DeviceNotFound =>
+              return None
+          }) match {
+            case devices if devices.nonEmpty =>
+              Some(devices)
+            case _ =>
+              None
+          }
+
+        }
+      }
+
+      platformIds.collectFirst {
+        case platformId @ MatchDeviceType(deviceIds) =>
+          (platformId, deviceIds)
+      } match {
+        case None =>
+          throw new DeviceNotFound(s"No device of type $deviceType is found")
+        case Some(pair) =>
+          pair
+      }
     }
+
   }
 
   /**
