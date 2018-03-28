@@ -24,7 +24,7 @@ import scala.util.Try
 object benchmarks {
 
   trait TensorState {
-    @Param(Array("CPU", "GPU"))
+    @Param(Array("GPU"))
     protected var tensorDeviceType: String = _
 
     trait BenchmarkTensors
