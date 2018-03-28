@@ -43,12 +43,10 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         pendingBuffer <- filled.doBuffer
         floatBuffer <- pendingBuffer.toHostBuffer
       } yield {
-        for (i <- 0 until floatBuffer.capacity()) {
+        for (i <- floatBuffer.position() until floatBuffer.limit()) {
           floatBuffer.get(i) should be(element)
         }
-        floatBuffer.position() should be(0)
-        floatBuffer.limit() should be(shape.product)
-        floatBuffer.capacity() should be(shape.product)
+        floatBuffer.remaining() should be(shape.product)
         tensors.kernelCache.getIfPresent(filled.getClosure) should not be null
         val zeros2 = tensors.Tensor.fill(element, shape)
         tensors.kernelCache.getIfPresent(zeros2.getClosure) should not be null
@@ -110,7 +108,6 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
           }
         }
         floatBuffer.limit() should be(shape.product)
-        floatBuffer.capacity() should be(shape.product)
       }
     }
   }.run.toScalaFuture
@@ -255,6 +252,14 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     .map { tensors =>
       import tensors._
       Tensor.fill(15625.0f, Array(8, 8)).sum.toString should be("1000000.0")
+    }
+    .run
+    .toScalaFuture
+
+  "randomNormal scalar" in doTensors
+    .flatMap { tensors =>
+      import tensors._
+      Do.garbageCollected(Tensor.randomNormal(Array.empty, seed = 54321).flatArray.map(_ should be(Array(1.4561316f))))
     }
     .run
     .toScalaFuture
