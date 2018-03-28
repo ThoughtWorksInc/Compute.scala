@@ -412,7 +412,7 @@ object OpenCL {
     }
 
     @transient
-    lazy val Resource(acquireCommandQueue, shutdownCommandQueues) = AsynchronousPool.preloaded(commandQueues)
+    protected lazy val Resource(acquireCommandQueue, shutdownCommandQueues) = AsynchronousPool.preloaded(commandQueues)
 
     override def monadicClose: UnitContinuation[Unit] = {
       import scalaz.std.iterable._
