@@ -38,7 +38,7 @@ object benchmarks {
         with OpenCL.HandleEventInExecutionContext
         with Tensors.WangHashingRandomNumberGenerator {
 
-      protected val numberOfCommandQueuesPerDevice: Int = 3
+      protected val numberOfCommandQueuesPerDevice: Int = 20
 
       @transient
       protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
