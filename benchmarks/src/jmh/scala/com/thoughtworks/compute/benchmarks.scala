@@ -109,8 +109,8 @@ object benchmarks {
 
         val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, inputDepth))
 
-        weight.doRetain.flatMap { weight =>
-          input.doRetain.map { input =>
+        weight.doCache.flatMap { weight =>
+          input.doCache.map { input =>
             { () =>
               matrixMultiply(input, weight).flatArray.blockingAwait
             }
@@ -169,7 +169,7 @@ object benchmarks {
       def doBenchmark(): Do[() => Array[Float]] = {
         val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
-        input.doRetain.map { input =>
+        input.doCache.map { input =>
           { () =>
             (0 until numberOfIterations)
               .foldLeft[Tensor](input) { (input, _) =>
@@ -235,7 +235,7 @@ object benchmarks {
       def doBenchmark(): Do[() => Float] = {
         val input: BufferedTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
-        input.doRetain.map { input =>
+        input.doCache.map { input =>
           { () =>
             val Array(v) = input.sum.flatArray.blockingAwait
             v
@@ -473,12 +473,12 @@ object benchmarks {
                              bias = Tensor.randomNormal(Array(depth)))
         }).toList
 
-        input.doRetain.flatMap { input =>
+        input.doCache.flatMap { input =>
           layers
             .traverseM {
               case ConvolutionalLayer(weight, bias) =>
-                weight.doRetain.flatMap { weight =>
-                  bias.doRetain.map { bias =>
+                weight.doCache.flatMap { weight =>
+                  bias.doCache.map { bias =>
                     List(weight, bias)
                   }
                 }

@@ -918,9 +918,9 @@ trait Tensors extends OpenCL {
 
     private[compute] def doBuffer: Do[PendingBuffer[closure.JvmValue]]
 
-    def doRetain: Do[this.type] = doBuffer.map(Function.const(this))
+    def doCache: Do[this.type] = doBuffer.map(Function.const(this))
 
-    def retain: AutoCloseable = {
+    def cache: AutoCloseable = {
       sealed trait State
       case object Openning extends State
       case object EarlyClosed extends State
