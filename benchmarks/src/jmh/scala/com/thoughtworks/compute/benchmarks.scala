@@ -109,8 +109,8 @@ object benchmarks {
 
         val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, inputDepth))
 
-        weight.doBuffer.flatMap { _ =>
-          input.doBuffer.map { _ =>
+        weight.doRetain.flatMap { weight =>
+          input.doRetain.map { input =>
             { () =>
               matrixMultiply(input, weight).flatArray.blockingAwait
             }
@@ -169,14 +169,13 @@ object benchmarks {
       def doBenchmark(): Do[() => Array[Float]] = {
         val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
-        input.doBuffer.map { _ =>
+        input.doRetain.map { input =>
           { () =>
             (0 until numberOfIterations)
               .foldLeft[Tensor](input) { (input, _) =>
                 Tensor.tanh(input)
               }
               .flatArray
-              .run
               .blockingAwait
           }
         }
@@ -236,7 +235,7 @@ object benchmarks {
       def doBenchmark(): Do[() => Float] = {
         val input: BufferedTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
-        input.doBuffer.map { _ =>
+        input.doRetain.map { input =>
           { () =>
             val Array(v) = input.sum.flatArray.blockingAwait
             v
@@ -474,13 +473,13 @@ object benchmarks {
                              bias = Tensor.randomNormal(Array(depth)))
         }).toList
 
-        input.doBuffer.flatMap { _ =>
+        input.doRetain.flatMap { input =>
           layers
             .traverseM {
               case ConvolutionalLayer(weight, bias) =>
-                weight.doBuffer.flatMap { weightBuffer =>
-                  bias.doBuffer.map { biasBuffer =>
-                    List(weightBuffer, biasBuffer)
+                weight.doRetain.flatMap { weight =>
+                  bias.doRetain.map { bias =>
+                    List(weight, bias)
                   }
                 }
             }
@@ -490,7 +489,6 @@ object benchmarks {
                   layer.forward(input)
                 }
                 .flatArray
-                .run
                 .blockingAwait
 
             }

@@ -1,7 +1,8 @@
 package com.thoughtworks.compute
 
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, FloatBuffer}
 import java.util.concurrent.Callable
+import java.util.concurrent.atomic.AtomicReference
 import java.util.{Collections, IdentityHashMap}
 
 import com.dongxiguo.fastring.Fastring
@@ -21,16 +22,18 @@ import com.thoughtworks.raii.covariant._
 import com.thoughtworks.tryt.covariant.TryT
 import org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_CPU
 import org.lwjgl.system.MemoryUtil
+import scalaz.Free.Trampoline
 import shapeless.Witness
 
 import scala.annotation.meta.companionObject
 import scala.annotation.tailrec
 import scala.collection.{SeqView, mutable}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, SyncVar}
 import scala.language.existentials
 import scala.reflect.ClassTag
 import scala.util.{Random, Success}
 import scalaz.Tags.Parallel
+import scalaz.Trampoline
 import scalaz.std.list._
 import scalaz.syntax.all._
 import scalaz.syntax.tag._
@@ -426,7 +429,7 @@ trait Tensors extends OpenCL {
         val shape: Array[Int] = tensorBuilder.shape(elements).toArray
         val padding: Float = padding0
       } with BufferedTensor {
-        val doBuffer = {
+        private[compute] val doBuffer = {
           Do(TryT(ResourceT(UnitContinuation.delay {
             val data = tensorBuilder.flatten(elements).toArray
             val hostBuffer = MemoryUtil.memAllocFloat(data.length)
@@ -459,7 +462,7 @@ trait Tensors extends OpenCL {
         val padding = padding0
         val shape = shape0
       } with BufferedTensor {
-        val doBuffer: Do[PendingBuffer[Float]] = {
+        private[compute] val doBuffer: Do[PendingBuffer[Float]] = {
           val size = shape.product
           allocateBuffer[Float](size).flatMap { buffer =>
             Do.monadicCloseable(randomProgram.createKernel()).intransitiveFlatMap { kernel =>
@@ -480,7 +483,7 @@ trait Tensors extends OpenCL {
         val padding = padding0
         val shape = shape0
       } with BufferedTensor {
-        val doBuffer: Do[PendingBuffer[Float]] = {
+        private[compute] val doBuffer: Do[PendingBuffer[Float]] = {
           val size = shape.product
           val paddingSize = if (size % 2 == 1) {
             size + 1
@@ -555,7 +558,7 @@ trait Tensors extends OpenCL {
         val shape = headTensor.shape :+ tensors.length
         val padding: Float = headTensor.padding
       } with BufferedTensor {
-        val doBuffer = {
+        private[compute] val doBuffer = {
           val elements = tensors.map(_.closure)
           enqueueClosure(trees.tuple.zip(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]]
         }.shared
@@ -572,7 +575,7 @@ trait Tensors extends OpenCL {
       new {
         val padding: Float = thisTensor.padding
 
-        val doBuffer: Do[PendingBuffer[Float]] = {
+        private[compute] val doBuffer: Do[PendingBuffer[Float]] = {
           thisTensor.doBuffer.intransitiveFlatMap { inputPendingBuffer: PendingBuffer[Float] =>
             val length = thisTensor.shape.product
             allocateBuffer[Float](1).flatMap { outputBuffer =>
@@ -741,7 +744,7 @@ trait Tensors extends OpenCL {
       new {
         val padding: Float = thisTensor.padding
         val shape: Array[Int] = newShape
-        val doBuffer: Do[PendingBuffer[Float]] = thisTensor.doBuffer
+        private[compute] val doBuffer: Do[PendingBuffer[Float]] = thisTensor.doBuffer
       } with BufferedTensor
     }
 
@@ -913,7 +916,72 @@ trait Tensors extends OpenCL {
       */
     private[compute] def getClosure = closure
 
-    def doBuffer: Do[PendingBuffer[closure.JvmValue]]
+    private[compute] def doBuffer: Do[PendingBuffer[closure.JvmValue]]
+
+    def doRetain: Do[this.type] = doBuffer.map(Function.const(this))
+
+    def retain: AutoCloseable = {
+      sealed trait State
+      case object Openning extends State
+      case object EarlyClosed extends State
+      case object Closed extends State
+      final case class Open(release: UnitContinuation[Unit]) extends State
+
+      val state = new AtomicReference[State](Openning) with AutoCloseable {
+        @tailrec
+        final def close(): Unit = {
+          get match {
+            case Openning =>
+              if (compareAndSet(Openning, EarlyClosed)) {
+                // Success
+              } else {
+                close()
+              }
+            case oldState @ Open(release) =>
+              if (compareAndSet(oldState, Closed)) {
+                release.safeOnComplete { _: Unit =>
+                  Trampoline.done(())
+                }.run
+              } else {
+                close()
+              }
+            case EarlyClosed | Closed =>
+              throw new IllegalStateException("The resources associated to this tensor has been released.")
+          }
+        }
+      }
+
+      doBuffer.safeOnComplete { resource =>
+        @tailrec
+        def retry(): Trampoline[Unit] = {
+          state.get() match {
+            case EarlyClosed =>
+              if (state.compareAndSet(EarlyClosed, Closed)) {
+                resource.release.safeOnComplete { _: Unit =>
+                  Trampoline.done(())
+                }
+              } else {
+                retry()
+              }
+            case Openning =>
+              if (state.compareAndSet(Openning, Open(resource.release))) {
+                Trampoline.done(())
+              } else {
+                retry()
+              }
+            case _: Open | Closed =>
+              throw new IllegalStateException()
+          }
+        }
+        retry()
+      }.run
+
+      state
+    }
+
+    def flatBuffer: Do[FloatBuffer] = {
+      doBuffer.intransitiveFlatMap(_.toHostBuffer())
+    }
 
     def flatArray: Future[Array[closure.JvmValue]] = {
       doBuffer.intransitiveFlatMap(_.toArray()(closure.valueType.memory)).run
@@ -1046,14 +1114,14 @@ trait Tensors extends OpenCL {
     * @see [[buffered]] to create a tensor that will cache the result.
     */
   trait InlineTensor extends Tensor { thisInlineTensor =>
-    val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
+    private[compute] val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
       enqueueClosure(closure, shape)
     }.shared
 
     def toBufferedTensor: BufferedTensor =
       new {
         val padding: Float = thisInlineTensor.padding
-        val doBuffer: Do[PendingBuffer[Float]] = thisInlineTensor.doBuffer
+        private[compute] val doBuffer: Do[PendingBuffer[Float]] = thisInlineTensor.doBuffer
         val shape: Array[Int] = thisInlineTensor.shape
       } with BufferedTensor
   }
