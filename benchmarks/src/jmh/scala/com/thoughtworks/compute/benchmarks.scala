@@ -27,6 +27,9 @@ object benchmarks {
     @Param(Array("CPU"))
     protected var tensorDeviceType: String = _
 
+    @Param(Array("5"))
+    protected var numberOfCommandQueuesPerDevice: Int = _
+
     trait BenchmarkTensors
         extends StrictLogging
         with Tensors.UnsafeMathOptimizations
@@ -38,7 +41,7 @@ object benchmarks {
         with OpenCL.HandleEventInExecutionContext
         with Tensors.WangHashingRandomNumberGenerator {
 
-      protected val numberOfCommandQueuesPerDevice: Int = 20
+      protected val numberOfCommandQueuesPerDevice: Int = TensorState.this.numberOfCommandQueuesPerDevice
 
       @transient
       protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
