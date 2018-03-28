@@ -37,6 +37,8 @@ object benchmarks {
         with OpenCL.SynchronizedCreatingKernel
         with Tensors.WangHashingRandomNumberGenerator {
 
+      protected val numberOfCommandQueuesPerDevice: Int = 30
+
       @transient
       protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
         val deviceType = classOf[CL10].getField(s"CL_DEVICE_TYPE_$tensorDeviceType").get(null).asInstanceOf[Int]
@@ -100,8 +102,6 @@ object benchmarks {
     }
 
     trait Benchmarks extends BenchmarkTensors {
-
-      protected val numberOfCommandQueuesPerDevice: Int = 2
 
       def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
         val columns1 = matrix1.unzip(1)
@@ -177,8 +177,6 @@ object benchmarks {
 
     trait Benchmarks extends BenchmarkTensors {
 
-      protected val numberOfCommandQueuesPerDevice: Int = 2
-
       def doBenchmark(): Do[() => Array[Float]] = {
         val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
@@ -246,8 +244,6 @@ object benchmarks {
 
     trait Benchmarks extends BenchmarkTensors {
 
-      protected val numberOfCommandQueuesPerDevice: Int = 2
-
       def doBenchmark(): Do[() => Float] = {
         val input: BufferedTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
@@ -307,11 +303,7 @@ object benchmarks {
     final def nd4j(): Array[Float] = {
       Nd4j.randn(Array.fill(numberOfDimensions)(size)).data().asFloat()
     }
-    trait Benchmarks extends BenchmarkTensors {
-
-      protected val numberOfCommandQueuesPerDevice: Int = 2
-
-    }
+    trait Benchmarks extends BenchmarkTensors {}
 
     var benchmarks: Benchmarks = _
 
