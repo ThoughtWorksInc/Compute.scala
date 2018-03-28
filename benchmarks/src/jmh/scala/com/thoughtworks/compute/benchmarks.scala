@@ -190,8 +190,6 @@ object benchmarks {
 
     trait Benchmarks extends BenchmarkTensors {
 
-      protected val numberOfCommandQueuesPerDevice: Int = 2
-
       def doBenchmark(): Do[() => Array[Float]] = {
         val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
@@ -259,8 +257,6 @@ object benchmarks {
 
     trait Benchmarks extends BenchmarkTensors {
 
-      protected val numberOfCommandQueuesPerDevice: Int = 2
-
       def doBenchmark(): Do[() => Float] = {
         val input: BufferedTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
@@ -320,11 +316,7 @@ object benchmarks {
     final def nd4j(): Array[Float] = {
       Nd4j.randn(Array.fill(numberOfDimensions)(size)).data().asFloat()
     }
-    trait Benchmarks extends BenchmarkTensors {
-
-      protected val numberOfCommandQueuesPerDevice: Int = 2
-
-    }
+    trait Benchmarks extends BenchmarkTensors {}
 
     var benchmarks: Benchmarks = _
 
