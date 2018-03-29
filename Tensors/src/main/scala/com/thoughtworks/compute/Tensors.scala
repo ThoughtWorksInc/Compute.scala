@@ -768,7 +768,18 @@ trait Tensors extends OpenCL {
       } with InlineTensor
     }
 
-    /**
+    /** Returns a new [[Tensor]] of new shape and the same data of this [[Tensor]].
+      *
+      * @note The data in this [[Tensor]] is considered as row-major order when [[reshape]].
+      *
+      *       You can create another column-major version reshape by reversing the shape:
+      *
+      *       {{{
+      *       def columnMajorReshape[Category <: Tensors](tensor: Category#Tensor, newShape: Array[Int]): Category#Tensor = {
+      *         tensor.permute(tensor.shape.indices.reverse.toArray).reshape(newShape.reverse).permute(newShape.indices.reverse.toArray)
+      *       }
+      *       }}}
+      *
       * @group delayed
       */
     def reshape(newShape: Array[Int]): NonInlineTensor = {
@@ -996,7 +1007,9 @@ trait Tensors extends OpenCL {
 
     private[compute] def doBuffer: Do[PendingBuffer[closure.JvmValue]]
 
-    /**
+    /** Returns a RAII managed asynchronous task to read this [[Tensor]] into an off-heap memory,
+      * which is linearized in row-majoy order.
+      *
       * @group slow
       */
     def flatBuffer: Do[FloatBuffer] = {
@@ -1011,7 +1024,9 @@ trait Tensors extends OpenCL {
       }
     }
 
-    /**
+    /** Returns an asynchronous task to read this [[Tensor]] into a [[scala.Array]],
+      * which is linearized in row-majoy order.
+      *
       * @group slow
       */
     def flatArray: Future[Array[closure.JvmValue]] = {
