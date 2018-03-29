@@ -422,12 +422,12 @@ trait Tensors extends OpenCL {
     }
 
     def apply[A](elements: A, padding: Float = 0.0f)(
-        implicit tensorBuilder: TensorBuilder.Aux[A, Float]): BufferedTensor = {
+        implicit tensorBuilder: TensorBuilder.Aux[A, Float]): NonInlineTensor = {
       val padding0 = padding
       new {
         val shape: Array[Int] = tensorBuilder.shape(elements).toArray
         val padding: Float = padding0
-      } with BufferedTensor {
+      } with NonInlineTensor {
         private[compute] val doBuffer = {
           Do(TryT(ResourceT(UnitContinuation.delay {
             val data = tensorBuilder.flatten(elements).toArray
@@ -454,13 +454,13 @@ trait Tensors extends OpenCL {
       } with InlineTensor
     }
 
-    def random(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): BufferedTensor = {
+    def random(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): NonInlineTensor = {
       val shape0 = shape
       val padding0 = padding
       new {
         val padding = padding0
         val shape = shape0
-      } with BufferedTensor {
+      } with NonInlineTensor {
         private[compute] val doBuffer: Do[PendingBuffer[Float]] = {
           val size = shape.product
           allocateBuffer[Float](size).flatMap { buffer =>
@@ -475,13 +475,13 @@ trait Tensors extends OpenCL {
     }
 
     /** Generate random numbers in normal distribution. */
-    def randomNormal(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): BufferedTensor = {
+    def randomNormal(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): NonInlineTensor = {
       val shape0 = shape
       val padding0 = padding
       new {
         val padding = padding0
         val shape = shape0
-      } with BufferedTensor {
+      } with NonInlineTensor {
         private[compute] val doBuffer: Do[PendingBuffer[Float]] = {
           val size = shape.product
           val paddingSize = if (size % 2 == 1) {
@@ -541,7 +541,7 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def join(tensors0: Seq[Tensor]): BufferedTensor = {
+    def join(tensors0: Seq[Tensor]): NonInlineTensor = {
       def force[A](seq: Seq[A]) = {
         seq match {
           case seqView: SeqView[A, _] @unchecked =>
@@ -556,7 +556,7 @@ trait Tensors extends OpenCL {
       new {
         val shape = headTensor.shape :+ tensors.length
         val padding: Float = headTensor.padding
-      } with BufferedTensor {
+      } with NonInlineTensor {
         private[compute] val doBuffer = {
           val elements = tensors.map(_.closure)
           enqueueClosure(trees.tuple.join(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]]
@@ -591,9 +591,9 @@ trait Tensors extends OpenCL {
     /**
       * @group delayed
       */
-    def notInline: BufferedTensor
+    def nonInline: NonInlineTensor
 
-    private def reduce(programs: MonoidPrograms): BufferedTensor = {
+    private def reduce(programs: MonoidPrograms): NonInlineTensor = {
       new {
         val padding: Float = thisTensor.padding
 
@@ -683,7 +683,7 @@ trait Tensors extends OpenCL {
             }
           }
         }.shared
-      } with BufferedTensor {
+      } with NonInlineTensor {
         def shape: Array[Int] = Tensors.ScalarShape
       }
     }
@@ -771,7 +771,7 @@ trait Tensors extends OpenCL {
     /**
       * @group delayed
       */
-    def reshape(newShape: Array[Int]): BufferedTensor = {
+    def reshape(newShape: Array[Int]): NonInlineTensor = {
       if (newShape.product != shape.product) {
         throw new IllegalArgumentException
       }
@@ -779,7 +779,7 @@ trait Tensors extends OpenCL {
         val padding: Float = thisTensor.padding
         val shape: Array[Int] = newShape
         private[compute] val doBuffer: Do[PendingBuffer[Float]] = thisTensor.doBuffer
-      } with BufferedTensor
+      } with NonInlineTensor
     }
 
     /**
@@ -1149,12 +1149,12 @@ trait Tensors extends OpenCL {
       enqueueClosure(closure, shape)
     }.shared
 
-    def notInline: BufferedTensor =
+    def nonInline: NonInlineTensor =
       new {
         val padding: Float = thisInlineTensor.padding
         private[compute] val doBuffer: Do[PendingBuffer[Float]] = thisInlineTensor.doBuffer
         val shape: Array[Int] = thisInlineTensor.shape
-      } with BufferedTensor
+      } with NonInlineTensor
   }
 
   trait TransformedTensor extends InlineTensor {
@@ -1174,9 +1174,9 @@ trait Tensors extends OpenCL {
 
   }
 
-  trait BufferedTensor extends Tensor {
+  trait NonInlineTensor extends Tensor {
 
-    def notInline: this.type = this
+    def nonInline: this.type = this
 
     @transient
     protected lazy val closure = {
