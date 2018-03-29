@@ -993,82 +993,6 @@ trait Tensors extends OpenCL {
 
     private[compute] def doBuffer: Do[PendingBuffer[closure.JvmValue]]
 
-    /** Allocates device-side cache that are managed by the [[https://github.com/ThoughtWorksInc/RAII.scala RAII.scala]] library.
-      *
-      * @note This method is similar to [[cache]],
-      *       except the life cycle of the cache can be automatically managed.
-      *
-      * @group slow
-      */
-    def doCache: Do[this.type] = doBuffer.map(Function.const(this))
-
-    /** Allocates device-side cache for this [[Tensor]], and returns a [[java.lang.AutoCloseable]] to release the cache.
-      *
-      * @note This method can be called multiple times on one [[Tensor]],
-      *       only one copy of cache will be allocated,
-      *       which will be finally released until all [[java.lang.AutoCloseable]] returned by [[cache]] method are closed.
-      *
-      * @group slow
-      */
-    def cache: AutoCloseable = {
-      sealed trait State
-      case object Openning extends State
-      case object EarlyClosed extends State
-      case object Closed extends State
-      final case class Open(release: UnitContinuation[Unit]) extends State
-
-      val state = new AtomicReference[State](Openning) with AutoCloseable {
-        @tailrec
-        final def close(): Unit = {
-          get match {
-            case Openning =>
-              if (compareAndSet(Openning, EarlyClosed)) {
-                // Success
-              } else {
-                close()
-              }
-            case oldState @ Open(release) =>
-              if (compareAndSet(oldState, Closed)) {
-                release.safeOnComplete { _: Unit =>
-                  Trampoline.done(())
-                }.run
-              } else {
-                close()
-              }
-            case EarlyClosed | Closed =>
-              throw new IllegalStateException("The resources associated to this tensor has been released.")
-          }
-        }
-      }
-
-      doBuffer.safeOnComplete { resource =>
-        @tailrec
-        def retry(): Trampoline[Unit] = {
-          state.get() match {
-            case EarlyClosed =>
-              if (state.compareAndSet(EarlyClosed, Closed)) {
-                resource.release.safeOnComplete { _: Unit =>
-                  Trampoline.done(())
-                }
-              } else {
-                retry()
-              }
-            case Openning =>
-              if (state.compareAndSet(Openning, Open(resource.release))) {
-                Trampoline.done(())
-              } else {
-                retry()
-              }
-            case _: Open | Closed =>
-              throw new IllegalStateException()
-          }
-        }
-        retry()
-      }.run
-
-      state
-    }
-
     /**
       * @group slow
       */
@@ -1252,12 +1176,89 @@ trait Tensors extends OpenCL {
 
   trait BufferedTensor extends Tensor {
 
-    def notInline: BufferedTensor = this
+    def notInline: this.type = this
 
     @transient
     protected lazy val closure = {
       arrayTerm.extract
     }
+
+    /** Allocates device-side cache that are managed by the [[https://github.com/ThoughtWorksInc/RAII.scala RAII.scala]] library.
+      *
+      * @note This method is similar to [[cache]],
+      *       except the life cycle of the cache can be automatically managed.
+      *
+      * @group slow
+      */
+    def doCache: Do[this.type] = doBuffer.map(Function.const(this))
+
+    /** Allocates device-side cache for this [[Tensor]], and returns a [[java.lang.AutoCloseable]] to release the cache.
+      *
+      * @note This method can be called multiple times on one [[Tensor]].
+      *       Only one copy of cache will be allocated,
+      *       which will be finally released until all [[java.lang.AutoCloseable]] returned by [[cache]] method are closed.
+      *
+      * @group slow
+      */
+    def cache: AutoCloseable = {
+      sealed trait State
+      case object Openning extends State
+      case object EarlyClosed extends State
+      case object Closed extends State
+      final case class Open(release: UnitContinuation[Unit]) extends State
+
+      val state = new AtomicReference[State](Openning) with AutoCloseable {
+        @tailrec
+        final def close(): Unit = {
+          get match {
+            case Openning =>
+              if (compareAndSet(Openning, EarlyClosed)) {
+                // Success
+              } else {
+                close()
+              }
+            case oldState @ Open(release) =>
+              if (compareAndSet(oldState, Closed)) {
+                release.safeOnComplete { _: Unit =>
+                  Trampoline.done(())
+                }.run
+              } else {
+                close()
+              }
+            case EarlyClosed | Closed =>
+              throw new IllegalStateException("The resources associated to this tensor has been released.")
+          }
+        }
+      }
+
+      doBuffer.safeOnComplete { resource =>
+        @tailrec
+        def retry(): Trampoline[Unit] = {
+          state.get() match {
+            case EarlyClosed =>
+              if (state.compareAndSet(EarlyClosed, Closed)) {
+                resource.release.safeOnComplete { _: Unit =>
+                  Trampoline.done(())
+                }
+              } else {
+                retry()
+              }
+            case Openning =>
+              if (state.compareAndSet(Openning, Open(resource.release))) {
+                Trampoline.done(())
+              } else {
+                retry()
+              }
+            case _: Open | Closed =>
+              throw new IllegalStateException()
+          }
+        }
+        retry()
+      }.run
+
+      state
+    }
+
   }
 
 }
