@@ -4,6 +4,7 @@ import scala.collection.JavaConverters._
 import java.nio.{ByteBuffer, IntBuffer}
 import java.util.concurrent.{ConcurrentHashMap, Executors}
 import java.util.concurrent.atomic.AtomicReference
+import java.util.regex.Pattern
 
 import com.typesafe.scalalogging.{CanLog, Logger, StrictLogging}
 import org.lwjgl.opencl._
@@ -55,7 +56,21 @@ object OpenCL {
 
   final case class PlatformId[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
 
-    final def deviceIdsByType(deviceType: Int): Seq[DeviceId[Owner]] = {
+    def name: String = {
+      val stack = stackPush()
+      try {
+        val sizeBuffer = stack.mallocPointer(1)
+        checkErrorCode(clGetPlatformInfo(handle, CL_PLATFORM_NAME, null: ByteBuffer, sizeBuffer))
+        val size = sizeBuffer.get(0).toInt
+        val nameBuffer = stack.malloc(size)
+        checkErrorCode(clGetPlatformInfo(handle, CL_PLATFORM_NAME, nameBuffer, null))
+        memUTF8(nameBuffer)
+      } finally {
+        stack.close()
+      }
+    }
+
+    def deviceIdsByType(deviceType: Int): Seq[DeviceId[Owner]] = {
       val Array(numberOfDevices) = {
         val a = Array(0)
         checkErrorCode(clGetDeviceIDs(handle, deviceType, null, a))
@@ -358,8 +373,10 @@ object OpenCL {
 
   }
 
+  private val AmdOrIntelRegex = """AMD|Intel""".r
+
   /**
-    * @note [[HandleEventInExecutionContext]] __should__ be unnecessary because
+    * @note [[HandleEventInExecutionContextForIntelAndAMDPlatform]] __should__ be unnecessary because
     *       only OpenCL calls to create contexts or command-queues, or blocking OpenCL operations are undefined behavior,
     *       according to https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetEventCallback.html
     *       and we don't use those forbidden functions.
@@ -370,18 +387,27 @@ object OpenCL {
     *
     *       There is also similar bug in Intel's OpenCL implementation
     *
-    *       As a workaround, always enable this [[HandleEventInExecutionContext]] for
+    *       As a workaround, always enable this [[HandleEventInExecutionContextForIntelAndAMDPlatform]] for
     *       Intel's and AMD's OpenCL implementation.
     */
-  trait HandleEventInExecutionContext extends OpenCL {
+  trait HandleEventInExecutionContextForIntelAndAMDPlatform extends OpenCL {
 
     // FIXME: this plug-in will cause Nvidia OpenCL hang up. Need investigation.
 
     protected val executionContext: ExecutionContext
 
+    @transient
+    private lazy val isEnabled = {
+      AmdOrIntelRegex.findAllMatchIn(platformId.name).nonEmpty
+    }
+
     override protected def waitForStatus(event: Event, callbackType: Status): UnitContinuation[Status] =
-      super.waitForStatus(event, callbackType).flatMap { status =>
-        UnitContinuation.execute(status)(executionContext)
+      if (isEnabled) {
+        super.waitForStatus(event, callbackType).flatMap { status =>
+          UnitContinuation.execute(status)(executionContext)
+        }
+      } else {
+        super.waitForStatus(event, callbackType)
       }
   }
 

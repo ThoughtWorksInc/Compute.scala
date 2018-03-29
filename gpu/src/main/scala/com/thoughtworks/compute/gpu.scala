@@ -14,7 +14,7 @@ object gpu
     with OpenCL.UseAllGpuDevices
     with OpenCL.DontReleaseEventTooEarly
     with OpenCL.SynchronizedCreatingKernel
-    with OpenCL.HandleEventInExecutionContext
+    with OpenCL.HandleEventInExecutionContextForIntelAndAMDPlatform
     with Tensors.WangHashingRandomNumberGenerator {
   protected val numberOfCommandQueuesPerDevice: Int = 5
 }
