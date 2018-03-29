@@ -14,7 +14,7 @@ object cpu
     with OpenCL.UseAllCpuDevices
     with OpenCL.DontReleaseEventTooEarly
     with OpenCL.SynchronizedCreatingKernel
-    with OpenCL.HandleEventInExecutionContext
+    with OpenCL.HandleEventInExecutionContextForIntelAndAMDPlatform
     with Tensors.WangHashingRandomNumberGenerator {
 
   protected val numberOfCommandQueuesPerDevice = 5

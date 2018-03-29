@@ -40,7 +40,7 @@ object benchmarks {
         with OpenCL.CommandQueuePool
         with OpenCL.DontReleaseEventTooEarly
         with OpenCL.SynchronizedCreatingKernel
-        with OpenCL.HandleEventInExecutionContext
+        with OpenCL.HandleEventInExecutionContextForIntelAndAMDPlatform
         with Tensors.WangHashingRandomNumberGenerator {
 
       protected val deviceType: Int =
