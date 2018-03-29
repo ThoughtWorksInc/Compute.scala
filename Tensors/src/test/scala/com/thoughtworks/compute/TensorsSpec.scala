@@ -116,7 +116,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     doTensors.map { tensors =>
       import tensors._
       val tensor = Tensor(Seq(Seq(Seq(Seq(1.0f, 5.0f)))))
-      tensor.unzip(dimension = 3).map(_.toString) should be(Seq("[[[1.0]]]", "[[[5.0]]]"))
+      tensor.split(dimension = 3).map(_.toString) should be(Seq("[[[1.0]]]", "[[[5.0]]]"))
     }
   }.run.toScalaFuture
 
@@ -140,7 +140,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
   "convolution" in {
     doTensors.flatMap { tensors =>
       import tensors.Tensor
-      import tensors.Tensor.zip
+      import tensors.Tensor.join
       def convolute(input: Tensor /* batchSize × height × width × depth */,
                     weight: Tensor /* kernelHeight × kernelWidth × depth × filterSize */,
                     bias: Tensor /* filterSize */ ): Tensor = {
@@ -150,20 +150,20 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
               case Array(kernelHeight, kernelWidth, `depth`, filterSize) =>
                 bias.shape match {
                   case Array(`filterSize`) =>
-                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.unzip(dimension = 3)
+                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.split(dimension = 3)
 
                     inputSeq.size should be(depth)
                     inputSeq.head.shape should be(Array(batchSize, height, width))
 
                     val weightSeq: Seq[Seq[Seq[Seq[Tensor]]]] /* filterSize × kernelHeight × kernelWidth × depth */ =
-                      weight.unzip(dimension = 3).map { khKwD =>
+                      weight.split(dimension = 3).map { khKwD =>
                         khKwD.shape should be(Array(kernelHeight, kernelWidth, depth))
 
-                        khKwD.unzip(dimension = 0).map { kwD =>
+                        khKwD.split(dimension = 0).map { kwD =>
                           kwD.shape should be(Array(kernelWidth, depth))
-                          kwD.unzip(dimension = 0).map { d =>
+                          kwD.split(dimension = 0).map { d =>
                             d.shape should be(Array(depth))
-                            d.unzip(dimension = 0)
+                            d.split(dimension = 0)
                           }
                         }
                       }
@@ -173,7 +173,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
                     weightSeq.head.head.length should be(kernelWidth)
                     weightSeq.head.head.head.length should be(depth)
 
-                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
+                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.split(dimension = 0)
 
                     val outputChannels: Seq[Tensor] = weightSeq.view
                       .zip(biasSeq)
@@ -197,7 +197,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
                           biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
                       }
 
-                    zip(outputChannels)
+                    join(outputChannels)
                   case _ =>
                     throw new IllegalArgumentException
                 }
@@ -307,7 +307,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         val Array(`j`, k) = matrix2.shape
         val product = matrix1.broadcast(Array(i, j, k)) * matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
 
-        product.unzip(1).reduce(_ + _)
+        product.split(1).reduce(_ + _)
 
       }
 
@@ -338,10 +338,10 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
 
       def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
 
-        val columns1 = matrix1.unzip(1)
+        val columns1 = matrix1.split(1)
 
-        Tensor.zip(matrix2.unzip(1).map { column2: Tensor =>
-          (columns1 zip column2.unzip(0))
+        Tensor.join(matrix2.split(1).map { column2: Tensor =>
+          (columns1 zip column2.split(0))
             .map {
               case (l: Tensor, r: Tensor) =>
                 l * r.broadcast(l.shape)

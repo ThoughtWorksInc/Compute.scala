@@ -509,7 +509,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
   type FloatTerm <: (ValueTerm with Any) with ClFloatTerm
 
   trait ClTupleTerm extends TupleTermApi with ClValueTerm { thisTupleTerm: TupleTerm =>
-    def unzip: Seq[Element] = new IndexedSeq[Element] {
+    def split: Seq[Element] = new IndexedSeq[Element] {
 
       def length: Int = thisTupleTerm.length
 
@@ -566,7 +566,7 @@ trait OpenCLKernelBuilder extends AllExpressions {
       tupleTermFactory[element.ThisTerm].newInstance(element, length, termCode)
     }
 
-    def zip[Element0 <: ValueTerm](elements: Element0*): TupleTerm {
+    def join[Element0 <: ValueTerm](elements: Element0*): TupleTerm {
       type Element = Element0
     } = {
       val elementType = elements.head.valueType

@@ -87,9 +87,9 @@ object benchmarks {
         val Array(i, j) = matrix1.shape
         if (i >= unrollThreshold) {
           // unroll j and k
-          val columns1 = matrix1.unzip(1)
-          Tensor.zip(matrix2.unzip(1).map { column2: Tensor =>
-            (columns1 zip column2.unzip(0))
+          val columns1 = matrix1.split(1)
+          Tensor.join(matrix2.split(1).map { column2: Tensor =>
+            (columns1 zip column2.split(0))
               .map {
                 case (l: Tensor, r: Tensor) =>
                   l * r.broadcast(l.shape)
@@ -100,7 +100,7 @@ object benchmarks {
           // unroll only j
           val Array(`j`, k) = matrix2.shape
           val product = matrix1.broadcast(Array(i, j, k)) * matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
-          product.unzip(1).reduce(_ + _)
+          product.split(1).reduce(_ + _)
         }
       }
 
@@ -380,7 +380,7 @@ object benchmarks {
               case Array(kernelHeight, kernelWidth, `depth`, filterSize) =>
                 bias.shape match {
                   case Array(`filterSize`) =>
-                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.unzip(dimension = 3)
+                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.split(dimension = 3)
 
                     if (inputSeq.size != depth) {
                       throw new IllegalArgumentException
@@ -393,27 +393,27 @@ object benchmarks {
                     }
 
                     val weightSeq: Seq[Seq[Seq[Seq[Tensor]]]] /* filterSize × kernelHeight × kernelWidth × depth */ =
-                      weight.unzip(dimension = 3).map { khKwD =>
+                      weight.split(dimension = 3).map { khKwD =>
                         khKwD.shape match {
                           case Array(kernelHeight, kernelWidth, depth) =>
                           case _ =>
                             throw new IllegalArgumentException
                         }
 
-                        khKwD.unzip(dimension = 0).map { kwD =>
+                        khKwD.split(dimension = 0).map { kwD =>
                           kwD.shape match {
                             case Array(kernelWidth, depth) =>
                             case _ =>
                               throw new IllegalArgumentException
                           }
 
-                          kwD.unzip(dimension = 0).map { d =>
+                          kwD.split(dimension = 0).map { d =>
                             d.shape match {
                               case Array(depth) =>
                               case _ =>
                                 throw new IllegalArgumentException
                             }
-                            d.unzip(dimension = 0)
+                            d.split(dimension = 0)
                           }
                         }
                       }
@@ -428,7 +428,7 @@ object benchmarks {
                       throw new IllegalArgumentException
                     }
 
-                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
+                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.split(dimension = 0)
 
                     val outputChannels: Seq[Tensor] = weightSeq.view
                       .zip(biasSeq)
@@ -454,7 +454,7 @@ object benchmarks {
                           biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
                       }
 
-                    Tensor.zip(outputChannels)
+                    Tensor.join(outputChannels)
                   case _ =>
                     throw new IllegalArgumentException
                 }
