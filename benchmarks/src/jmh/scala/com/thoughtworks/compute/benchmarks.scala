@@ -105,9 +105,9 @@ object benchmarks {
       }
 
       def doBenchmark(): Do[() => Array[Float]] = {
-        val weight: BufferedTensor = Tensor.randomNormal(Array(inputDepth, outputDepth))
+        val weight: NonInlineTensor = Tensor.randomNormal(Array(inputDepth, outputDepth))
 
-        val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, inputDepth))
+        val input: NonInlineTensor = Tensor.randomNormal(Array(batchSize, inputDepth))
 
         weight.doCache.flatMap { weight =>
           input.doCache.map { input =>
@@ -233,7 +233,7 @@ object benchmarks {
     trait Benchmarks extends BenchmarkTensors {
 
       def doBenchmark(): Do[() => Float] = {
-        val input: BufferedTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
+        val input: NonInlineTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
         input.doCache.map { input =>
           { () =>
@@ -365,7 +365,7 @@ object benchmarks {
 
     trait Benchmarks extends BenchmarkTensors {
 
-      final case class ConvolutionalLayer(weight: BufferedTensor, bias: BufferedTensor) {
+      final case class ConvolutionalLayer(weight: NonInlineTensor, bias: NonInlineTensor) {
         def forward(input: Tensor): Tensor = {
           convolute(input, weight, bias)
         }
@@ -467,7 +467,7 @@ object benchmarks {
       }
 
       def doBenchmark(): Do[() => Array[Float]] = {
-        val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, imageHeight, imageWidth, depth))
+        val input: NonInlineTensor = Tensor.randomNormal(Array(batchSize, imageHeight, imageWidth, depth))
         val layers = (for (i <- (0 until numberOfLayers).view) yield {
           ConvolutionalLayer(weight = Tensor.randomNormal(Array(kernelHeight, kernelWidth, depth, depth)),
                              bias = Tensor.randomNormal(Array(depth)))
