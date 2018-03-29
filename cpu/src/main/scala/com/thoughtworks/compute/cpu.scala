@@ -25,7 +25,6 @@ import org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_CPU
 object cpu
     extends StrictLogging
     with Tensors.UnsafeMathOptimizations
-    with Tensors.SuppressWarnings
     with OpenCL.LogContextNotification
     with OpenCL.GlobalExecutionContext
     with OpenCL.CommandQueuePool

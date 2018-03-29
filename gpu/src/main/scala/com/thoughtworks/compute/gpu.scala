@@ -15,7 +15,6 @@ import com.typesafe.scalalogging.StrictLogging
 object gpu
     extends StrictLogging
     with Tensors.UnsafeMathOptimizations
-    with Tensors.SuppressWarnings
     with OpenCL.LogContextNotification
     with OpenCL.GlobalExecutionContext
     with OpenCL.CommandQueuePool
