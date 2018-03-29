@@ -541,7 +541,7 @@ trait Tensors extends OpenCL {
       }
     }
 
-    def zip(tensors0: Seq[Tensor]): BufferedTensor = {
+    def join(tensors0: Seq[Tensor]): BufferedTensor = {
       def force[A](seq: Seq[A]) = {
         seq match {
           case seqView: SeqView[A, _] @unchecked =>
@@ -559,7 +559,7 @@ trait Tensors extends OpenCL {
       } with BufferedTensor {
         private[compute] val doBuffer = {
           val elements = tensors.map(_.closure)
-          enqueueClosure(trees.tuple.zip(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]]
+          enqueueClosure(trees.tuple.join(elements: _*), headTensor.shape).asInstanceOf[Do[PendingBuffer[Float]]]
         }.shared
       }
     }
@@ -937,7 +937,7 @@ trait Tensors extends OpenCL {
     /**
       * @group delayed
       */
-    def unzip(dimension: Int): IndexedSeq[Tensor] = {
+    def split(dimension: Int): IndexedSeq[Tensor] = {
       // TODO: override map/reduce to produce less OpenCL C code
       val newShape = shape.patch(dimension, Nil, 1)
       new IndexedSeq[Tensor] {
