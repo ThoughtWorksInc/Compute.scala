@@ -1138,12 +1138,7 @@ trait Tensors extends OpenCL {
       compiledKernel.run(parameterDescendants(closure.tree)).asInstanceOf[Do[PendingBuffer[closure.JvmValue]]]
     }
 
-  /** An intermediate expression of tensor that can be composed into a more complex expression.
-    *
-    * @note When this [[InlineTensor]] is referenced more than one expressions,
-    *       the computation for the tensor may be evaluated more than once.
-    * @see [[notInline]] to create a tensor that will cache the result.
-    */
+  /** An intermediate expression of tensor that can be composed into a more complex expression. */
   trait InlineTensor extends Tensor { thisInlineTensor =>
     private[compute] val doBuffer: Do[PendingBuffer[closure.JvmValue]] = {
       enqueueClosure(closure, shape)
