@@ -937,10 +937,10 @@ trait Tensors extends OpenCL {
     /**
       * @group delayed
       */
-    def split(dimension: Int): IndexedSeq[Tensor] = {
+    def split(dimension: Int): IndexedSeq[TransformedTensor] = {
       // TODO: override map/reduce to produce less OpenCL C code
       val newShape = shape.patch(dimension, Nil, 1)
-      final class TensorSeq extends IndexedSeq[Tensor] {
+      final class TensorSeq extends IndexedSeq[TransformedTensor] {
 
         override def stringPrefix = "TensorSeq"
 

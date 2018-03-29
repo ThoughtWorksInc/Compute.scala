@@ -100,7 +100,7 @@ object benchmarks {
           // unroll only j
           val Array(`j`, k) = matrix2.shape
           val product = matrix1.broadcast(Array(i, j, k)) * matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
-          product.split(1).reduce(_ + _)
+          product.split(1).reduce[Tensor](_ + _)
         }
       }
 
