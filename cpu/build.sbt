@@ -8,6 +8,8 @@ exampleSuperTypes := exampleSuperTypes.value.map {
     otherTrait
 }
 
+exampleSuperTypes += ctor"_root_.org.scalatest.Inside"
+
 libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6" % Test).jar().classifier {
   import scala.util.Properties._
   if (isMac) {

@@ -21,6 +21,52 @@ import org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_CPU
   *          my2DArray.toString should be("[[1.0,2.0],[3.0,4.0]]")
   *          }}}
   *
+  * @example Given a 3D tensor whose `shape` is 2x3x4,
+  *
+  *          {{{
+  *          val my3DTensor = Tensor((0.0f until 24.0f by 1.0f).grouped(4).toSeq.grouped(3).toSeq)
+  *          my3DTensor.shape should be(Array(2, 3, 4))
+  *          }}}
+  *
+  *          when `split` it at the dimension #0,
+  *
+  *          {{{
+  *          val subtensors0 = my3DTensor.split(dimension = 0)
+  *          }}}
+  *
+  *          then the result should be a `Seq` of two 3x4 tensors.
+  *
+  *          {{{
+  *          subtensors0.toString should be("TensorSeq([[0.0,1.0,2.0,3.0],[4.0,5.0,6.0,7.0],[8.0,9.0,10.0,11.0]], [[12.0,13.0,14.0,15.0],[16.0,17.0,18.0,19.0],[20.0,21.0,22.0,23.0]])")
+  *
+  *          inside(subtensors0) {
+  *            case Seq(subtensor0, subtensor1) =>
+  *              subtensor0.shape should be(Array(3, 4))
+  *              subtensor1.shape should be(Array(3, 4))
+  *          }
+  *          }}}
+  *
+  *          When `split` it at the dimension #1,
+  *
+  *          {{{
+  *          val subtensors1 = my3DTensor.split(dimension = 1)
+  *          }}}
+  *
+  *          then the result should be a `Seq` of three 2x4 tensors.
+  *
+  *          {{{
+  *          subtensors1.toString should be("TensorSeq([[0.0,1.0,2.0,3.0],[12.0,13.0,14.0,15.0]], [[4.0,5.0,6.0,7.0],[16.0,17.0,18.0,19.0]], [[8.0,9.0,10.0,11.0],[20.0,21.0,22.0,23.0]])")
+  *
+  *          inside(subtensors1) {
+  *            case Seq(subtensor0, subtensor1, subtensor2) =>
+  *              subtensor0.shape should be(Array(2, 4))
+  *              subtensor1.shape should be(Array(2, 4))
+  *              subtensor2.shape should be(Array(2, 4))
+  *          }
+  *          }}}
+  *
+  *
+  *
   */
 object cpu
     extends StrictLogging
