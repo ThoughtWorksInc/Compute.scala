@@ -940,7 +940,9 @@ trait Tensors extends OpenCL {
     def split(dimension: Int): IndexedSeq[TransformedTensor] = {
       // TODO: override map/reduce to produce less OpenCL C code
       val newShape = shape.patch(dimension, Nil, 1)
-      new IndexedSeq[TransformedTensor] {
+      final class TensorSeq extends IndexedSeq[TransformedTensor] {
+
+        override def stringPrefix = "TensorSeq"
 
         val length: Int = shape(dimension)
 
@@ -973,6 +975,7 @@ trait Tensors extends OpenCL {
         }
 
       }
+      new TensorSeq
     }
 
     /**
