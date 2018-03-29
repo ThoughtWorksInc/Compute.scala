@@ -30,7 +30,7 @@ import scala.util.control.Exception.Catcher
 import scala.util.control.{NonFatal, TailCalls}
 import scala.util.control.TailCalls.TailRec
 import scala.util.{Failure, Success, Try}
-import scalaz.{-\/, Memo, \/, \/-}
+import scalaz.{-\/, Memo, Trampoline, \/, \/-}
 import scalaz.syntax.all._
 import com.thoughtworks.continuation._
 import com.thoughtworks.feature.Factory
@@ -1217,29 +1217,34 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
 
     val Do(TryT(ResourceT(acquireContinuation))) = acquireCommandQueue
 
-    Do.garbageCollected(acquireContinuation).flatMap {
+    Do.garbageCollected(acquireContinuation).intransitiveFlatMap {
       case Resource(Success(commandQueue), release) =>
-        (try command(commandQueue)
-        catch {
-          case NonFatal(e) =>
-            e.raiseError[Do, Event]
-        }).handleError { e =>
-            release.onComplete(identity)
-            e.raiseError[Do, Event]
-          }
-          .map { event =>
-            event
-              .waitForComplete()
-              .onComplete { result =>
-                release.onComplete(identity)
-                result match {
-                  case Success(()) =>
-                  case Failure(e) =>
-                    logger.error(s"Cannot wait for cl_event[handle = ${event.handle}]", e)
-                }
+        Do.safeAsync[Event] { continue =>
+          (try command(commandQueue)
+          catch {
+            case NonFatal(e) =>
+              e.raiseError[Do, Event]
+          }).safeOnComplete { resource =>
+            continue(resource).flatMap { _: Unit =>
+              resource.value match {
+                case Success(event) =>
+                  event
+                    .waitForComplete()
+                    .safeOnComplete { result =>
+                      result match {
+                        case Success(()) =>
+                        case Failure(e) =>
+                          logger.error(s"Cannot wait for cl_event[handle = ${event.handle}]", e)
+                      }
+                      release.safeOnComplete(Trampoline.done)
+                    }
+                case Failure(e) =>
+                  release.safeOnComplete(Trampoline.done)
               }
-            event
+            }
           }
+        }
+
       case r @ Resource(Failure(e), release) =>
         Do(TryT(ResourceT(UnitContinuation.now(r.asInstanceOf[Resource[UnitContinuation, Try[Event]]]))))
     }
