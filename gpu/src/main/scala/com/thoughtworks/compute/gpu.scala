@@ -1,9 +1,17 @@
 package com.thoughtworks.compute
 
-import com.thoughtworks.feature.Factory
 import com.typesafe.scalalogging.StrictLogging
-import org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_CPU
 
+/** Contains N-dimensional array types on CPU.
+  *
+  * All the usage of this [[gpu]] object is same as [[cpu]], except the `import` statement:
+  *
+  * {{{
+  * import com.thoughtworks.compute.gpu._
+  * }}}
+  *
+  * @see [[cpu]] for Usage.
+  */
 object gpu
     extends StrictLogging
     with Tensors.UnsafeMathOptimizations
