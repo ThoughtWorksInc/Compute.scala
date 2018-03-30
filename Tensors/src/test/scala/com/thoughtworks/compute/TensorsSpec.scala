@@ -19,7 +19,7 @@ import org.scalatest._
 class TensorsSpec extends AsyncFreeSpec with Matchers {
   private def doTensors: Do[Tensors] =
     Do.monadicCloseable(Factory[
-      Tensors.WangHashingRandomNumberGenerator with StrictLogging with OpenCL.LogContextNotification with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.UseFirstPlatform with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
+      Tensors.WangHashingRandomNumberGenerator with StrictLogging with OpenCL.LogContextNotification with OpenCL.GlobalExecutionContext with OpenCL.UseAllDevices with OpenCL.CommandQueuePool with Tensors with OpenCL.DontReleaseEventTooEarly]
       .newInstance(
         numberOfCommandQueuesPerDevice = 5
       ))
@@ -43,12 +43,10 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         pendingBuffer <- filled.doBuffer
         floatBuffer <- pendingBuffer.toHostBuffer
       } yield {
-        for (i <- 0 until floatBuffer.capacity()) {
+        for (i <- floatBuffer.position() until floatBuffer.limit()) {
           floatBuffer.get(i) should be(element)
         }
-        floatBuffer.position() should be(0)
-        floatBuffer.limit() should be(shape.product)
-        floatBuffer.capacity() should be(shape.product)
+        floatBuffer.remaining() should be(shape.product)
         tensors.kernelCache.getIfPresent(filled.getClosure) should not be null
         val zeros2 = tensors.Tensor.fill(element, shape)
         tensors.kernelCache.getIfPresent(zeros2.getClosure) should not be null
@@ -110,7 +108,6 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
           }
         }
         floatBuffer.limit() should be(shape.product)
-        floatBuffer.capacity() should be(shape.product)
       }
     }
   }.run.toScalaFuture
@@ -119,7 +116,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     doTensors.map { tensors =>
       import tensors._
       val tensor = Tensor(Seq(Seq(Seq(Seq(1.0f, 5.0f)))))
-      tensor.unzip(dimension = 3).map(_.toString) should be(Seq("[[[1.0]]]", "[[[5.0]]]"))
+      tensor.split(dimension = 3).map(_.toString) should be(Seq("[[[1.0]]]", "[[[5.0]]]"))
     }
   }.run.toScalaFuture
 
@@ -143,7 +140,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
   "convolution" in {
     doTensors.flatMap { tensors =>
       import tensors.Tensor
-      import tensors.Tensor.zip
+      import tensors.Tensor.join
       def convolute(input: Tensor /* batchSize × height × width × depth */,
                     weight: Tensor /* kernelHeight × kernelWidth × depth × filterSize */,
                     bias: Tensor /* filterSize */ ): Tensor = {
@@ -153,20 +150,20 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
               case Array(kernelHeight, kernelWidth, `depth`, filterSize) =>
                 bias.shape match {
                   case Array(`filterSize`) =>
-                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.unzip(dimension = 3)
+                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.split(dimension = 3)
 
                     inputSeq.size should be(depth)
                     inputSeq.head.shape should be(Array(batchSize, height, width))
 
                     val weightSeq: Seq[Seq[Seq[Seq[Tensor]]]] /* filterSize × kernelHeight × kernelWidth × depth */ =
-                      weight.unzip(dimension = 3).map { khKwD =>
+                      weight.split(dimension = 3).map { khKwD =>
                         khKwD.shape should be(Array(kernelHeight, kernelWidth, depth))
 
-                        khKwD.unzip(dimension = 0).map { kwD =>
+                        khKwD.split(dimension = 0).map { kwD =>
                           kwD.shape should be(Array(kernelWidth, depth))
-                          kwD.unzip(dimension = 0).map { d =>
+                          kwD.split(dimension = 0).map { d =>
                             d.shape should be(Array(depth))
-                            d.unzip(dimension = 0)
+                            d.split(dimension = 0)
                           }
                         }
                       }
@@ -176,7 +173,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
                     weightSeq.head.head.length should be(kernelWidth)
                     weightSeq.head.head.head.length should be(depth)
 
-                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
+                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.split(dimension = 0)
 
                     val outputChannels: Seq[Tensor] = weightSeq.view
                       .zip(biasSeq)
@@ -200,7 +197,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
                           biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
                       }
 
-                    zip(outputChannels)
+                    join(outputChannels)
                   case _ =>
                     throw new IllegalArgumentException
                 }
@@ -235,7 +232,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
       )
       outputTensor.shape should be(Array(2, 4, 5, 2)) /* batchSize × height × width × filterSize */
 
-      outputTensor.flatArray.map { a =>
+      Do.garbageCollected(outputTensor.flatArray).map { a =>
         val outputArray = a.grouped(2).toArray.grouped(5).toArray.grouped(4).toArray
         outputArray.length should be(2)
 
@@ -255,6 +252,14 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     .map { tensors =>
       import tensors._
       Tensor.fill(15625.0f, Array(8, 8)).sum.toString should be("1000000.0")
+    }
+    .run
+    .toScalaFuture
+
+  "randomNormal scalar" in doTensors
+    .flatMap { tensors =>
+      import tensors._
+      Do.garbageCollected(Tensor.randomNormal(Array.empty, seed = 54321).flatArray.map(_ should be(Array(1.4561316f))))
     }
     .run
     .toScalaFuture
@@ -302,7 +307,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
         val Array(`j`, k) = matrix2.shape
         val product = matrix1.broadcast(Array(i, j, k)) * matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
 
-        product.unzip(1).reduce(_ + _)
+        product.split(1).reduce[Tensor](_ + _)
 
       }
 
@@ -332,17 +337,17 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
       import tensors._
 
       def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
-
-        val columns1 = matrix1.unzip(1)
-
-        Tensor.zip(matrix2.unzip(1).map { column2: Tensor =>
-          (columns1 zip column2.unzip(0))
+        val columns1 = matrix1.split(1)
+        val columns2 = matrix2.split(1)
+        val resultColumns = columns2.map { column2: Tensor =>
+          (columns1.view zip column2.split(0))
             .map {
               case (l: Tensor, r: Tensor) =>
                 l * r.broadcast(l.shape)
             }
             .reduce[Tensor](_ + _)
-        })
+        }
+        Tensor.join(resultColumns)
       }
 
       matrixMultiply(

@@ -55,7 +55,7 @@ final class TreesSpec extends FreeSpec with Matchers {
   "tuple.zip" - {
     "reflexive" in {
       reflexive(
-        trees.tuple.zip(
+        trees.tuple.join(
           trees.float.parameter("my_id"),
           trees.float.literal(2.0f),
           trees.float.literal(3.0f)
@@ -65,12 +65,12 @@ final class TreesSpec extends FreeSpec with Matchers {
 
     "sameStructuralDifferentParameterName" in {
       sameStructuralDifferentParameterName(
-        trees.tuple.zip(
+        trees.tuple.join(
           trees.float.parameter("my_id1"),
           trees.float.parameter("my_id2"),
           trees.float.literal(0.0f)
         ),
-        trees.tuple.zip(
+        trees.tuple.join(
           trees.float.parameter("my_id2"),
           trees.float.parameter("my_id3"),
           trees.float.literal(0.0f)
@@ -80,11 +80,11 @@ final class TreesSpec extends FreeSpec with Matchers {
 
     "differentStructural" in {
       differentStructural(
-        trees.tuple.zip(
+        trees.tuple.join(
           trees.float.literal(1.0f),
           trees.float.literal(0.0f)
         ),
-        trees.tuple.zip(
+        trees.tuple.join(
           trees.float.literal(0.0f),
           trees.float.literal(1.0f)
         )

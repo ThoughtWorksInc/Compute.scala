@@ -4,6 +4,7 @@ import scala.collection.JavaConverters._
 import java.nio.{ByteBuffer, IntBuffer}
 import java.util.concurrent.{ConcurrentHashMap, Executors}
 import java.util.concurrent.atomic.AtomicReference
+import java.util.regex.Pattern
 
 import com.typesafe.scalalogging.{CanLog, Logger, StrictLogging}
 import org.lwjgl.opencl._
@@ -20,7 +21,9 @@ import org.lwjgl.system.Pointer._
 import scala.collection.mutable
 import com.thoughtworks.each.Monadic._
 import com.thoughtworks.compute.Memory.Box
-import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}, Event.Status
+import com.thoughtworks.compute.OpenCL.{Event, checkErrorCode}
+import Event.Status
+import com.thoughtworks.compute.OpenCL.Exceptions.{DeviceNotFound, InvalidValue}
 import org.lwjgl.system.jni.JNINativeInterface
 import org.lwjgl.system._
 
@@ -53,7 +56,21 @@ object OpenCL {
 
   final case class PlatformId[Owner <: Singleton with OpenCL](handle: Long) extends AnyVal {
 
-    final def deviceIdsByType(deviceType: Int): Seq[DeviceId[Owner]] = {
+    def name: String = {
+      val stack = stackPush()
+      try {
+        val sizeBuffer = stack.mallocPointer(1)
+        checkErrorCode(clGetPlatformInfo(handle, CL_PLATFORM_NAME, null: ByteBuffer, sizeBuffer))
+        val size = sizeBuffer.get(0).toInt
+        val nameBuffer = stack.malloc(size)
+        checkErrorCode(clGetPlatformInfo(handle, CL_PLATFORM_NAME, nameBuffer, null))
+        memUTF8(nameBuffer)
+      } finally {
+        stack.close()
+      }
+    }
+
+    def deviceIdsByType(deviceType: Int): Seq[DeviceId[Owner]] = {
       val Array(numberOfDevices) = {
         val a = Array(0)
         checkErrorCode(clGetDeviceIDs(handle, deviceType, null, a))
@@ -294,23 +311,11 @@ object OpenCL {
     }
   }
 
-  trait UseFirstPlatform extends OpenCL {
+  trait UseFirstDevice extends OpenCL {
     @transient
     protected lazy val platformId: PlatformId = {
       platformIds.head
     }
-  }
-
-  trait UseAllDevices extends OpenCL {
-
-    @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      platformId.deviceIdsByType(CL_DEVICE_TYPE_ALL)
-    }
-
-  }
-
-  trait UseFirstDevice extends OpenCL {
 
     @transient
     protected lazy val deviceIds: Seq[DeviceId] = {
@@ -320,41 +325,58 @@ object OpenCL {
 
   }
 
-  trait UseAllGpuDevices extends OpenCL {
-
-    @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      platformId.deviceIdsByType(CL_DEVICE_TYPE_GPU)
-    }
+  trait UseAllDevices extends UseAllDevicesByType {
+    protected val deviceType: Status = CL_DEVICE_TYPE_ALL
   }
 
-  trait UseFirstGpuDevice extends OpenCL {
-
-    @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      val allDeviceIds = platformId.deviceIdsByType(CL_DEVICE_TYPE_GPU)
-      Seq(allDeviceIds.head)
-    }
-  }
-  trait UseFirstCpuDevice extends OpenCL {
-
-    @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      val allDeviceIds = platformId.deviceIdsByType(CL_DEVICE_TYPE_CPU)
-      Seq(allDeviceIds.head)
-    }
+  trait UseAllCpuDevices extends UseAllDevicesByType {
+    protected val deviceType: Status = CL_DEVICE_TYPE_CPU
   }
 
-  trait UseAllCpuDevices extends OpenCL {
+  trait UseAllGpuDevices extends UseAllDevicesByType {
+    protected val deviceType: Status = CL_DEVICE_TYPE_GPU
+  }
+
+  trait UseAllDevicesByType extends OpenCL {
+    protected val deviceType: Int
 
     @transient
-    protected lazy val deviceIds: Seq[DeviceId] = {
-      platformId.deviceIdsByType(CL_DEVICE_TYPE_CPU)
+    protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
+
+      object MatchDeviceType {
+        def unapply(platformId: PlatformId): Option[Seq[DeviceId]] = {
+          (try {
+            platformId.deviceIdsByType(deviceType)
+          } catch {
+            case e: DeviceNotFound =>
+              return None
+          }) match {
+            case devices if devices.nonEmpty =>
+              Some(devices)
+            case _ =>
+              None
+          }
+
+        }
+      }
+
+      platformIds.collectFirst {
+        case platformId @ MatchDeviceType(deviceIds) =>
+          (platformId, deviceIds)
+      } match {
+        case None =>
+          throw new DeviceNotFound(s"No device of type $deviceType is found")
+        case Some(pair) =>
+          pair
+      }
     }
+
   }
+
+  private val AmdOrIntelRegex = """AMD|Intel""".r
 
   /**
-    * @note [[HandleEventInExecutionContext]] __should__ be unnecessary because
+    * @note [[HandleEventInExecutionContextForIntelAndAMDPlatform]] __should__ be unnecessary because
     *       only OpenCL calls to create contexts or command-queues, or blocking OpenCL operations are undefined behavior,
     *       according to https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetEventCallback.html
     *       and we don't use those forbidden functions.
@@ -365,27 +387,36 @@ object OpenCL {
     *
     *       There is also similar bug in Intel's OpenCL implementation
     *
-    *       As a workaround, always enable this [[HandleEventInExecutionContext]] for
+    *       As a workaround, always enable this [[HandleEventInExecutionContextForIntelAndAMDPlatform]] for
     *       Intel's and AMD's OpenCL implementation.
     */
-  trait HandleEventInExecutionContext extends OpenCL {
+  trait HandleEventInExecutionContextForIntelAndAMDPlatform extends OpenCL {
 
     // FIXME: this plug-in will cause Nvidia OpenCL hang up. Need investigation.
 
-    val executionContext: ExecutionContext
+    protected val executionContext: ExecutionContext
+
+    @transient
+    private lazy val isEnabled = {
+      AmdOrIntelRegex.findAllMatchIn(platformId.name).nonEmpty
+    }
 
     override protected def waitForStatus(event: Event, callbackType: Status): UnitContinuation[Status] =
-      super.waitForStatus(event, callbackType).flatMap { status =>
-        UnitContinuation.execute(status)(executionContext)
+      if (isEnabled) {
+        super.waitForStatus(event, callbackType).flatMap { status =>
+          UnitContinuation.execute(status)(executionContext)
+        }
+      } else {
+        super.waitForStatus(event, callbackType)
       }
   }
 
   trait GlobalExecutionContext {
-    val executionContext: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
+    protected val executionContext: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
   }
 
   trait SingleThreadExecutionContext {
-    val executionContext: ExecutionContextExecutor =
+    protected val executionContext: ExecutionContextExecutor =
       scala.concurrent.ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
   }
 
@@ -407,7 +438,7 @@ object OpenCL {
     }
 
     @transient
-    lazy val Resource(acquireCommandQueue, shutdownCommandQueues) = AsynchronousPool.preloaded(commandQueues)
+    protected lazy val Resource(acquireCommandQueue, shutdownCommandQueues) = AsynchronousPool.preloaded(commandQueues)
 
     override def monadicClose: UnitContinuation[Unit] = {
       import scalaz.std.iterable._
@@ -1062,7 +1093,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
       val numberOfKernels = numberOfKernelsBuffer.get(0)
       val kernelBuffer = stack.mallocPointer(numberOfKernels)
       checkErrorCode(clCreateKernelsInProgram(program.handle, kernelBuffer, null: IntBuffer))
-      (0 until kernelBuffer.capacity).map { i =>
+      (kernelBuffer.position() until kernelBuffer.limit()).map { i =>
         new Kernel(kernelBuffer.get(i))
       }
     } finally {
@@ -1072,7 +1103,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
 
   /** Creates single kernel from this [[Program]].
     *
-    * @throws InvalidValue if the this [[Program]] has more than one kernel.
+    * @throws com.thoughtworks.compute.OpenCL.Exceptions.InvalidValue if the this [[Program]] has more than one kernel.
     */
   protected def createKernel(program: Program): Kernel = {
     val stack = stackPush()
@@ -1087,13 +1118,13 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
 
   protected val logger: Logger
 
-  type Program = OpenCL.Program[this.type]
-  type Event = OpenCL.Event[this.type]
-  type CommandQueue = OpenCL.CommandQueue[this.type]
-  type DeviceId = OpenCL.DeviceId[this.type]
-  type PlatformId = OpenCL.PlatformId[this.type]
+  protected type Program = OpenCL.Program[this.type]
+  protected type Event = OpenCL.Event[this.type]
+  protected type CommandQueue = OpenCL.CommandQueue[this.type]
+  protected type DeviceId = OpenCL.DeviceId[this.type]
+  protected type PlatformId = OpenCL.PlatformId[this.type]
 
-  def platformIds: Seq[PlatformId] = {
+  protected def platformIds: Seq[PlatformId] = {
     val stack = stackPush()
     try {
       val numberOfPlatformsBuffer = stack.mallocInt(1)
@@ -1175,7 +1206,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
       }
   }
 
-  type Kernel = OpenCL.Kernel[this.type]
+  protected type Kernel = OpenCL.Kernel[this.type]
   protected def createProgramWithSource(sourceCode: TraversableOnce[CharSequence]): Program = {
     val stack = stackPush()
     try {
@@ -1305,11 +1336,11 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
     }
   }
 
-  type DeviceBuffer[Element] = OpenCL.DeviceBuffer[this.type, Element]
+  protected type DeviceBuffer[Element] = OpenCL.DeviceBuffer[this.type, Element]
 
   /** Returns an uninitialized buffer of `Element` on device.
     */
-  def allocateBuffer[Element](size: Long)(implicit memory: Memory[Element]): Do[DeviceBuffer[Element]] =
+  protected def allocateBuffer[Element](size: Long)(implicit memory: Memory[Element]): Do[DeviceBuffer[Element]] =
     Do.monadicCloseable {
       val stack = stackPush()
       try {
@@ -1325,7 +1356,7 @@ trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
 
   /** Returns a buffer of `Element` on device whose content is copied from `hostBuffer`.
     */
-  def allocateBufferFrom[Element, HostBuffer](hostBuffer: HostBuffer)(
+  protected def allocateBufferFrom[Element, HostBuffer](hostBuffer: HostBuffer)(
       implicit memory: Memory.Aux[Element, HostBuffer]): Do[DeviceBuffer[Element]] =
     Do.monadicCloseable {
       val stack = stackPush()
