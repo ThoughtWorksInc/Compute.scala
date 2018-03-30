@@ -266,10 +266,10 @@ object benchmarks {
       benchmarkResource.value.get.apply()
     }
 
-    @Param(Array("3", "2", "1"))
+    @Param(Array("3", "2"))
     protected var numberOfDimensions: Int = _
 
-    @Param(Array("128", "32", "16"))
+    @Param(Array("512", "128", "32", "16"))
     protected var size: Int = _
   }
 
