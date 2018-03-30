@@ -56,7 +56,7 @@ Check [Compute.scala on Scaladex](https://index.scala-lang.org/thoughtworksinc/c
 
 ### Creating an N-dimensional array
 
-Import different the namespace object `gpu` or `cpu`, according to the OpenCL runtime you want to use.
+Import types in `gpu` or `cpu` object according to the OpenCL runtime you want to use.
 
 ``` scala
 // For N-dimensional array on GPU
@@ -68,7 +68,7 @@ import com.thoughtworks.compute.gpu._
 import com.thoughtworks.compute.cpu._
 ```
 
-In Compute.scala, an N-dimensional array is typed as `Tensor`, which can be created from `Seq` or `scala.Array`.
+In Compute.scala, an N-dimensional array is typed as `Tensor`, which can be created from `Seq` or `Array`.
 
 ``` scala
 val my2DArray: Tensor = Tensor(Array(Seq(1.0f, 2.0f, 3.0f), Seq(4.0f, 5.0f, 6.0f)))
@@ -203,7 +203,7 @@ By combining pure `Tensor`s along with the impure `cache` mechanism, we achieved
 
 A `Tensor` can be `split` into small `Tensor`s on the direction of a specific dimension.
 
-For example, given a 3D tensor whose `shape` is 2x3x4,
+For example, given a 3D tensor whose `shape` is 2×3×4,
 
 ``` scala
 val my3DTensor = Tensor((0.0f until 24.0f by 1.0f).grouped(4).toSeq.grouped(3).toSeq)
@@ -214,10 +214,10 @@ val Array(2, 3, 4) = my3DTensor.shape
 when `split` it at the dimension #0, 
 
 ``` scala
-val subtensors0 = my3DTensor.split(dimension = 0)
+val subtensors0: Seq[Tensor] = my3DTensor.split(dimension = 0)
 ```
 
-then the result should be a `Seq` of two 3x4 tensors.
+then the result should be a `Seq` of two 3×4 tensors.
 
 ``` scala
 // Output: TensorSeq([[0.0,1.0,2.0,3.0],[4.0,5.0,6.0,7.0],[8.0,9.0,10.0,11.0]], [[12.0,13.0,14.0,15.0],[16.0,17.0,18.0,19.0],[20.0,21.0,22.0,23.0]])
@@ -227,21 +227,47 @@ println(subtensors0)
 When `split` it at the dimension #1, 
 
 ``` scala
-val subtensors1 = my3DTensor.split(dimension = 1)
+val subtensors1: Seq[Tensor] = my3DTensor.split(dimension = 1)
 ```
 
-then the result should be a `Seq` of three 2x4 tensors.
+then the result should be a `Seq` of three 2×4 tensors.
 
 ``` scala
 // Output: TensorSeq([[0.0,1.0,2.0,3.0],[12.0,13.0,14.0,15.0]], [[4.0,5.0,6.0,7.0],[16.0,17.0,18.0,19.0]], [[8.0,9.0,10.0,11.0],[20.0,21.0,22.0,23.0]])
 println(subtensors1)
 ```
 
-Then you can use arbitrary Scala collection functions on Seq of subtensors.
+Then you can use arbitrary Scala collection functions on the `Seq` of subtensors.
 
 #### `join`
 
-TODO
+Multiple `Tensor`s of the same `shape` can be merged into a larger `Tensor` via the `Tensor.join` function.
+
+Given a `Seq` of three 2×2 `Tensor`s,
+
+``` scala
+val mySubtensors: Seq[Tensor] = Seq(
+  Tensor(Seq(Seq(1.0f, 2.0f), Seq(3.0f, 4.0f))),
+  Tensor(Seq(Seq(5.0f, 6.0f), Seq(7.0f, 8.0f))),
+  Tensor(Seq(Seq(9.0f, 10.0f), Seq(11.0f, 12.0f))),
+)
+```
+
+when `join`ing them, 
+``` scala
+val merged: Tensor = Tensor.join(mySubtensors)
+```
+
+then the result should be a 2x2x3 `Tensor`.
+
+``` scala
+// Output: [[[1.0,5.0,9.0],[2.0,6.0,10.0]],[[3.0,7.0,11.0],[4.0,8.0,12.0]]]
+println(merged.toString)
+```
+
+Generally, when `join`ing *n* `Tensor`s of shape *a*<sub>0</sub> × *a*<sub>1</sub> × *a*<sub>2</sub> ×  ⋯ × *a*<sub>*i*</sub> , the shape of the result `Tensor` is *a*<sub>0</sub> × *a*<sub>1</sub> × *a*<sub>2</sub> ×  ⋯ × *a*<sub>*i*</sub> × *n*
+
+
 
 #### Fast matrix multiplication from `split` and `join`
 
