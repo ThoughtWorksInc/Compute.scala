@@ -19,7 +19,7 @@ Make sure you have met the following system requirements before using Compute.sc
  * JDK 8
  * OpenCL runtime
 
-The performance of Compute.scala varies according to which OpenCL runtime you are using. For best performance, install OpenCL runtime according to the following table.
+The performance of Compute.scala varies with OpenCL runtimes. For best performance, install the OpenCL runtime according to the following table.
 
 | | Linux  | Windows | macOS |
 | --- | --- | --- | --- |
