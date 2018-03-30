@@ -35,46 +35,18 @@ object benchmarks {
         with Tensors.UnsafeMathOptimizations
         with Tensors.SuppressWarnings
         with OpenCL.LogContextNotification
+        with OpenCL.UseAllDevicesByType
         with OpenCL.GlobalExecutionContext
         with OpenCL.CommandQueuePool
         with OpenCL.DontReleaseEventTooEarly
         with OpenCL.SynchronizedCreatingKernel
-        with OpenCL.HandleEventInExecutionContext
+        with OpenCL.HandleEventInExecutionContextForIntelAndAMDPlatform
         with Tensors.WangHashingRandomNumberGenerator {
 
+      protected val deviceType: Int =
+        classOf[CL10].getField(s"CL_DEVICE_TYPE_$tensorDeviceType").get(null).asInstanceOf[Int]
+
       protected val numberOfCommandQueuesPerDevice: Int = TensorState.this.numberOfCommandQueuesPerDevice
-
-      @transient
-      protected lazy val (platformId: PlatformId, deviceIds: Seq[DeviceId]) = {
-        val deviceType = classOf[CL10].getField(s"CL_DEVICE_TYPE_$tensorDeviceType").get(null).asInstanceOf[Int]
-
-        object MatchDeviceType {
-          def unapply(platformId: PlatformId): Option[Seq[DeviceId]] = {
-            (try {
-              platformId.deviceIdsByType(deviceType)
-            } catch {
-              case e: DeviceNotFound =>
-                return None
-            }) match {
-              case devices if devices.nonEmpty =>
-                Some(devices)
-              case _ =>
-                None
-            }
-
-          }
-        }
-
-        platformIds.collectFirst {
-          case platformId @ MatchDeviceType(deviceIds) =>
-            (platformId, deviceIds)
-        } match {
-          case None =>
-            throw new DeviceNotFound(s"$tensorDeviceType device is not found")
-          case Some(pair) =>
-            pair
-        }
-      }
 
     }
   }
@@ -115,9 +87,9 @@ object benchmarks {
         val Array(i, j) = matrix1.shape
         if (i >= unrollThreshold) {
           // unroll j and k
-          val columns1 = matrix1.unzip(1)
-          Tensor.zip(matrix2.unzip(1).map { column2: Tensor =>
-            (columns1 zip column2.unzip(0))
+          val columns1 = matrix1.split(1)
+          Tensor.join(matrix2.split(1).map { column2: Tensor =>
+            (columns1 zip column2.split(0))
               .map {
                 case (l: Tensor, r: Tensor) =>
                   l * r.broadcast(l.shape)
@@ -128,19 +100,19 @@ object benchmarks {
           // unroll only j
           val Array(`j`, k) = matrix2.shape
           val product = matrix1.broadcast(Array(i, j, k)) * matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
-          product.unzip(1).reduce(_ + _)
+          product.split(1).reduce[Tensor](_ + _)
         }
       }
 
       def doBenchmark(): Do[() => Array[Float]] = {
-        val weight: BufferedTensor = Tensor.randomNormal(Array(inputDepth, outputDepth))
+        val weight: NonInlineTensor = Tensor.randomNormal(Array(inputDepth, outputDepth))
 
-        val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, inputDepth))
+        val input: NonInlineTensor = Tensor.randomNormal(Array(batchSize, inputDepth))
 
-        weight.doBuffer.flatMap { _ =>
-          input.doBuffer.map { _ =>
+        weight.doCache.flatMap { weight =>
+          input.doCache.map { input =>
             { () =>
-              matrixMultiply(input, weight).flatArray.run.blockingAwait
+              matrixMultiply(input, weight).flatArray.blockingAwait
             }
           }
         }
@@ -197,14 +169,13 @@ object benchmarks {
       def doBenchmark(): Do[() => Array[Float]] = {
         val input = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
-        input.doBuffer.map { _ =>
+        input.doCache.map { input =>
           { () =>
             (0 until numberOfIterations)
               .foldLeft[Tensor](input) { (input, _) =>
                 Tensor.tanh(input)
               }
               .flatArray
-              .run
               .blockingAwait
           }
         }
@@ -262,11 +233,11 @@ object benchmarks {
     trait Benchmarks extends BenchmarkTensors {
 
       def doBenchmark(): Do[() => Float] = {
-        val input: BufferedTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
+        val input: NonInlineTensor = Tensor.randomNormal(Array.fill(numberOfDimensions)(size))
 
-        input.doBuffer.map { _ =>
+        input.doCache.map { input =>
           { () =>
-            val Array(v) = input.sum.flatArray.run.blockingAwait
+            val Array(v) = input.sum.flatArray.blockingAwait
             v
           }
         }
@@ -295,10 +266,10 @@ object benchmarks {
       benchmarkResource.value.get.apply()
     }
 
-    @Param(Array("3", "2", "1"))
+    @Param(Array("3", "2"))
     protected var numberOfDimensions: Int = _
 
-    @Param(Array("128", "32", "16"))
+    @Param(Array("512", "128", "32", "16"))
     protected var size: Int = _
   }
 
@@ -340,7 +311,7 @@ object benchmarks {
 
     @Benchmark
     final def computeDotScala(): Array[Float] = {
-      benchmarks.Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).flatArray.run.blockingAwait
+      benchmarks.Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).flatArray.blockingAwait
     }
   }
 
@@ -394,7 +365,7 @@ object benchmarks {
 
     trait Benchmarks extends BenchmarkTensors {
 
-      final case class ConvolutionalLayer(weight: BufferedTensor, bias: BufferedTensor) {
+      final case class ConvolutionalLayer(weight: NonInlineTensor, bias: NonInlineTensor) {
         def forward(input: Tensor): Tensor = {
           convolute(input, weight, bias)
         }
@@ -409,7 +380,7 @@ object benchmarks {
               case Array(kernelHeight, kernelWidth, `depth`, filterSize) =>
                 bias.shape match {
                   case Array(`filterSize`) =>
-                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.unzip(dimension = 3)
+                    val inputSeq: Seq[Tensor /* batchSize × height × width */ ] = input.split(dimension = 3)
 
                     if (inputSeq.size != depth) {
                       throw new IllegalArgumentException
@@ -422,27 +393,27 @@ object benchmarks {
                     }
 
                     val weightSeq: Seq[Seq[Seq[Seq[Tensor]]]] /* filterSize × kernelHeight × kernelWidth × depth */ =
-                      weight.unzip(dimension = 3).map { khKwD =>
+                      weight.split(dimension = 3).map { khKwD =>
                         khKwD.shape match {
                           case Array(kernelHeight, kernelWidth, depth) =>
                           case _ =>
                             throw new IllegalArgumentException
                         }
 
-                        khKwD.unzip(dimension = 0).map { kwD =>
+                        khKwD.split(dimension = 0).map { kwD =>
                           kwD.shape match {
                             case Array(kernelWidth, depth) =>
                             case _ =>
                               throw new IllegalArgumentException
                           }
 
-                          kwD.unzip(dimension = 0).map { d =>
+                          kwD.split(dimension = 0).map { d =>
                             d.shape match {
                               case Array(depth) =>
                               case _ =>
                                 throw new IllegalArgumentException
                             }
-                            d.unzip(dimension = 0)
+                            d.split(dimension = 0)
                           }
                         }
                       }
@@ -457,7 +428,7 @@ object benchmarks {
                       throw new IllegalArgumentException
                     }
 
-                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.unzip(dimension = 0)
+                    val biasSeq: Seq[Tensor] /* filterSize */ = bias.split(dimension = 0)
 
                     val outputChannels: Seq[Tensor] = weightSeq.view
                       .zip(biasSeq)
@@ -483,7 +454,7 @@ object benchmarks {
                           biasPerFilter.broadcast(Array(batchSize, height, width)) + summands.reduce(_ + _)
                       }
 
-                    Tensor.zip(outputChannels)
+                    Tensor.join(outputChannels)
                   case _ =>
                     throw new IllegalArgumentException
                 }
@@ -496,19 +467,19 @@ object benchmarks {
       }
 
       def doBenchmark(): Do[() => Array[Float]] = {
-        val input: BufferedTensor = Tensor.randomNormal(Array(batchSize, imageHeight, imageWidth, depth))
+        val input: NonInlineTensor = Tensor.randomNormal(Array(batchSize, imageHeight, imageWidth, depth))
         val layers = (for (i <- (0 until numberOfLayers).view) yield {
           ConvolutionalLayer(weight = Tensor.randomNormal(Array(kernelHeight, kernelWidth, depth, depth)),
                              bias = Tensor.randomNormal(Array(depth)))
         }).toList
 
-        input.doBuffer.flatMap { _ =>
+        input.doCache.flatMap { input =>
           layers
             .traverseM {
               case ConvolutionalLayer(weight, bias) =>
-                weight.doBuffer.flatMap { weightBuffer =>
-                  bias.doBuffer.map { biasBuffer =>
-                    List(weightBuffer, biasBuffer)
+                weight.doCache.flatMap { weight =>
+                  bias.doCache.map { bias =>
+                    List(weight, bias)
                   }
                 }
             }
@@ -518,7 +489,6 @@ object benchmarks {
                   layer.forward(input)
                 }
                 .flatArray
-                .run
                 .blockingAwait
 
             }
