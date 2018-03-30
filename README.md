@@ -1,6 +1,6 @@
 # Compute.scala
 
-**Compute.scala** is a Scala library for scientific computing with N-dimensional arrays in parallel on GPU, CPU and other devices. It will be the primary back-end of the incoming [DeepLearning.scala](http://deeplearning.thoughtworks.school/) 3.0, to address performance problems we encountered in DeepLearning.scala 2.0 with [nd4j](http://nd4j.org/).
+**Compute.scala** is a Scala library for scientific computing with N-dimensional arrays in parallel on GPU, CPU and other devices. It will be the primary back-end of the incoming [DeepLearning.scala](http://deeplearning.thoughtworks.school/) 3.0, to address performance problems we encountered in DeepLearning.scala 2.0 with [ND4J](http://ND4J.org/).
 
  * Compute.scala can dynamically merge multiple operators into one kernel program, which runs significantly faster when performing complex computation.
  * Compute.scala manages data buffers and other native resources in a determinate approach, consuming less memory.
@@ -56,7 +56,7 @@ Check [Compute.scala on Scaladex](https://index.scala-lang.org/thoughtworksinc/c
 
 ### Creating an N-dimensional array
 
-Import different the namespace object `gpu` or `cpu`, according to the OpenCL runtime you want to use.
+Import types in `gpu` or `cpu` object according to the OpenCL runtime you want to use.
 
 ``` scala
 // For N-dimensional array on GPU
@@ -68,7 +68,7 @@ import com.thoughtworks.compute.gpu._
 import com.thoughtworks.compute.cpu._
 ```
 
-In Compute.scala, an N-dimensional array is typed as `Tensor`, which can be created from `Seq` or `scala.Array`.
+In Compute.scala, an N-dimensional array is typed as `Tensor`, which can be created from `Seq` or `Array`.
 
 ``` scala
 val my2DArray: Tensor = Tensor(Array(Seq(1.0f, 2.0f, 3.0f), Seq(4.0f, 5.0f, 6.0f)))
@@ -203,7 +203,7 @@ By combining pure `Tensor`s along with the impure `cache` mechanism, we achieved
 
 A `Tensor` can be `split` into small `Tensor`s on the direction of a specific dimension.
 
-For example, given a 3D tensor whose `shape` is 2x3x4,
+For example, given a 3D tensor whose `shape` is 2×3×4,
 
 ``` scala
 val my3DTensor = Tensor((0.0f until 24.0f by 1.0f).grouped(4).toSeq.grouped(3).toSeq)
@@ -214,10 +214,10 @@ val Array(2, 3, 4) = my3DTensor.shape
 when `split` it at the dimension #0, 
 
 ``` scala
-val subtensors0 = my3DTensor.split(dimension = 0)
+val subtensors0: Seq[Tensor] = my3DTensor.split(dimension = 0)
 ```
 
-then the result should be a `Seq` of two 3x4 tensors.
+then the result should be a `Seq` of two 3×4 tensors.
 
 ``` scala
 // Output: TensorSeq([[0.0,1.0,2.0,3.0],[4.0,5.0,6.0,7.0],[8.0,9.0,10.0,11.0]], [[12.0,13.0,14.0,15.0],[16.0,17.0,18.0,19.0],[20.0,21.0,22.0,23.0]])
@@ -227,30 +227,121 @@ println(subtensors0)
 When `split` it at the dimension #1, 
 
 ``` scala
-val subtensors1 = my3DTensor.split(dimension = 1)
+val subtensors1: Seq[Tensor] = my3DTensor.split(dimension = 1)
 ```
 
-then the result should be a `Seq` of three 2x4 tensors.
+then the result should be a `Seq` of three 2×4 tensors.
 
 ``` scala
 // Output: TensorSeq([[0.0,1.0,2.0,3.0],[12.0,13.0,14.0,15.0]], [[4.0,5.0,6.0,7.0],[16.0,17.0,18.0,19.0]], [[8.0,9.0,10.0,11.0],[20.0,21.0,22.0,23.0]])
 println(subtensors1)
 ```
 
-Then you can use arbitrary Scala collection functions on Seq of subtensors.
+Then you can use arbitrary Scala collection functions on the `Seq` of subtensors.
 
 #### `join`
 
-TODO
+Multiple `Tensor`s of the same `shape` can be merged into a larger `Tensor` via the `Tensor.join` function.
 
-#### Fast matrix multiplication from `split` and `join`
+Given a `Seq` of three 2×2 `Tensor`s,
 
-TODO
+``` scala
+val mySubtensors: Seq[Tensor] = Seq(
+  Tensor(Seq(Seq(1.0f, 2.0f), Seq(3.0f, 4.0f))),
+  Tensor(Seq(Seq(5.0f, 6.0f), Seq(7.0f, 8.0f))),
+  Tensor(Seq(Seq(9.0f, 10.0f), Seq(11.0f, 12.0f))),
+)
+```
+
+when `join`ing them, 
+``` scala
+val merged: Tensor = Tensor.join(mySubtensors)
+```
+
+then the result should be a 2x2x3 `Tensor`.
+
+``` scala
+// Output: [[[1.0,5.0,9.0],[2.0,6.0,10.0]],[[3.0,7.0,11.0],[4.0,8.0,12.0]]]
+println(merged.toString)
+```
+
+Generally, when `join`ing *n* `Tensor`s of shape *a*<sub>0</sub> × *a*<sub>1</sub> × *a*<sub>2</sub> ×  ⋯ × *a*<sub>*i*</sub> , the shape of the result `Tensor` is *a*<sub>0</sub> × *a*<sub>1</sub> × *a*<sub>2</sub> ×  ⋯ × *a*<sub>*i*</sub> × *n*
+
+#### Case study: fast matrix multiplication via `split` and `join`
+
+By combining `split` and `join`, you can create complex computation in the following steps:
+
+ 1. Using `split` to create `Seq`s from some of dimensions of `Tensor`s.
+ 2. Using Scala collection functions to manipulate `Seq`s.
+ 3. Using `join` to merge transformed `Seq` back to `Tensor`.
+
+For example, you can implement matrix multiplication in this style.
+
+``` scala
+def matrixMultiply1(matrix1: Tensor, matrix2: Tensor): Tensor = {
+  val columns1 = matrix1.split(1)
+  val columns2 = matrix2.split(1)
+  val resultColumns = columns2.map { column2: Tensor =>
+    (columns1 zip column2.split(0))
+      .map {
+        case (l: Tensor, r: Tensor) =>
+          l * r.broadcast(l.shape)
+      }
+      .reduce[Tensor](_ + _)
+  }
+  Tensor.join(resultColumns)
+}
+```
+
+You can imagine the Scala collection functions as the code generator of the kernel program, thus the loop running in Scala collection will finally create unrolled loop in the kernel program.
+
+The above `matrixMultiply1` will create a kernel program that contains a unrolled loop of each row and column of `matrix2`. Thus it runs very fast when `matrix1` is big and `matrix2` is small. Our benchmark shows that the above `matrixMultiply1` runs 13 times faster than ND4J's cuBLAS back-end, on a Titan X GPU, when `matrix1` is 65536×8 and `matrix2` is 8×8.
+
+---
+
+You can also create another version of matrix multiplication, which only unrolls the loop of each row of `matrix2`.
+
+``` scala
+def matrixMultiply2(matrix1: Tensor, matrix2: Tensor): Tensor = {
+  val Array(i, j) = matrix1.shape
+  val Array(`j`, k) = matrix2.shape
+  val broadcastMatrix1 = matrix1.broadcast(Array(i, j, k))
+  val broadcastMatrix2 = matrix2.reshape(Array(1, j, k)).broadcast(Array(i, j, k))
+  val product = broadcastMatrix1 * broadcastMatrix2
+  product.split(1).reduce[Tensor](_ + _)
+}
+```
+
+`matrixMultiply2` will run faster than `matrixMultiply1` when `matrix1` is small.
+
+A sophisticated matrix multiplication should dynamically switch the two version of implementation according to matrix size.
+
+``` scala
+val UnrollThreshold = 4000
+
+def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
+  if (matrix1.shape.head >= UnrollThreshold) {
+    matrixMultiply1(matrix1, matrix2)
+  } else {
+    matrixMultiply2(matrix1, matrix2)
+  }
+}
+```
+
+The final version of `matrixMultiply` will have good performance for both small and big matrixes.
 
 ## Benchmark
 
- * [Compute.scala vs Nd4j on NVIDIA GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/nvidia-gpu.json)
- * [Compute.scala on AMD GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/amd-gpu.json)
+ * [Compute.scala vs ND4J on a NVIDIA Titan X GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/nvidia-gpu.json)
+ * [Compute.scala on a AMD RX480 GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/amd-gpu.json)
+
+Some information can be found in the benchmark result:
+
+ * Apparently, Compute.scala supports both NVIDIA GPU and AMD GPU, while ND4J does not support AMD GPU.
+ * Compute.scala is faster than ND4J on large arrays or complex expressions.
+ * ND4J is faster than Compute.scala when performing one simple primary operation on very small arrays.
+ * ND4J's reduced sum is faster than Compute.scala.
+ * ND4J's `permute` and `broadcast` are extremely slow, causing very low score in the convolution benchmark (unlike this benchmark, Deeplearning4j's convolution operation internally uses some undocumented variant of `permute` and `broadcast` in ND4J, which are not extremely slow).
 
 ## Future work
 

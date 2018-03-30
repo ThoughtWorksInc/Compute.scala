@@ -21,7 +21,9 @@ import org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_CPU
   *          my2DArray.toString should be("[[1.0,2.0],[3.0,4.0]]")
   *          }}}
   *
-  * @example Given a 3D tensor whose `shape` is 2x3x4,
+  * @example A `Tensor` can be `split` into small `Tensor`s on the direction of a specific dimension.
+  *
+  *          Given a 3D tensor whose `shape` is 2x3x4,
   *
   *          {{{
   *          val my3DTensor = Tensor((0.0f until 24.0f by 1.0f).grouped(4).toSeq.grouped(3).toSeq)
@@ -65,6 +67,29 @@ import org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_CPU
   *          }
   *          }}}
   *
+  * @example Multiple `Tensor`s of the same `shape` can be merged into a larger `Tensor` via the `Tensor.join` function.
+  *
+  *          Given a `Seq` of three 2x2 `Tensor`s,
+  *
+  *          {{{
+  *          val mySubtensors: Seq[Tensor] = Seq(
+  *            Tensor(Seq(Seq(1.0f, 2.0f), Seq(3.0f, 4.0f))),
+  *            Tensor(Seq(Seq(5.0f, 6.0f), Seq(7.0f, 8.0f))),
+  *            Tensor(Seq(Seq(9.0f, 10.0f), Seq(11.0f, 12.0f))),
+  *          )
+  *          }}}
+  *
+  *          when `join`ing them,
+  *          {{{
+  *          val merged: Tensor = Tensor.join(mySubtensors)
+  *          }}}
+  *
+  *          then the result should be a 2x2x3 `Tensor`.
+  *
+  *          {{{
+  *          merged.toString should be("[[[1.0,5.0,9.0],[2.0,6.0,10.0]],[[3.0,7.0,11.0],[4.0,8.0,12.0]]]")
+  *          merged.shape should be(Array(2, 2, 3))
+  *          }}}
   *
   *
   */

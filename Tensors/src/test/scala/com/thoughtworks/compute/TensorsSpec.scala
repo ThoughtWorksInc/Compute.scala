@@ -337,17 +337,17 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
       import tensors._
 
       def matrixMultiply(matrix1: Tensor, matrix2: Tensor): Tensor = {
-
         val columns1 = matrix1.split(1)
-
-        Tensor.join(matrix2.split(1).map { column2: Tensor =>
-          (columns1 zip column2.split(0))
+        val columns2 = matrix2.split(1)
+        val resultColumns = columns2.map { column2: Tensor =>
+          (columns1.view zip column2.split(0))
             .map {
               case (l: Tensor, r: Tensor) =>
                 l * r.broadcast(l.shape)
             }
             .reduce[Tensor](_ + _)
-        })
+        }
+        Tensor.join(resultColumns)
       }
 
       matrixMultiply(
