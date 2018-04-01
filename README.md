@@ -93,7 +93,7 @@ You can also print the sizes of each dimension using the `shape` method.
 
 ``` scala
 // Output 2 because my2DArray is a 2D array.
-println(my2DArray.length)
+println(my2DArray.shape.length)
 
 // Output 2 because the size of first dimension of my2DArray is 2.
 println(my2DArray.shape(0)) // 2
