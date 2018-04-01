@@ -8,7 +8,7 @@
  * Compute.scala can dynamically merge multiple operators into one kernel program, which runs significantly faster when performing complex computation.
  * Compute.scala manages data buffers and other native resources in a determinate approach, consuming less memory and reducing the performance impact due to garbage collection.
  * All dimensional transformation operators (`permute`, `broadcast`, `reshape`, etc) in Compute.scala are views, with no additional data buffer allocation.
- * N-dimensional arrays in Compute.scala can be converted from / to JVM collection, which support higher-ordered functions like `map` / `reduce`, and still can run on GPU.
+ * N-dimensional arrays in Compute.scala can be converted from / to JVM collections, which support higher-ordered functions like `map` / `reduce`, and still can run on GPU.
 
 ## Getting started
 
