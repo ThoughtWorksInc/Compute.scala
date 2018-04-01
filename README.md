@@ -332,6 +332,8 @@ The final version of `matrixMultiply` will have good performance for both small 
 
 ## Benchmark
 
+We created some benchmarks for Compute.scala and ND4J on NVIDIA and AMD GPU in immutable style.
+
  * [Compute.scala vs ND4J on a NVIDIA Titan X GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/nvidia-gpu.json)
  * [Compute.scala on a AMD RX480 GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/amd-gpu.json)
 
@@ -340,7 +342,9 @@ Some information can be found in the benchmark result:
  * Apparently, Compute.scala supports both NVIDIA GPU and AMD GPU, while ND4J does not support AMD GPU.
  * Compute.scala is faster than ND4J on large arrays or complex expressions.
  * ND4J is faster than Compute.scala when performing one simple primary operation on very small arrays.
- * ND4J's `permute` and `broadcast` are extremely slow, causing very low score in the convolution benchmark (unlike this benchmark, Deeplearning4j's convolution operation internally uses some undocumented variant of `permute` and `broadcast` in ND4J, which are not extremely slow).
+ * ND4J's `permute` and `broadcast` are extremely slow, causing very low score in the convolution benchmark.
+
+Note that the above result of ND4J is not the same as the performance in Deeplearning4j, because Deeplearning4j uses ND4J in mutable style (i.e. `a *= b; a += c` instead of `a * b + c`) and ND4J has some undocumented optimizions for `permute` and `broadcast` when they are invoked with some special parameters from Deeplearning4j.
 
 ## Future work
 
