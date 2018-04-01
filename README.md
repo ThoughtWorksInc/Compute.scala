@@ -3,7 +3,7 @@
 **Compute.scala** is a Scala library for scientific computing with N-dimensional arrays in parallel on GPU, CPU and other devices. It will be the primary back-end of the incoming [DeepLearning.scala](http://deeplearning.thoughtworks.school/) 3.0, to address performance problems we encountered in DeepLearning.scala 2.0 with [ND4J](http://ND4J.org/).
 
  * Compute.scala can dynamically merge multiple operators into one kernel program, which runs significantly faster when performing complex computation.
- * Compute.scala manages data buffers and other native resources in a determinate approach, consuming less memory and reducing the performance impact of garbage collection.
+ * Compute.scala manages data buffers and other native resources in a determinate approach, consuming less memory and reducing the performance impact due to garbage collection.
  * All dimensional transformation operators (`permute`, `broadcast`, `reshape`, etc) in Compute.scala are views, with no additional data buffer allocation.
  * N-dimensional arrays in Compute.scala can be converted from / to JVM collection, which support higher-ordered functions like `map` / `reduce`, and still can run on GPU.
 
