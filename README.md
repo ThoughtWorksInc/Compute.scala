@@ -334,8 +334,8 @@ The final version of `matrixMultiply` will have good performance for both small 
 
 We created some benchmarks for Compute.scala and ND4J on NVIDIA and AMD GPU in immutable style.
 
- * [Compute.scala vs ND4J on a NVIDIA Titan X GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/nvidia-gpu.json)
- * [Compute.scala on a AMD RX480 GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/amd-gpu.json)
+ * [Compute.scala vs ND4J on a NVIDIA Titan X GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/nvidia-gpu.json) ([source code](https://github.com/ThoughtWorksInc/Compute.scala/blob/nvidia-gpu/benchmarks/src/jmh/scala/com/thoughtworks/compute/benchmarks.scala))
+ * [Compute.scala on a AMD RX480 GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/amd-gpu.json) ([source code](https://github.com/ThoughtWorksInc/Compute.scala/blob/amd-gpu/benchmarks/src/jmh/scala/com/thoughtworks/compute/benchmarks.scala))
 
 Some information can be found in the benchmark result:
 
