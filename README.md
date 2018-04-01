@@ -317,7 +317,7 @@ def matrixMultiply2(matrix1: Tensor, matrix2: Tensor): Tensor = {
 
 `matrixMultiply2` will run faster than `matrixMultiply1` when `matrix1` is small.
 
-A sophisticated matrix multiplication should dynamically switch the two version of implementation according to matrix size.
+A sophisticated matrix multiplication should dynamically switch the two implementations according to matrix size.
 
 ``` scala
 val UnrollThreshold = 4000
