@@ -1,7 +1,7 @@
 # Compute.scala
 [![Build Status](https://travis-ci.org/ThoughtWorksInc/Compute.scala.svg)](https://travis-ci.org/ThoughtWorksInc/Compute.scala)
 [![Latest version](https://index.scala-lang.org/thoughtworksinc/compute.scala/cpu/latest.svg)](https://index.scala-lang.org/thoughtworksinc/compute.scala/cpu)
-[![Scaladoc](https://javadoc.io/badge/com.thoughtworks.compute/gpu_2.12.svg?label=scaladoc)](https://javadoc.io/page/com.thoughtworks.compute/gpu_2.12/latest/com/thoughtworks/compute/index.html)
+[![Scaladoc](https://javadoc.io/badge/com.thoughtworks.compute/gpu_2.12.svg?label=scaladoc)](https://javadoc.io/page/com.thoughtworks.compute/gpu_2.12/latest/com/thoughtworks/compute/cpu$.html)
 
 **Compute.scala** is a Scala library for scientific computing with N-dimensional arrays in parallel on GPU, CPU and other devices. It will be the primary back-end of the incoming [DeepLearning.scala](http://deeplearning.thoughtworks.school/) 3.0, to address performance problems we encountered in DeepLearning.scala 2.0 with [ND4J](http://ND4J.org/).
 
