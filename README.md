@@ -298,7 +298,7 @@ def matrixMultiply1(matrix1: Tensor, matrix2: Tensor): Tensor = {
 
 You can imagine the Scala collection functions as the code generator of the kernel program, thus the loop running in Scala collection will finally create unrolled loop in the kernel program.
 
-The above `matrixMultiply1` will create a kernel program that contains a unrolled loop of each row and column of `matrix2`. Thus it runs very fast when `matrix1` is big and `matrix2` is small. Our benchmark shows that the above `matrixMultiply1` runs 2.15 times faster than ND4J's cuBLAS back-end, on a Titan X GPU, when `matrix1` is 65536×8 and `matrix2` is 8×8.
+The above `matrixMultiply1` will create a kernel program that contains an unrolled loop of each row and column of `matrix2`. Thus it runs very fast when `matrix1` is big and `matrix2` is small. Our benchmark shows that the above `matrixMultiply1` runs 2.15 times faster than ND4J's cuBLAS back-end, on a Titan X GPU, when `matrix1` is 65536×8 and `matrix2` is 8×8.
 
 ---
 
