@@ -2,7 +2,7 @@ package com.thoughtworks.compute
 
 import com.typesafe.scalalogging.StrictLogging
 
-/** Contains N-dimensional array types on CPU.
+/** Contains N-dimensional array types on GPU.
   *
   * All the usage of this [[gpu]] object is same as [[cpu]], except the `import` statement:
   *

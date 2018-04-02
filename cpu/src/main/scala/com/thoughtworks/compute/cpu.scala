@@ -4,7 +4,7 @@ import com.thoughtworks.feature.Factory
 import com.typesafe.scalalogging.StrictLogging
 import org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_CPU
 
-/** Contains N-dimensional array types on GPU.
+/** Contains N-dimensional array types on CPU.
   *
   * You may want to import [[Tensor]], which is the base type of N-dimensional arrays:
   *

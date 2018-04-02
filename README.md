@@ -340,7 +340,6 @@ Some information can be found in the benchmark result:
  * Apparently, Compute.scala supports both NVIDIA GPU and AMD GPU, while ND4J does not support AMD GPU.
  * Compute.scala is faster than ND4J on large arrays or complex expressions.
  * ND4J is faster than Compute.scala when performing one simple primary operation on very small arrays.
- * ND4J's reduced sum is faster than Compute.scala.
  * ND4J's `permute` and `broadcast` are extremely slow, causing very low score in the convolution benchmark (unlike this benchmark, Deeplearning4j's convolution operation internally uses some undocumented variant of `permute` and `broadcast` in ND4J, which are not extremely slow).
 
 ## Future work

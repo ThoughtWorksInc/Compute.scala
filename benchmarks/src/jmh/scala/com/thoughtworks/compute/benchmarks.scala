@@ -49,6 +49,93 @@ object benchmarks {
     }
   }
 
+  /** A benchmark for the ND4J inplace operation mentioned in https://github.com/ThoughtWorksInc/Compute.scala/issues/137 */
+  @Threads(value = Threads.MAX)
+  @Warmup(iterations = 5)
+  @Measurement(iterations = 5)
+  @Timeout(time = 2, timeUnit = TimeUnit.SECONDS)
+  @Fork(1)
+  @State(Scope.Benchmark)
+  class Issue137 extends TensorState {
+
+    @transient
+    private lazy val a = Nd4j.randn(Array.fill(numberOfDimensions)(size))
+
+    @transient
+    private lazy val b = Nd4j.randn(Array.fill(numberOfDimensions)(size))
+
+    @transient
+    private lazy val c = Nd4j.randn(Array.fill(numberOfDimensions)(size))
+
+    @Benchmark
+    final def nd4jInplace(): Array[Float] = {
+      (0 until numberOfIterations)
+        .foldLeft(a) { (a, _) =>
+          a.muli(b).addi(c)
+        }
+        .data()
+        .asFloat()
+    }
+
+    @Benchmark
+    final def nd4jImmutable(): Array[Float] = {
+      (0 until numberOfIterations)
+        .foldLeft(a) { (a, _) =>
+          a.mul(b).add(c)
+        }
+        .data()
+        .asFloat()
+    }
+
+    trait Benchmarks extends BenchmarkTensors {
+
+      def doBenchmark(): Do[() => Array[Float]] = {
+        for {
+          a <- Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).doCache
+          b <- Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).doCache
+          c <- Tensor.randomNormal(Array.fill(numberOfDimensions)(size)).doCache
+        } yield { () =>
+          (0 until numberOfIterations)
+            .foldLeft[Tensor](a) { (a, _) =>
+              a * b + c
+            }
+            .flatArray
+            .blockingAwait
+        }
+      }
+    }
+
+    private var benchmarkResource: Resource[UnitContinuation, Try[() => Array[Float]]] = _
+
+    @Setup
+    final def setup(): Unit = {
+      assert(benchmarkResource == null)
+      val Do(TryT(ResourceT(resourceContinuation))) =
+        Do.monadicCloseable(Factory[Benchmarks].newInstance()).flatMap(_.doBenchmark())
+      benchmarkResource = resourceContinuation.blockingAwait()
+    }
+
+    @TearDown(Level.Trial)
+    final def tearDown(): Unit = {
+      val benchmarkResource = this.benchmarkResource
+      this.benchmarkResource = null
+      benchmarkResource.release.blockingAwait
+    }
+
+    @Benchmark
+    final def computeDotScala(): Array[Float] = {
+      benchmarkResource.value.get.apply()
+    }
+
+    @Param(Array("100", "10", "1"))
+    protected var numberOfIterations: Int = _
+
+    @Param(Array("3", "2"))
+    protected var numberOfDimensions: Int = _
+
+    @Param(Array("128", "32"))
+    protected var size: Int = _
+  }
   @Threads(value = Threads.MAX)
   @Warmup(iterations = 5)
   @Measurement(iterations = 5)
