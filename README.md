@@ -357,6 +357,6 @@ Now this project is only a minimum viable product. Many important features are s
 * Support tensors of elements other than single-precision floating-point ([#104](https://github.com/ThoughtWorksInc/Compute.scala/issues/104)).
 * Add more OpenCL math functions ([#101](https://github.com/ThoughtWorksInc/Compute.scala/issues/101)).
 * Further optimization of performance ([#62, #103](https://github.com/ThoughtWorksInc/Compute.scala/labels/performance)).
-* Other back-ends (CUDA, Vulkan)
+* Other back-ends (CUDA, Vulkan Compute).
 
 Contribution is welcome. Check [good first issues](https://github.com/ThoughtWorksInc/Compute.scala/labels/good%20first%20issue) to start hacking.
