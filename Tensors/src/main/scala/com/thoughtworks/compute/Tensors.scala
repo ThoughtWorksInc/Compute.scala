@@ -1213,7 +1213,7 @@ trait Tensors extends OpenCL {
       *
       * @group slow
       */
-    def cache: AutoCloseable = {
+    def cache(): AutoCloseable = {
       sealed trait State
       case object Openning extends State
       case object EarlyClosed extends State
