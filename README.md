@@ -168,7 +168,7 @@ Fortunately, we provides a `cache` method to eagerly fill in a `NonInlineTensor`
 
 ``` scala
 val nonInlineTensor = result.nonInline
-val cache = nonInlineTensor.cache
+val cache = nonInlineTensor.cache()
 
 try {
   // The cache is reused. No device-side computation is performed.
