@@ -196,7 +196,7 @@ The data buffer allocated for `nonInlineResult` is kept until `cache.close()` is
 
 By combining pure `Tensor`s along with the impure `cache` mechanism, we achieved the following goals:
 
-* All `Tensor`s are pure of zero data buffer allocation when creating them.
+* All `Tensor`s are pure. No data buffer is allocated when creating them.
 * The computation of `Tensor`s can be merged together, to minimize the number of intermediate data buffers and kernel programs.
 * The developers can create `cache`s for `Tensor`s, as a determinate way to manage the life-cycle of resources.
 
