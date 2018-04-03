@@ -1,11 +1,14 @@
 # Compute.scala
+[![Build Status](https://travis-ci.org/ThoughtWorksInc/Compute.scala.svg)](https://travis-ci.org/ThoughtWorksInc/Compute.scala)
+[![Latest version](https://index.scala-lang.org/thoughtworksinc/compute.scala/cpu/latest.svg)](https://index.scala-lang.org/thoughtworksinc/compute.scala/cpu)
+[![Scaladoc](https://javadoc.io/badge/com.thoughtworks.compute/gpu_2.12.svg?label=scaladoc)](https://javadoc.io/page/com.thoughtworks.compute/gpu_2.12/latest/com/thoughtworks/compute/cpu$.html)
 
 **Compute.scala** is a Scala library for scientific computing with N-dimensional arrays in parallel on GPU, CPU and other devices. It will be the primary back-end of the incoming [DeepLearning.scala](http://deeplearning.thoughtworks.school/) 3.0, to address performance problems we encountered in DeepLearning.scala 2.0 with [ND4J](http://ND4J.org/).
 
  * Compute.scala can dynamically merge multiple operators into one kernel program, which runs significantly faster when performing complex computation.
- * Compute.scala manages data buffers and other native resources in a determinate approach, consuming less memory.
+ * Compute.scala manages data buffers and other native resources in a determinate approach, consuming less memory and reducing the performance impact due to garbage collection.
  * All dimensional transformation operators (`permute`, `broadcast`, `reshape`, etc) in Compute.scala are views, with no additional data buffer allocation.
- * N-dimensional arrays in Compute.scala can be converted from / to JVM collection, which support higher-ordered functions like `map` / `reduce`, and still can run on GPU.
+ * N-dimensional arrays in Compute.scala can be converted from / to JVM collections, which support higher-ordered functions like `map` / `reduce`, and still can run on GPU.
 
 ## Getting started
 
@@ -19,7 +22,7 @@ Make sure you have met the following system requirements before using Compute.sc
  * JDK 8
  * OpenCL runtime
 
-The performance of Compute.scala varies according to which OpenCL runtime you are using. For best performance, install OpenCL runtime according to the following table.
+The performance of Compute.scala varies with OpenCL runtimes. For best performance, install the OpenCL runtime according to the following table.
 
 | | Linux  | Windows | macOS |
 | --- | --- | --- | --- |
@@ -90,7 +93,7 @@ You can also print the sizes of each dimension using the `shape` method.
 
 ``` scala
 // Output 2 because my2DArray is a 2D array.
-println(my2DArray.length)
+println(my2DArray.shape.length)
 
 // Output 2 because the size of first dimension of my2DArray is 2.
 println(my2DArray.shape(0)) // 2
@@ -161,7 +164,7 @@ println(result.toString)
 println(result.toString)
 ```
 
-Fortunately, we provides a `cache` method to eagerly fill in a `NonInlineTensor`, and keep the filling data for reusing. You can convert `result` to a `NonInlineTensor`, which has a corresponding non-inline kernel program.
+Fortunately, we provides a `cache` method to eagerly fill in a `NonInlineTensor`, and keep the filling data for reusing. You can convert `result` to a `NonInlineTensor`, which is associated with a non-inline kernel program (i.e. never merged into a larger kernel).
 
 ``` scala
 val nonInlineTensor = result.nonInline
@@ -295,7 +298,7 @@ def matrixMultiply1(matrix1: Tensor, matrix2: Tensor): Tensor = {
 
 You can imagine the Scala collection functions as the code generator of the kernel program, thus the loop running in Scala collection will finally create unrolled loop in the kernel program.
 
-The above `matrixMultiply1` will create a kernel program that contains a unrolled loop of each row and column of `matrix2`. Thus it runs very fast when `matrix1` is big and `matrix2` is small. Our benchmark shows that the above `matrixMultiply1` runs 13 times faster than ND4J's cuBLAS back-end, on a Titan X GPU, when `matrix1` is 65536×8 and `matrix2` is 8×8.
+The above `matrixMultiply1` will create a kernel program that contains an unrolled loop of each row and column of `matrix2`. Thus it runs very fast when `matrix1` is big and `matrix2` is small. Our benchmark shows that the above `matrixMultiply1` runs even faster than ND4J's cuBLAS back-end, on a Titan X GPU, when `matrix1` is 65536×8 and `matrix2` is 8×8.
 
 ---
 
@@ -314,7 +317,7 @@ def matrixMultiply2(matrix1: Tensor, matrix2: Tensor): Tensor = {
 
 `matrixMultiply2` will run faster than `matrixMultiply1` when `matrix1` is small.
 
-A sophisticated matrix multiplication should dynamically switch the two version of implementation according to matrix size.
+A sophisticated matrix multiplication should dynamically switch the two implementations according to matrix size.
 
 ``` scala
 val UnrollThreshold = 4000
@@ -332,15 +335,20 @@ The final version of `matrixMultiply` will have good performance for both small 
 
 ## Benchmark
 
- * [Compute.scala vs ND4J on a NVIDIA Titan X GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/nvidia-gpu.json)
- * [Compute.scala on a AMD RX480 GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/amd-gpu.json)
+We created some benchmarks for Compute.scala and ND4J on NVIDIA and AMD GPU in an immutable style.
+
+ * [Compute.scala vs ND4J on an NVIDIA Titan X GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/nvidia-gpu.json) ([source code](https://github.com/ThoughtWorksInc/Compute.scala/blob/nvidia-gpu/benchmarks/src/jmh/scala/com/thoughtworks/compute/benchmarks.scala))
+ * [Compute.scala on an AMD RX480 GPU](http://jmh.morethan.io/?source=https://thoughtworksinc.github.io/Compute.scala/benchmarks/amd-gpu.json) ([source code](https://github.com/ThoughtWorksInc/Compute.scala/blob/amd-gpu/benchmarks/src/jmh/scala/com/thoughtworks/compute/benchmarks.scala))
 
 Some information can be found in the benchmark result:
 
  * Apparently, Compute.scala supports both NVIDIA GPU and AMD GPU, while ND4J does not support AMD GPU.
- * Compute.scala is faster than ND4J on large arrays or complex expressions.
- * ND4J is faster than Compute.scala when performing one simple primary operation on very small arrays.
- * ND4J's `permute` and `broadcast` are extremely slow, causing very low score in the convolution benchmark (unlike this benchmark, Deeplearning4j's convolution operation internally uses some undocumented variant of `permute` and `broadcast` in ND4J, which are not extremely slow).
+ * Compute.scala is faster than ND4J when performing complex expressions.
+ * Compute.scala is faster than ND4J on large arrays.
+ * ND4J is faster than Compute.scala when performing one simple primary operation on small arrays.
+ * ND4J's `permute` and `broadcast` are extremely slow, causing very low score in the convolution benchmark.
+
+Note that the above result of ND4J is not the same as the performance in Deeplearning4j, because Deeplearning4j uses ND4J in a mutable style (i.e. `a *= b; a += c` instead of `a * b + c`) and ND4J has some undocumented optimizions for `permute` and `broadcast` when they are invoked with some special parameters from Deeplearning4j.
 
 ## Future work
 
@@ -349,5 +357,6 @@ Now this project is only a minimum viable product. Many important features are s
 * Support tensors of elements other than single-precision floating-point ([#104](https://github.com/ThoughtWorksInc/Compute.scala/issues/104)).
 * Add more OpenCL math functions ([#101](https://github.com/ThoughtWorksInc/Compute.scala/issues/101)).
 * Further optimization of performance ([#62, #103](https://github.com/ThoughtWorksInc/Compute.scala/labels/performance)).
+* Other back-ends (CUDA, Vulkan Compute).
 
 Contribution is welcome. Check [good first issues](https://github.com/ThoughtWorksInc/Compute.scala/labels/good%20first%20issue) to start hacking.
