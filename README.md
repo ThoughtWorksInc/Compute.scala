@@ -194,7 +194,7 @@ println(nonInlineTensor.toString)
 
 The data buffer allocated for `nonInlineResult` is kept until `cache.close()` is invoked.
 
-You can think of an `NonInlineTensor` as an `@noinline def` method and `cache` as a `lazy val` on device side.
+You can think of a `NonInlineTensor` as a `@noinline def` method and `cache` as a `lazy val` on device side.
 
 By combining pure `Tensor`s along with the impure `cache` mechanism, we achieved the following goals:
 
