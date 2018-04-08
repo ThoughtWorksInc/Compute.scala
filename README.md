@@ -167,7 +167,7 @@ println(result.toString)
 Fortunately, we provides a `cache` method to eagerly fill in a `NonInlineTensor`, and keep the filling data for reusing. You can convert `result` to a `NonInlineTensor`, which is associated with a non-inline kernel program (i.e. never merged into a larger kernel).
 
 ``` scala
-val nonInlineTensor = result.nonInline
+val nonInlineTensor: NonInlineTensor = result.nonInline
 val cache = nonInlineTensor.cache()
 
 try {
