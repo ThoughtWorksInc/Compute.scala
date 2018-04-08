@@ -147,7 +147,7 @@ println(result.toString)
 
 When `result.toString` is called, the Compute.scala compiles the expression `a * b + c` into one kernel program and execute it.
 
-Both `result` and the temporary variable `a * b` are `InlineTensor`s, indicating their computation can be inlined into a more complex kernel program.
+Both `result` and the temporary variable `a * b` are `InlineTensor`s, indicating their computation can be inlined into a more complex kernel program. You can think of an `InlineTensor` as an `@inline def` method on device side.
 
 This approach is faster than other libraries because we don't have to execute two kernels for multiplication and addition respectively.
 
@@ -193,6 +193,8 @@ println(nonInlineTensor.toString)
 ```
 
 The data buffer allocated for `nonInlineResult` is kept until `cache.close()` is invoked.
+
+You can think of an `NonInlineTensor` as an `@noinline def` method and `cache` as a `lazy val` on device side.
 
 By combining pure `Tensor`s along with the impure `cache` mechanism, we achieved the following goals:
 
