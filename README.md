@@ -1,4 +1,5 @@
-# Compute.scala
+# Compute.scala <a href="http://thoughtworks.com/"><img align="right" src="https://www.thoughtworks.com/imgs/tw-logo.png" title="ThoughtWorks" height="15"/></a>
+
 [![Build Status](https://travis-ci.org/ThoughtWorksInc/Compute.scala.svg)](https://travis-ci.org/ThoughtWorksInc/Compute.scala)
 [![Latest version](https://index.scala-lang.org/thoughtworksinc/compute.scala/cpu/latest.svg)](https://index.scala-lang.org/thoughtworksinc/compute.scala/cpu)
 [![Scaladoc](https://javadoc.io/badge/com.thoughtworks.compute/gpu_2.12.svg?label=scaladoc)](https://javadoc.io/page/com.thoughtworks.compute/gpu_2.12/latest/com/thoughtworks/compute/cpu$.html)
