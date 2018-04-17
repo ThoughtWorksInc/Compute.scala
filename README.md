@@ -209,15 +209,17 @@ By combining pure `Tensor`s along with the impure `doCache` mechanism, we achiev
 ``` scala
 var Resource(weight, releaseWeight) = Tensor.random(Array(32, 32)).doCache.acquire.blockingAwait
 
-val (newWeight, releaseNewWeight) = (weight * Tensor.random(Array(32, 32))).doCache.acquire.blockingAwait
-
-releaseWeight.blockingAwait
-
-weight = newWeight
-release = releaseNewWeight
+while (true) {
+  val Resource(newWeight, releaseNewWeight) = (weight * Tensor.random(Array(32, 32))).doCache.acquire.blockingAwait
+  
+  releaseWeight.blockingAwait
+  
+  weight = newWeight
+  release = releaseNewWeight
+}
 ```
 
-Use this approach with caution. `doCache` should be only used for permanent data (e.g. the weights of a neural network). `doCache` is not design for intermediate variables in a complex expression. A sophisticated Scala developer should be able to entirely avoid `var` in favor of recurisive functions.
+Use this approach with caution. `doCache` should be only used for permanent data (e.g. the weights of a neural network). `doCache` is not design for intermediate variables in a complex expression. A sophisticated Scala developer should be able to entirely avoid `var` and `while` in favor of recurisive functions.
 
 ### Scala collection interoperability
 
