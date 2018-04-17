@@ -2,6 +2,7 @@ package com.thoughtworks.compute
 
 import java.util.concurrent.TimeUnit
 
+import com.github.ghik.silencer.silent
 import com.thoughtworks.compute.OpenCL.Exceptions.DeviceNotFound
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
@@ -452,6 +453,7 @@ object benchmarks {
 
     trait Benchmarks extends BenchmarkTensors {
 
+      @silent
       final case class ConvolutionalLayer(weight: NonInlineTensor, bias: NonInlineTensor) {
         def forward(input: Tensor): Tensor = {
           convolute(input, weight, bias)
