@@ -204,7 +204,7 @@ By combining pure `Tensor`s along with the impure `doCache` mechanism, we achiev
 
 #### Mutable variables
 
-`Tensor`s are immutable, but you can creating mutable variables of cached tensor to workaround the limitation.
+`Tensor`s are immutable, but you can create mutable variables of cached tensor to workaround the limitation.
 
 ``` scala
 var Resource(weight, releaseWeight) = Tensor.random(Array(32, 32)).doCache.acquire.blockingAwait
@@ -217,7 +217,7 @@ weight = newWeight
 release = releaseNewWeight
 ```
 
-Use this approach with caution. `var` and `doCache` should be used for permanent data (e.g. the weights of a neural network). `doCache` is not design for intermediate variables in a complex expression.
+Use this approach with caution. `doCache` should be only used for permanent data (e.g. the weights of a neural network). `doCache` is not design for intermediate variables in a complex expression. A sophisticated Scala developer should be able to entirely avoid `var` in favor of recurisive functions.
 
 ### Scala collection interoperability
 
