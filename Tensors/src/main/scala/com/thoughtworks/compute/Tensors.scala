@@ -585,7 +585,7 @@ trait Tensors extends OpenCL {
 
   }
 
-  trait BufferedTensor extends NonInlineTensor
+  trait CachedTensor extends NonInlineTensor
 
   /**
     * @groupname metadata General information
@@ -613,7 +613,7 @@ trait Tensors extends OpenCL {
       *
       * @group slow
       */
-    def doCache: Do[BufferedTensor] = {
+    def doCache: Do[CachedTensor] = {
       doBuffer.intransitiveFlatMap { pendingBuffer =>
         Do.resource {
           pendingBuffer.retain()
@@ -630,7 +630,7 @@ trait Tensors extends OpenCL {
                   }
                 )
               }
-            } with BufferedTensor,
+            } with CachedTensor,
             UnitContinuation.delay {
               pendingBuffer.release()
             }
