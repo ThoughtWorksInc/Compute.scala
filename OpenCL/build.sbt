@@ -13,9 +13,9 @@ libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6" % Test).jar().classifier
 
 libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.6"
 
-libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M8"
+libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M10"
 
-libraryDependencies += "com.thoughtworks.raii" %% "asynchronouspool" % "3.0.0-M8"
+libraryDependencies += "com.thoughtworks.raii" %% "asynchronouspool" % "3.0.0-M10"
 
 libraryDependencies += "com.thoughtworks.feature" %% "partialapply" % "2.3.0-M8"
 

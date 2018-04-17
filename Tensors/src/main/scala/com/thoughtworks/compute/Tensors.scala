@@ -249,6 +249,10 @@ trait Tensors extends OpenCL {
   protected sealed trait PendingBuffer[JvmType] {
     def buffer: DeviceBuffer[JvmType]
     def eventOption: Option[Event]
+
+    def release(): Unit
+    def retain(): Unit
+
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer]
 
     def toArray()(implicit memory: Memory[JvmType]): Do[Array[JvmType]] = {
@@ -264,6 +268,10 @@ trait Tensors extends OpenCL {
       buffer.toHostBuffer()(Witness(Tensors.this), memory)
     }
     def eventOption = None
+
+    def release(): Unit = buffer.release()
+
+    def retain(): Unit = buffer.retain()
   }
 
   @(silent @companionObject)
@@ -273,6 +281,17 @@ trait Tensors extends OpenCL {
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer] = {
       buffer.toHostBuffer(event)
     }
+
+    def release(): Unit = {
+      event.release()
+      buffer.release()
+    }
+
+    def retain(): Unit = {
+      event.retain()
+      buffer.retain()
+    }
+
   }
 
   protected def hashSourceCode: Fastring
@@ -566,6 +585,8 @@ trait Tensors extends OpenCL {
 
   }
 
+  trait CachedTensor extends NonInlineTensor
+
   /**
     * @groupname metadata General information
     * @groupprio metadata 1
@@ -585,8 +606,50 @@ trait Tensors extends OpenCL {
     *            Operators that return new [[Tensor]]s of delay-evaluated computational graphs.
     *            The actually computation will be only performed when '''Slow actions''' are called.
     *
+    * @note There are three kinds of [[Tensor]].
+    *
+    *       - [[InlineTensor]] and [[TransformedTensor]] are like a `@inline def`,
+    *         which can be merged into a larger kernel
+    *         and will be recalculated whenever a '''slow action''' is performed.
+    *       - [[NonInlineTensor]] is like a `@noinline def`,
+    *         which is never merged into a larger kernel
+    *         and will be recalculated whenever a '''slow action''' is performed.
+    *       - [[CachedTensor]] is like a `lazy val`,
+    *         which has an associated data buffer on the compute device
+    *         and will be calculated only once even when '''slow actions''' are performed more than once.
+    *
     */
   sealed trait Tensor { thisTensor =>
+
+    /** Allocates device-side cache that are managed by the [[https://github.com/ThoughtWorksInc/RAII.scala RAII.scala]] library.
+      *
+      * @group slow
+      */
+    def doCache: Do[CachedTensor] = {
+      doBuffer.intransitiveFlatMap { pendingBuffer =>
+        Do.resource {
+          pendingBuffer.retain()
+          Resource(
+            new {
+              val padding = thisTensor.padding
+              val shape = thisTensor.shape
+              val doBuffer = Do.resource {
+                pendingBuffer.retain()
+                Resource(
+                  pendingBuffer,
+                  UnitContinuation.delay {
+                    pendingBuffer.release()
+                  }
+                )
+              }
+            } with CachedTensor,
+            UnitContinuation.delay {
+              pendingBuffer.release()
+            }
+          )
+        }
+      }
+    }
 
     /**
       * @group delayed
@@ -1187,6 +1250,7 @@ trait Tensors extends OpenCL {
 
   }
 
+  /** A [[Tensor]] that is associated with a non-inline kernel program (i.e. never merged into a larger kernel). */
   trait NonInlineTensor extends Tensor {
 
     def nonInline: this.type = this
@@ -1194,82 +1258,6 @@ trait Tensors extends OpenCL {
     @transient
     protected lazy val closure = {
       arrayTerm.extract
-    }
-
-    /** Allocates device-side cache that are managed by the [[https://github.com/ThoughtWorksInc/RAII.scala RAII.scala]] library.
-      *
-      * @note This method is similar to [[cache]],
-      *       except the life cycle of the cache can be automatically managed.
-      *
-      * @group slow
-      */
-    def doCache: Do[this.type] = doBuffer.map(Function.const(this))
-
-    /** Allocates device-side cache for this [[Tensor]], and returns a [[java.lang.AutoCloseable]] to release the cache.
-      *
-      * @note This method can be called multiple times on one [[Tensor]].
-      *       Only one copy of cache will be allocated,
-      *       which will be finally released until all [[java.lang.AutoCloseable]] returned by [[cache]] method are closed.
-      *
-      * @group slow
-      */
-    def cache(): AutoCloseable = {
-      sealed trait State
-      case object Openning extends State
-      case object EarlyClosed extends State
-      case object Closed extends State
-      final case class Open(release: UnitContinuation[Unit]) extends State
-
-      val state = new AtomicReference[State](Openning) with AutoCloseable {
-        @tailrec
-        final def close(): Unit = {
-          get match {
-            case Openning =>
-              if (compareAndSet(Openning, EarlyClosed)) {
-                // Success
-              } else {
-                close()
-              }
-            case oldState @ Open(release) =>
-              if (compareAndSet(oldState, Closed)) {
-                release.safeOnComplete { _: Unit =>
-                  Trampoline.done(())
-                }.run
-              } else {
-                close()
-              }
-            case EarlyClosed | Closed =>
-              throw new IllegalStateException("The resources associated to this tensor has been released.")
-          }
-        }
-      }
-
-      doBuffer.safeOnComplete { resource =>
-        @tailrec
-        def retry(): Trampoline[Unit] = {
-          state.get() match {
-            case EarlyClosed =>
-              if (state.compareAndSet(EarlyClosed, Closed)) {
-                resource.release.safeOnComplete { _: Unit =>
-                  Trampoline.done(())
-                }
-              } else {
-                retry()
-              }
-            case Openning =>
-              if (state.compareAndSet(Openning, Open(resource.release))) {
-                Trampoline.done(())
-              } else {
-                retry()
-              }
-            case _: Open | Closed =>
-              throw new IllegalStateException()
-          }
-        }
-        retry()
-      }.run
-
-      state
     }
 
   }
