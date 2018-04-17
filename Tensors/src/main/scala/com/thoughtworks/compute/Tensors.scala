@@ -606,6 +606,18 @@ trait Tensors extends OpenCL {
     *            Operators that return new [[Tensor]]s of delay-evaluated computational graphs.
     *            The actually computation will be only performed when '''Slow actions''' are called.
     *
+    * @note There are three kinds of [[Tensor]].
+    *
+    *       - [[InlineTensor]] and [[TransformedTensor]] are like a `@inline def`,
+    *         which can be merged into a larger kernel
+    *         and will be recalculated whenever a '''slow action''' is performed.
+    *       - [[NonInlineTensor]] is like a `@noinline def`,
+    *         which is never merged into a larger kernel
+    *         and will be recalculated whenever a '''slow action''' is performed.
+    *       - [[CachedTensor]] is like a `lazy val`,
+    *         which has an associated data buffer on the compute device
+    *         and will be calculated only once even when '''slow actions''' are performed more than once.
+    *
     */
   sealed trait Tensor { thisTensor =>
 
@@ -1238,6 +1250,7 @@ trait Tensors extends OpenCL {
 
   }
 
+  /** A [[Tensor]] that is associated with a non-inline kernel program (i.e. never merged into a larger kernel). */
   trait NonInlineTensor extends Tensor {
 
     def nonInline: this.type = this

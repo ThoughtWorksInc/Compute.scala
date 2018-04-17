@@ -165,39 +165,38 @@ println(result.toString)
 println(result.toString)
 ```
 
-Fortunately, we provides a `cache` method to eagerly fill in a `NonInlineTensor`, and keep the filling data for reusing. You can convert `result` to a `NonInlineTensor`, which is associated with a non-inline kernel program (i.e. never merged into a larger kernel).
+Fortunately, we provides a `doCache` method to eagerly allocate data buffer for a `CachedTensor`.
 
 ``` scala
-val nonInlineTensor: NonInlineTensor = result.nonInline
-val cache = nonInlineTensor.cache()
+val Resource(cachedTensor, releaseCache) = result.doCache.acquire.blockingAwait
 
 try {
   // The cache is reused. No device-side computation is performed.
-  println(nonInlineTensor.toString)
+  println(cachedTensor.toString)
 
   // The cache is reused. No device-side computation is performed.
-  println(nonInlineTensor.toString)
+  println(cachedTensor.toString)
 
-  val tmp: InlineTensor = exp(nonInlineTensor)
+  val tmp: InlineTensor = exp(cachedTensor)
   
-  // The cache for nonInlineTensor is reused, but the exponential function is performed.
+  // The cache for cachedTensor is reused, but the exponential function is performed.
   println(tmp.toString)
 
-  // The cache for nonInlineTensor is reused, but the exponential function is performed, again.
+  // The cache for cachedTensor is reused, but the exponential function is performed, again.
   println(tmp.toString)
 } finally {
-  cache.close()
+  releaseCache.blockingAwait
 }
 
-// (a * b + c) is performed because cache for nonInlineTensor has been closed.
-println(nonInlineTensor.toString)
+// Crash because the data buffer has been released
+println(releaseCache.toString)
 ```
 
-The data buffer allocated for `nonInlineResult` is kept until `cache.close()` is invoked.
+The data buffer allocated for `releaseCache` is kept until `releaseCache` is performed.
 
-You can think of a `NonInlineTensor` as a `@noinline def` method and `cache` as a `lazy val` on device side.
+You can think of a `CachedTensor` as a `lazy val` on device side.
 
-By combining pure `Tensor`s along with the impure `cache` mechanism, we achieved the following goals:
+By combining pure `Tensor`s along with the impure `doCache` mechanism, we achieved the following goals:
 
 * All `Tensor`s are pure. No data buffer is allocated when creating them.
 * The computation of `Tensor`s can be merged together, to minimize the number of intermediate data buffers and kernel programs.
