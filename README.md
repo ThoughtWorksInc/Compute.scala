@@ -202,6 +202,23 @@ By combining pure `Tensor`s along with the impure `doCache` mechanism, we achiev
 * The computation of `Tensor`s can be merged together, to minimize the number of intermediate data buffers and kernel programs.
 * The developers can create `cache`s for `Tensor`s, as a determinate way to manage the life-cycle of resources.
 
+#### Mutable variables
+
+`Tensor`s are immutable, but you can creating mutable variables of cached tensor to workaround the limitation.
+
+``` scala
+var Resource(weight, releaseWeight) = Tensor.random(Array(32, 32)).doCache.acquire.blockingAwait
+
+val (newWeight, releaseNewWeight) = (weight * Tensor.random(Array(32, 32))).doCache.acquire.blockingAwait
+
+releaseWeight.blockingAwait
+
+weight = newWeight
+release = releaseNewWeight
+```
+
+Use this approach with caution. `var` and `doCache` should be used for permanent data (e.g. the weights of a neural network). `doCache` is not design for intermediate variables in a complex expression.
+
 ### Scala collection interoperability
 
 #### `split`
