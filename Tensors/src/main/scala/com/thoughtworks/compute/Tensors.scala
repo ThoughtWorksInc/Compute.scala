@@ -249,6 +249,10 @@ trait Tensors extends OpenCL {
   protected sealed trait PendingBuffer[JvmType] {
     def buffer: DeviceBuffer[JvmType]
     def eventOption: Option[Event]
+
+    def release(): Unit
+    def retain(): Unit
+
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer]
 
     def toArray()(implicit memory: Memory[JvmType]): Do[Array[JvmType]] = {
@@ -264,6 +268,10 @@ trait Tensors extends OpenCL {
       buffer.toHostBuffer()(Witness(Tensors.this), memory)
     }
     def eventOption = None
+
+    def release(): Unit = buffer.release()
+
+    def retain(): Unit = buffer.retain()
   }
 
   @(silent @companionObject)
@@ -273,6 +281,17 @@ trait Tensors extends OpenCL {
     def toHostBuffer()(implicit memory: Memory[JvmType]): Do[memory.HostBuffer] = {
       buffer.toHostBuffer(event)
     }
+
+    def release(): Unit = {
+      event.release()
+      buffer.release()
+    }
+
+    def retain(): Unit = {
+      event.retain()
+      buffer.retain()
+    }
+
   }
 
   protected def hashSourceCode: Fastring
@@ -566,6 +585,8 @@ trait Tensors extends OpenCL {
 
   }
 
+  trait BufferedTensor extends NonInlineTensor
+
   /**
     * @groupname metadata General information
     * @groupprio metadata 1
@@ -587,6 +608,36 @@ trait Tensors extends OpenCL {
     *
     */
   sealed trait Tensor { thisTensor =>
+
+    /** Allocates device-side cache that are managed by the [[https://github.com/ThoughtWorksInc/RAII.scala RAII.scala]] library.
+      *
+      * @group slow
+      */
+    def doCache: Do[BufferedTensor] = {
+      doBuffer.intransitiveFlatMap { pendingBuffer =>
+        Do.resource {
+          pendingBuffer.retain()
+          Resource(
+            new {
+              val padding = thisTensor.padding
+              val shape = thisTensor.shape
+              val doBuffer = Do.resource {
+                pendingBuffer.retain()
+                Resource(
+                  pendingBuffer,
+                  UnitContinuation.delay {
+                    pendingBuffer.release()
+                  }
+                )
+              }
+            } with BufferedTensor,
+            UnitContinuation.delay {
+              pendingBuffer.release()
+            }
+          )
+        }
+      }
+    }
 
     /**
       * @group delayed
@@ -1195,15 +1246,6 @@ trait Tensors extends OpenCL {
     protected lazy val closure = {
       arrayTerm.extract
     }
-
-    /** Allocates device-side cache that are managed by the [[https://github.com/ThoughtWorksInc/RAII.scala RAII.scala]] library.
-      *
-      * @note This method is similar to [[cache]],
-      *       except the life cycle of the cache can be automatically managed.
-      *
-      * @group slow
-      */
-    def doCache: Do[this.type] = doBuffer.map(Function.const(this))
 
     /** Allocates device-side cache for this [[Tensor]], and returns a [[java.lang.AutoCloseable]] to release the cache.
       *
