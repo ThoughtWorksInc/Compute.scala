@@ -618,10 +618,17 @@ object OpenCL {
   final case class DeviceBuffer[Owner <: OpenCL with Singleton, Element](handle: Long) /* extends AnyVal */
       extends MonadicCloseable[UnitContinuation] {
     deviceBuffer =>
+    def retain() = {
+      checkErrorCode(clRetainMemObject(handle))
+    }
+
+    def release(): Unit = {
+      checkErrorCode(clReleaseMemObject(handle))
+    }
 
     def monadicClose: UnitContinuation[Unit] = {
       UnitContinuation.delay {
-        checkErrorCode(clReleaseMemObject(handle))
+        release()
       }
     }
 
