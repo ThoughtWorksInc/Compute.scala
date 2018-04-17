@@ -215,7 +215,7 @@ while (true) {
   releaseWeight.blockingAwait
   
   weight = newWeight
-  release = releaseNewWeight
+  releaseWeight = releaseNewWeight
 }
 ```
 
