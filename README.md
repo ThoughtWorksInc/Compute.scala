@@ -168,6 +168,9 @@ println(result.toString)
 Fortunately, we provides a `doCache` method to eagerly allocate data buffer for a `CachedTensor`.
 
 ``` scala
+import com.thoughtworks.future._
+import com.thoughtworks.raii.asynchronous._
+
 val Resource(cachedTensor, releaseCache) = result.doCache.acquire.blockingAwait
 
 try {
