@@ -203,7 +203,7 @@ By combining pure `Tensor`s along with the impure `doCache` mechanism, we achiev
 
 * All `Tensor`s are pure. No data buffer is allocated when creating them.
 * The computation of `Tensor`s can be merged together, to minimize the number of intermediate data buffers and kernel programs.
-* The developers can create `cache`s for `Tensor`s, as a determinate way to manage the life-cycle of resources.
+* The developers can create caches for `Tensor`s, as a determinate way to manage the life-cycle of resources.
 
 #### Mutable variables
 
@@ -222,7 +222,7 @@ while (true) {
 }
 ```
 
-Use this approach with caution. `doCache` should be only used for permanent data (e.g. the weights of a neural network). `doCache` is not design for intermediate variables in a complex expression. A sophisticated Scala developer should be able to entirely avoid `var` and `while` in favor of recurisive functions.
+Use this approach with caution. `doCache` should be only used for permanent data (e.g. the weights of a neural network). `doCache` is not designed for intermediate variables in a complex expression. A sophisticated Scala developer should be able to entirely avoid `var` and `while` in favor of recurisive functions.
 
 ### Scala collection interoperability
 
