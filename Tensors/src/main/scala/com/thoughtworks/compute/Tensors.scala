@@ -217,6 +217,27 @@ object Tensors {
 
 trait Tensors extends OpenCL {
 
+  @inline
+  private def autoBroadcast(tensor1: Tensor, tensor2: Tensor): (Tensor, Tensor) = {
+    val newShape = autoBroadcastShape(tensor1.shape, tensor2.shape)
+    (tensor1.broadcast(newShape), tensor2.broadcast(newShape))
+  }
+
+  private def autoBroadcastShape(shape1: Array[Int], shape2: Array[Int]): Array[Int] = {
+    require(
+      shape1.length == shape2.length,
+      raw"""Cannot broadcast between shape ${shape1.mkString("[", ",", "]")} and ${shape2.mkString("[", ",", "]")}.""")
+    shape1.zip(shape2).map {
+      case (aSize, bSize) if aSize == bSize => aSize
+      case (1, bSize)                       => bSize
+      case (aSize, 1)                       => aSize
+      case _ =>
+        throw new IllegalArgumentException(
+          raw"Failed to automatically broadcast between shape [${shape1.mkString(",")}] and [${shape2.mkString(",")}]}"
+        )
+    }
+  }
+
   protected val trees
     : AllTrees with MemoryTrees with StructuralTrees { type Category = Tuples with Floats with Arrays } =
     Factory[AllTrees with MemoryTrees with StructuralTrees].newInstance()
@@ -541,23 +562,17 @@ trait Tensors extends OpenCL {
     }
 
     def min(leftHandSide: Tensor, rightHandSide: Tensor): InlineTensor = {
-      def newClosure =
-        trees.float.min(leftHandSide.closure.asInstanceOf[FloatTerm], rightHandSide.closure.asInstanceOf[FloatTerm])
-      if (java.util.Arrays.equals(leftHandSide.shape, rightHandSide.shape)) {
-        leftHandSide.derivedTensor(newClosure)
-      } else {
-        throw new IllegalArgumentException
-      }
+      val (broadcastLeft, broadcastRight) = autoBroadcast(leftHandSide, rightHandSide)
+      val newClosure =
+        trees.float.min(broadcastLeft.closure.asInstanceOf[FloatTerm], broadcastRight.closure.asInstanceOf[FloatTerm])
+      broadcastLeft.derivedTensor(newClosure)
     }
 
     def max(leftHandSide: Tensor, rightHandSide: Tensor): InlineTensor = {
-      def newClosure =
-        trees.float.max(leftHandSide.closure.asInstanceOf[FloatTerm], rightHandSide.closure.asInstanceOf[FloatTerm])
-      if (java.util.Arrays.equals(leftHandSide.shape, rightHandSide.shape)) {
-        leftHandSide.derivedTensor(newClosure)
-      } else {
-        throw new IllegalArgumentException
-      }
+      val (broadcastLeft, broadcastRight) = autoBroadcast(leftHandSide, rightHandSide)
+      val newClosure =
+        trees.float.max(broadcastLeft.closure.asInstanceOf[FloatTerm], broadcastRight.closure.asInstanceOf[FloatTerm])
+      broadcastLeft.derivedTensor(newClosure)
     }
 
     def join(tensors0: Seq[Tensor]): NonInlineTensor = {
@@ -799,7 +814,15 @@ trait Tensors extends OpenCL {
     /**
       * @group delayed
       */
-    def broadcast(newShape: Array[Int]): TransformedTensor = {
+    def broadcast(newShape: Array[Int]) = {
+      if (java.util.Arrays.equals(newShape, shape)) {
+        this
+      } else {
+        broadcastTransform(newShape)
+      }
+    }
+
+    private def broadcastTransform(newShape: Array[Int]): TransformedTensor = {
       val newLength = newShape.length
       val length = shape.length
       val matrix1 = Array.ofDim[Double]((newLength + 1) * length)
@@ -872,60 +895,45 @@ trait Tensors extends OpenCL {
       * @group delayed
       */
     def *(rightHandSide: Tensor): InlineTensor = {
-      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] * rightHandSide.closure.asInstanceOf[FloatTerm]
-      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
-        derivedTensor(newClosure)
-      } else {
-        throw new IllegalArgumentException
-      }
+      val (broadcastLeft, broadcastRight) = autoBroadcast(this, rightHandSide)
+      val newClosure = broadcastLeft.closure.asInstanceOf[FloatTerm] * broadcastRight.closure.asInstanceOf[FloatTerm]
+      broadcastLeft.derivedTensor(newClosure)
     }
 
     /**
       * @group delayed
       */
     def +(rightHandSide: Tensor): InlineTensor = {
-      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] + rightHandSide.closure.asInstanceOf[FloatTerm]
-      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
-        derivedTensor(newClosure)
-      } else {
-        throw new IllegalArgumentException
-      }
+      val (broadcastLeft, broadcastRight) = autoBroadcast(this, rightHandSide)
+      val newClosure = broadcastLeft.closure.asInstanceOf[FloatTerm] + broadcastRight.closure.asInstanceOf[FloatTerm]
+      broadcastLeft.derivedTensor(newClosure)
     }
 
     /**
       * @group delayed
       */
     def -(rightHandSide: Tensor): InlineTensor = {
-      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] - rightHandSide.closure.asInstanceOf[FloatTerm]
-      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
-        derivedTensor(newClosure)
-      } else {
-        throw new IllegalArgumentException
-      }
+      val (broadcastLeft, broadcastRight) = autoBroadcast(this, rightHandSide)
+      val newClosure = broadcastLeft.closure.asInstanceOf[FloatTerm] - broadcastRight.closure.asInstanceOf[FloatTerm]
+      broadcastLeft.derivedTensor(newClosure)
     }
 
     /**
       * @group delayed
       */
     def /(rightHandSide: Tensor): InlineTensor = {
-      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] / rightHandSide.closure.asInstanceOf[FloatTerm]
-      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
-        derivedTensor(newClosure)
-      } else {
-        throw new IllegalArgumentException
-      }
+      val (broadcastLeft, broadcastRight) = autoBroadcast(this, rightHandSide)
+      val newClosure = broadcastLeft.closure.asInstanceOf[FloatTerm] / broadcastRight.closure.asInstanceOf[FloatTerm]
+      broadcastLeft.derivedTensor(newClosure)
     }
 
     /**
       * @group delayed
       */
     def %(rightHandSide: Tensor): InlineTensor = {
-      def newClosure = thisTensor.closure.asInstanceOf[FloatTerm] % rightHandSide.closure.asInstanceOf[FloatTerm]
-      if (java.util.Arrays.equals(shape, rightHandSide.shape)) {
-        derivedTensor(newClosure)
-      } else {
-        throw new IllegalArgumentException
-      }
+      val (broadcastLeft, broadcastRight) = autoBroadcast(this, rightHandSide)
+      val newClosure = broadcastLeft.closure.asInstanceOf[FloatTerm] % broadcastRight.closure.asInstanceOf[FloatTerm]
+      broadcastLeft.derivedTensor(newClosure)
     }
 
     /**
