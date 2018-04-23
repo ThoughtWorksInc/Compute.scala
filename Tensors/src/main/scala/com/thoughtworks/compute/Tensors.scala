@@ -224,17 +224,19 @@ trait Tensors extends OpenCL {
   }
 
   private def autoBroadcastShape(shape1: Array[Int], shape2: Array[Int]): Array[Int] = {
-    require(
-      shape1.length == shape2.length,
-      raw"""Cannot broadcast between shape ${shape1.mkString("[", ",", "]")} and ${shape2.mkString("[", ",", "]")}.""")
-    shape1.zip(shape2).map {
-      case (aSize, bSize) if aSize == bSize => aSize
-      case (1, bSize)                       => bSize
-      case (aSize, 1)                       => aSize
-      case _ =>
+    Array.tabulate(math.max(shape1.length, shape2.length)) { i =>
+      if (i >= shape1.length || shape1(i) == 1) {
+        shape2(i)
+      } else if (i >= shape2.length || shape2(i) == 1) {
+        shape1(i)
+      } else if (shape1(i) == shape2(i)) {
+        shape1(i)
+      } else {
         throw new IllegalArgumentException(
           raw"Failed to automatically broadcast between shape [${shape1.mkString(",")}] and [${shape2.mkString(",")}]}"
         )
+      }
+      shape2(i)
     }
   }
 
