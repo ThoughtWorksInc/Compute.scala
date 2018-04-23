@@ -181,7 +181,7 @@ object Memory extends LowPriorityMemory {
     }
   }
 
-  implicit object  FloatMemory extends NioMemory[Float] {
+  implicit object FloatMemory extends NioMemory[Float] {
     override type HostBuffer = FloatBuffer
 
     override def fromByteBuffer(byteBuffer: ByteBuffer): FloatBuffer = byteBuffer.asFloatBuffer

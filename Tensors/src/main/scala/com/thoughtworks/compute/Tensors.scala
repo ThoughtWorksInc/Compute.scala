@@ -489,11 +489,12 @@ trait Tensors extends OpenCL {
 
     def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f): InlineTensor = {
       val padding0 = padding
+      val value0 = value
       new {
         val padding: Float = padding0
         val shape: shape0.type = shape0
-        val closure: trees.FloatTerm = float.literal(value)
-      } with InlineTensor
+        val value = value0
+      } with FillTensor
     }
 
     def random(shape: Array[Int], seed: Int = Random.nextInt(), padding: Float = 0.0f): NonInlineTensor = {
@@ -816,11 +817,20 @@ trait Tensors extends OpenCL {
     /**
       * @group delayed
       */
-    def broadcast(newShape: Array[Int]) = {
+    def broadcast(newShape: Array[Int]): Tensor = {
       if (java.util.Arrays.equals(newShape, shape)) {
         this
       } else {
-        broadcastTransform(newShape)
+        thisTensor match {
+          case thisTensor: FillTensor =>
+            new {
+              val value: Float = thisTensor.value
+              val padding: Float = thisTensor.padding
+              val shape: Array[Int] = newShape
+            } with FillTensor
+          case _ =>
+            broadcastTransform(newShape)
+        }
       }
     }
 
@@ -1228,6 +1238,11 @@ trait Tensors extends OpenCL {
 
       compiledKernel.run(parameterDescendants(closure.tree)).asInstanceOf[Do[PendingBuffer[closure.JvmValue]]]
     }
+
+  trait FillTensor extends InlineTensor {
+    def value: Float
+    lazy val closure: trees.FloatTerm = float.literal(value)
+  }
 
   /** An intermediate expression of tensor that can be composed into a more complex expression. */
   trait InlineTensor extends Tensor { thisInlineTensor =>
