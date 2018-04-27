@@ -10,14 +10,14 @@ object NDimensionalAffineTransform {
   type MatrixData = Array[Double]
   type VectorData = Array[Double]
 
-  def translate(offsets: VectorData): MatrixData = {
-    val length = offsets.length
+  def translate(offset: VectorData): MatrixData = {
+    val length = offset.length
     val matrix = Array.ofDim[Double](length * (length + 1))
     @tailrec
     def loop(i: Int): Unit = {
       if (i < length) {
         matrix(i * (length + 1) + i) = 1.0
-        matrix(i * (length + 1) + length) = offsets(i)
+        matrix(i * (length + 1) + length) = offset(i)
         loop(i + 1)
       }
     }
