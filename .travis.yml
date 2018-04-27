@@ -11,7 +11,7 @@ jdk:
   - oraclejdk8
 
 before_install:
-  - bash .travis/amd_sdk.sh
+  - wget --output-document=/tmp/AMD-SDK.tar.bz2 http://cs.wisc.edu/~riccardo/assets/AMD-APP-SDKInstaller-v3.0.130.136-GA-linux64.tar.bz2
   - mkdir /tmp/amd-app-sdk-installer
   - tar -xjf /tmp/AMD-SDK.tar.bz2 -C /tmp/amd-app-sdk-installer
   - export AMDAPPSDK=${HOME}/AMDAPPSDK
