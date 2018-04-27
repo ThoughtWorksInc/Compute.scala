@@ -775,6 +775,17 @@ object OpenCL {
                 globalWorkSize: Seq[Long],
                 localWorkSize: Option[Seq[Long]] = None,
                 waitingEvents: Seq[Long] = Array.empty[Long]): Do[Event[Owner]] = {
+      def replaceScalar(dimensions: Seq[Long]) = {
+        if (dimensions.isEmpty) {
+          Seq(1L)
+        } else {
+          dimensions
+        }
+      }
+
+      val checkedGlobalWorkSize = replaceScalar(globalWorkSize)
+      val checkedGlobalWorkOffset = globalWorkOffset.map(replaceScalar)
+      val checkedLocalWorkSize = localWorkSize.map(replaceScalar)
 
       def optionalStackPointerBuffer(option: Option[Seq[Long]]): MemoryStack => PointerBuffer = {
         option match {
@@ -784,8 +795,8 @@ object OpenCL {
             _.pointers(pointers: _*)
         }
       }
-      val globalWorkOffsetBuffer = optionalStackPointerBuffer(globalWorkOffset)
-      val localWorkSizeBuffer = optionalStackPointerBuffer(localWorkSize)
+      val globalWorkOffsetBuffer = optionalStackPointerBuffer(checkedGlobalWorkOffset)
+      val localWorkSizeBuffer = optionalStackPointerBuffer(checkedLocalWorkSize)
 
       Do.monadicCloseable {
         val stack = stackPush()
@@ -800,9 +811,9 @@ object OpenCL {
             clEnqueueNDRangeKernel(
               commandQueue.handle,
               handle,
-              globalWorkSize.length,
+              checkedGlobalWorkSize.length,
               globalWorkOffsetBuffer(stack),
-              stack.pointers(globalWorkSize: _*),
+              stack.pointers(checkedGlobalWorkSize: _*),
               localWorkSizeBuffer(stack),
               inputEventBuffer,
               outputEventBuffer

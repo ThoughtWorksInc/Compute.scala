@@ -91,6 +91,13 @@ import org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_CPU
   *          merged.shape should be(Array(2, 2, 3))
   *          }}}
   *
+  * @example A [[Tensor]] of scalar value can be broadcast to N-dimensional arrays.
+  *
+  *          {{{
+  *          val s = Tensor.scalar(42.0f)
+  *          val b = s.broadcast(Array(2, 3))
+  *          b.toString should be("[[42.0,42.0,42.0],[42.0,42.0,42.0]]")
+  *          }}}
   *
   */
 object cpu

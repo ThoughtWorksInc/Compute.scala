@@ -296,59 +296,68 @@ trait OpenCLKernelBuilder extends AllExpressions {
     val matrix: MatrixData
 
     def extract: Element = {
-      val numberOfRows = originalShape.length
-      val numberOfColumns = matrix.length / numberOfRows
-      if (matrix.length != numberOfRows * numberOfColumns) {
-        throw new IllegalStateException()
-      }
 
-      val (indices, indexDefinitions, bounds) = (for {
-        y <- 0 until numberOfRows
-      } yield {
-        val products = for {
-          x <- 0 until numberOfColumns
-          scale = matrix(y * numberOfColumns + x)
-          if scale != 0.0
+      val numberOfRows = originalShape.length
+      if (numberOfRows == 0) {
+        val termId = freshName("")
+        localDefinitions += fastraw"""
+          const ${elementType.typeSymbol.typeCode} $termId = *$termCode;
+        """
+        elementType.term(termId).asInstanceOf[Element]
+      } else {
+        val numberOfColumns = matrix.length / numberOfRows
+        if (matrix.length != numberOfRows * numberOfColumns) {
+          throw new IllegalStateException()
+        }
+
+        val (indices, indexDefinitions, bounds) = (for {
+          y <- 0 until numberOfRows
         } yield {
-          if (x < numberOfColumns - 1) {
-            scale match {
-              case 1.0 =>
-                fast"get_global_id($x)"
-              case scale =>
-                fast"get_global_id($x) * ${toLiteral(scale)}"
+          val products = for {
+            x <- 0 until numberOfColumns
+            scale = matrix(y * numberOfColumns + x)
+            if scale != 0.0
+          } yield {
+            if (x < numberOfColumns - 1) {
+              scale match {
+                case 1.0 =>
+                  fast"get_global_id($x)"
+                case scale =>
+                  fast"get_global_id($x) * ${toLiteral(scale)}"
+              }
+            } else {
+              fast"${toLiteral(scale)}"
             }
+          }
+          val indexId = freshName("index")
+          val (indexDefinition, bounds) = if (products.isEmpty) {
+            (fast"const int $indexId = 0;\n", Nil)
           } else {
-            fast"${toLiteral(scale)}"
+            (fast"const int $indexId = (int)(${products.mkFastring(" + ")});\n",
+             Seq(fast"((bool)($indexId >= 0))", fast"((bool)($indexId < ${originalShape(y)}))"))
+          }
+          (indexId, indexDefinition, bounds)
+        }).unzip3
+
+        localDefinitions ++= indexDefinitions
+
+        val termId = freshName("")
+        val dereferenceCode = fast"(*${termCode})${indices.map { i =>
+          fast"[$i]"
+        }.mkFastring}"
+        val checkedDereference = {
+          val flatBounds = bounds.flatten
+          if (flatBounds.isEmpty) {
+            dereferenceCode
+          } else {
+            fast"(${bounds.flatten.mkFastring(" && ")}) ? $dereferenceCode : $originalPaddingCode"
           }
         }
-        val indexId = freshName("index")
-        val (indexDefinition, bounds) = if (products.isEmpty) {
-          (fast"const int $indexId = 0;\n", Nil)
-        } else {
-          (fast"const int $indexId = (int)(${products.mkFastring(" + ")});\n",
-           Seq(fast"((bool)($indexId >= 0))", fast"((bool)($indexId < ${originalShape(y)}))"))
-        }
-        (indexId, indexDefinition, bounds)
-      }).unzip3
-
-      localDefinitions ++= indexDefinitions
-
-      val termId = freshName("")
-      val dereferenceCode = fast"(*${termCode})${indices.map { i =>
-        fast"[$i]"
-      }.mkFastring}"
-      val checkedDereference = {
-        val flatBounds = bounds.flatten
-        if (flatBounds.isEmpty) {
-          dereferenceCode
-        } else {
-          fast"(${bounds.flatten.mkFastring(" && ")}) ? $dereferenceCode : $originalPaddingCode"
-        }
+        localDefinitions += fastraw"""
+          const ${elementType.typeSymbol.typeCode} $termId = $checkedDereference;
+        """
+        elementType.term(termId).asInstanceOf[Element]
       }
-      localDefinitions += fastraw"""
-        const ${elementType.typeSymbol.typeCode} $termId = $checkedDereference;
-      """
-      elementType.term(termId).asInstanceOf[Element]
     }
   }
 
