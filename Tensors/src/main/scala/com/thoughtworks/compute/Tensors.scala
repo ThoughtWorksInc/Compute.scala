@@ -476,7 +476,7 @@ trait Tensors extends OpenCL {
             val hostBuffer = MemoryUtil.memAllocFloat(data.length)
             hostBuffer.duplicate().put(data)
             Resource(value = Success(hostBuffer), release = UnitContinuation.delay { MemoryUtil.memFree(hostBuffer) })
-          }))).intransitiveFlatMap { hostBuffer =>
+          }))).flatMap { hostBuffer =>
             allocateBufferFrom(hostBuffer).map(ReadyBuffer[Float]).asInstanceOf[Do[PendingBuffer[closure.JvmValue]]]
           }.shared
         }
@@ -679,7 +679,7 @@ trait Tensors extends OpenCL {
         val padding: Float = thisTensor.padding
 
         private[compute] val doBuffer: Do[PendingBuffer[Float]] = {
-          thisTensor.doBuffer.intransitiveFlatMap { inputPendingBuffer: PendingBuffer[Float] =>
+          thisTensor.doBuffer.flatMap { inputPendingBuffer: PendingBuffer[Float] =>
             val length = thisTensor.shape.product
             allocateBuffer[Float](1).flatMap { outputBuffer =>
               dispatch { commandQueue =>
@@ -1208,7 +1208,7 @@ trait Tensors extends OpenCL {
                       Parallel(tree.id.asInstanceOf[Tensor].doBuffer)
                     }
                     .unwrap
-                    .intransitiveFlatMap { arguments: List[PendingBuffer[_]] =>
+                    .flatMap { arguments: List[PendingBuffer[_]] =>
                       Do.monadicCloseable(program.createKernel()).intransitiveFlatMap { kernel: Kernel =>
                         val valueType = convertedTerm.valueType.asInstanceOf[ValueType]
                         val memory = valueType.memory.asInstanceOf[Memory[convertedTerm.JvmValue]]
