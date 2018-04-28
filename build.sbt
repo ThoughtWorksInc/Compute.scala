@@ -45,3 +45,11 @@ addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.fu
 scalacOptions += "-Xexperimental"
 
 scalacOptions += "-Ypartial-unification"
+
+scalacOptions in ThisBuild ++= {
+  if (scalaBinaryVersion.value == "2.11") {
+    Some("-Ybackend:GenBCode")
+  } else {
+    None
+  }
+}
