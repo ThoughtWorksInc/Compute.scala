@@ -578,6 +578,23 @@ trait Tensors extends OpenCL {
       broadcastLeft.derivedTensor(newClosure)
     }
 
+    def join(tensors0: Seq[Tensor], dimension: Int): Tensor = {
+      val joinLastDimension = join(tensors0)
+      if (joinLastDimension.shape.length - 1 == dimension) {
+        joinLastDimension
+      } else {
+        joinLastDimension.permute(Array.tabulate(joinLastDimension.shape.length) { i =>
+          if (i < dimension) {
+            i
+          } else if (i == dimension) {
+            joinLastDimension.shape.length - 1
+          } else {
+            i - 1
+          }
+        })
+      }
+    }
+
     def join(tensors0: Seq[Tensor]): NonInlineTensor = {
       def force[A](seq: Seq[A]) = {
         seq match {
