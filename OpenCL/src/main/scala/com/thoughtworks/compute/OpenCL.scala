@@ -481,6 +481,17 @@ object OpenCL {
       }
     }
 
+    def maxWorkItemDimensions: Int = {
+      val stack = stackPush()
+      try {
+        val buffer = stack.mallocInt(1)
+        checkErrorCode(clGetDeviceInfo(handle, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, buffer, null))
+        buffer.get(0)
+      } finally {
+        stack.close()
+      }
+    }
+
     def maxWorkItemSizes: Seq[Long] = {
       val stack = stackPush()
       try {
