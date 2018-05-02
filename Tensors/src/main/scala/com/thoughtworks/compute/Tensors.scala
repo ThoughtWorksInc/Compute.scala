@@ -12,7 +12,6 @@ import com.google.common.cache._
 import com.thoughtworks.compute.Expressions.{Arrays, Floats, Tuples}
 import com.thoughtworks.compute.NDimensionalAffineTransform.MatrixData
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
-import com.thoughtworks.compute.Tensors.{MemoryTrees, TensorBuilder}
 import com.thoughtworks.compute.Trees.{AllTrees, StructuralTrees}
 import com.thoughtworks.continuation._
 import com.thoughtworks.feature.Factory
@@ -39,6 +38,8 @@ import scalaz.syntax.all._
 import scalaz.syntax.tag._
 
 object Tensors {
+
+  private final val MaxWorkItemDimensions = 3
 
   /** A plug-in of Tensors to suppress warnings during compiling a OpenCL kernel for non-AMD platforms. */
   trait SuppressWarnings extends Tensors {
@@ -216,6 +217,7 @@ object Tensors {
 }
 
 trait Tensors extends OpenCL {
+  import Tensors._
 
   @inline
   private def autoBroadcast(tensor1: Tensor, tensor2: Tensor): (Tensor, Tensor) = {
@@ -236,7 +238,6 @@ trait Tensors extends OpenCL {
           raw"Failed to automatically broadcast between shape [${shape1.mkString(",")}] and [${shape2.mkString(",")}]}"
         )
       }
-      shape2(i)
     }
   }
 
@@ -484,7 +485,7 @@ trait Tensors extends OpenCL {
     }
 
     def scalar(value: Float, padding: Float = 0.0f): InlineTensor = {
-      fill(value, Tensors.ScalarShape, padding)
+      fill(value, ScalarShape, padding)
     }
 
     def fill(value: Float, shape0: Array[Int], padding: Float = 0.0f): InlineTensor = {
@@ -782,7 +783,7 @@ trait Tensors extends OpenCL {
           }
         }.shared
       } with NonInlineTensor {
-        def shape: Array[Int] = Tensors.ScalarShape
+        def shape: Array[Int] = ScalarShape
       }
     }
 
@@ -1203,6 +1204,7 @@ trait Tensors extends OpenCL {
                 $globalContext
                 ${functionContext.generateKernelSourceCode("jit_kernel",
                                                            shape.length,
+                                                           MaxWorkItemDimensions,
                                                            kernelParameters,
                                                            Seq(kernelBody))}
                 """
@@ -1230,15 +1232,37 @@ trait Tensors extends OpenCL {
                         val valueType = convertedTerm.valueType.asInstanceOf[ValueType]
                         val memory = valueType.memory.asInstanceOf[Memory[convertedTerm.JvmValue]]
                         allocateBuffer[convertedTerm.JvmValue](shape.product)(memory).flatMap { outputBuffer =>
-                          for ((arugment, i) <- arguments.view.zipWithIndex) {
-                            kernel(i) = arugment.buffer
+                          val parameterDimensions = shape.length - MaxWorkItemDimensions
+                          if (parameterDimensions > 0) {
+                            for (d <- 1 to parameterDimensions) {
+                              kernel(d - 1) = shape(d): Int
+                            }
+
+                            for ((arugment, i) <- arguments.view.zipWithIndex) {
+                              kernel(i + parameterDimensions) = arugment.buffer
+                            }
+                            kernel(arguments.length + parameterDimensions) = outputBuffer
+                            val globalWorkSize = shape.view(0, parameterDimensions + 1).product.toLong +: shape
+                              .view(parameterDimensions + 1, shape.length)
+                              .map(_.toLong)
+
+                            dispatch(
+                              kernel.enqueue(_,
+                                             globalWorkSize = globalWorkSize,
+                                             waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle))))
+                              .map(EventBuffer[convertedTerm.JvmValue](outputBuffer, _))
+                          } else {
+
+                            for ((arugment, i) <- arguments.view.zipWithIndex) {
+                              kernel(i) = arugment.buffer
+                            }
+                            kernel(arguments.length) = outputBuffer
+                            dispatch(
+                              kernel.enqueue(_,
+                                             globalWorkSize = shape.view.map(_.toLong),
+                                             waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle))))
+                              .map(EventBuffer[convertedTerm.JvmValue](outputBuffer, _))
                           }
-                          kernel(arguments.length) = outputBuffer
-                          dispatch(
-                            kernel.enqueue(_,
-                                           globalWorkSize = shape.view.map(_.toLong),
-                                           waitingEvents = arguments.view.flatMap(_.eventOption.map(_.handle))))
-                            .map(EventBuffer[convertedTerm.JvmValue](outputBuffer, _))
                         }
                       }
                     }

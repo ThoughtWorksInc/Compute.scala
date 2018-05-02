@@ -57,13 +57,16 @@ class OpenCLKernelBuilderSpec extends FreeSpec with Matchers {
     val map = new trees.ExportContext
 
     val sourceCode: Fastring =
-      openCLFunctionContext.generateKernelSourceCode("kernel_name",
-                                                     2,
-                                                     Seq(
-                                                       x.tree.export(openCLFunctionContext, map),
-                                                       y.tree.export(openCLFunctionContext, map)
-                                                     ),
-                                                     Seq(f.tree.export(openCLFunctionContext, map)))
+      openCLFunctionContext.generateKernelSourceCode(
+        "kernel_name",
+        2,
+        3,
+        Seq(
+          x.tree.export(openCLFunctionContext, map),
+          y.tree.export(openCLFunctionContext, map)
+        ),
+        Seq(f.tree.export(openCLFunctionContext, map))
+      )
 
     globalContext.foreach(print)
     sourceCode.foreach(print)
