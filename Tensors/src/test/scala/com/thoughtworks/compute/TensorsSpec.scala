@@ -263,7 +263,142 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     }
     .run
     .toScalaFuture
+  
+  "readScalar" in doTensors
+    .flatMap { tensors =>
+      Do.garbageCollected(tensors.Tensor(42.0f).readScalar).map {a=>
+        a should be(42.0f)
+      }
+    }
+    .run
+    .toScalaFuture
 
+  "read1DArray" in doTensors
+    .flatMap { tensors =>
+      Do.garbageCollected(tensors.Tensor(Array[Float](1,2)).read1DArray).map {a=>
+        a should be(Array[Float](1,2))
+      }
+    }
+    .run
+    .toScalaFuture
+
+  "read2DArray" in doTensors
+    .flatMap { tensors =>
+      import tensors._
+      val array = Array(Array[Float](1, 2), Array[Float](3, 4), Array[Float](5,6))
+      Do.garbageCollected(Tensor(array).read2DArray).map {a=>
+        a(0) should be(Array[Float](1, 2))
+        a(1) should be(Array[Float](3, 4))
+        a(2) should be(Array[Float](5, 6))
+      }
+    }
+    .run
+    .toScalaFuture
+
+  "read3DArray" in doTensors
+    .flatMap { tensors =>
+      import tensors._
+      val array = Array(Array(Array[Float](1, 2), Array[Float](3, 4), Array[Float](5,6)), Array(Array[Float](7, 8), Array[Float](9, 10), Array[Float](11,12)))
+      Do.garbageCollected(Tensor(array).read3DArray).map { a =>
+        a(0)(0) should be(Array[Float](1,2))
+        a(0)(1) should be(Array[Float](3,4))
+        a(0)(2) should be(Array[Float](5,6))
+        a(1)(0) should be(Array[Float](7,8))
+        a(1)(1) should be(Array[Float](9,10))
+        a(1)(2) should be(Array[Float](11,12))
+      }
+    }
+    .run
+    .toScalaFuture
+
+  "read4DArray" in doTensors
+    .flatMap { tensors =>
+      import tensors._
+      val array = Array(Array(Array(Array[Float](1, 2), Array[Float](3, 4), Array[Float](5,6)),
+                        Array(Array[Float](7, 8), Array[Float](9, 10), Array[Float](11,12))),
+                        Array(Array(Array[Float](13, 14), Array[Float](15, 16), Array[Float](17,18)),
+                        Array(Array[Float](19, 20), Array[Float](21, 22), Array[Float](23,24))))
+      Do.garbageCollected(Tensor(array).read4DArray).map { a =>
+        a(0)(0)(0) should be(Array[Float](1,2))
+        a(0)(0)(1) should be(Array[Float](3,4))
+        a(0)(0)(2) should be(Array[Float](5,6))
+        a(0)(1)(0) should be(Array[Float](7,8))
+        a(0)(1)(1) should be(Array[Float](9,10))
+        a(0)(1)(2) should be(Array[Float](11,12))
+        a(1)(0)(0) should be(Array[Float](13,14))
+        a(1)(0)(1) should be(Array[Float](15,16))
+        a(1)(0)(2) should be(Array[Float](17,18))
+        a(1)(1)(0) should be(Array[Float](19,20))
+        a(1)(1)(1) should be(Array[Float](21,22))
+        a(1)(1)(2) should be(Array[Float](23,24))
+      }
+    }
+    .run
+    .toScalaFuture
+
+   "read1DSeq" in doTensors
+    .flatMap { tensors =>
+      Do.garbageCollected(tensors.Tensor(Seq[Float](1,2)).read1DSeq).map {a=>
+        a should be(Seq[Float](1,2))
+      }
+    }
+    .run
+    .toScalaFuture
+
+  "read2DSeq" in doTensors
+    .flatMap { tensors =>
+      import tensors._
+      val seq = Seq(Seq[Float](1, 2), Seq[Float](3, 4), Seq[Float](5,6))
+      Do.garbageCollected(Tensor(seq).read2DSeq).map {a=>
+        a(0) should be(Seq[Float](1, 2))
+        a(1) should be(Seq[Float](3, 4))
+        a(2) should be(Seq[Float](5, 6))
+      }
+    }
+    .run
+    .toScalaFuture
+
+  "read3DSeq" in doTensors
+    .flatMap { tensors =>
+      import tensors._
+      val seq = Seq(Seq(Seq[Float](1, 2), Seq[Float](3, 4), Seq[Float](5,6)), Seq(Seq[Float](7, 8), Seq[Float](9, 10), Seq[Float](11,12)))
+      Do.garbageCollected(Tensor(seq).read3DSeq).map { a =>
+        a(0)(0) should be(Seq[Float](1,2))
+        a(0)(1) should be(Seq[Float](3,4))
+        a(0)(2) should be(Seq[Float](5,6))
+        a(1)(0) should be(Seq[Float](7,8))
+        a(1)(1) should be(Seq[Float](9,10))
+        a(1)(2) should be(Seq[Float](11,12))
+      }
+    }
+    .run
+    .toScalaFuture
+
+  "read4DSeq" in doTensors
+    .flatMap { tensors =>
+      import tensors._
+      val seq = Seq(Seq(Seq(Seq[Float](1, 2), Seq[Float](3, 4), Seq[Float](5,6)),
+                        Seq(Seq[Float](7, 8), Seq[Float](9, 10), Seq[Float](11,12))),
+                        Seq(Seq(Seq[Float](13, 14), Seq[Float](15, 16), Seq[Float](17,18)),
+                        Seq(Seq[Float](19, 20), Seq[Float](21, 22), Seq[Float](23,24))))
+      Do.garbageCollected(Tensor(seq).read4DSeq).map { a =>
+        a(0)(0)(0) should be(Seq[Float](1,2))
+        a(0)(0)(1) should be(Seq[Float](3,4))
+        a(0)(0)(2) should be(Seq[Float](5,6))
+        a(0)(1)(0) should be(Seq[Float](7,8))
+        a(0)(1)(1) should be(Seq[Float](9,10))
+        a(0)(1)(2) should be(Seq[Float](11,12))
+        a(1)(0)(0) should be(Seq[Float](13,14))
+        a(1)(0)(1) should be(Seq[Float](15,16))
+        a(1)(0)(2) should be(Seq[Float](17,18))
+        a(1)(1)(0) should be(Seq[Float](19,20))
+        a(1)(1)(1) should be(Seq[Float](21,22))
+        a(1)(1)(2) should be(Seq[Float](23,24))
+      }
+    }
+    .run
+    .toScalaFuture
+  
   "random" in doTensors
     .map { tensors =>
       import tensors._
