@@ -133,7 +133,8 @@ trait OpenCLKernelBuilder extends AllExpressions {
   val localDefinitions = mutable.Buffer.empty[Fastring]
 
   def generateKernelSourceCode(functionName: String,
-                               numberOfDimensions: Int,
+                               totalDimensions: Int,
+                               clDimensions: Int,
                                parameters: Seq[Term],
                                outputs: Seq[Term]): Fastring = {
     val parameterDeclarations = for (parameter <- parameters) yield {
@@ -145,16 +146,15 @@ trait OpenCLKernelBuilder extends AllExpressions {
       val outputTypeCode = output.typeCode
       val outputId = freshName("output")
       val outputParameter = fast"global $outputTypeCode * const restrict $outputId"
-      val outputAssignment = if (numberOfDimensions > 0) {
+      val outputAssignment = if (totalDimensions > 0) {
         def outputIndex(dimension: Int): Fastring = {
           if (dimension == 0) {
-            fast"get_global_id(0)"
+            fast"__global_id_0"
           } else {
-            // FIXME: use constant value instead of call to get_global_size
-            fast"(${outputIndex(dimension - 1)} * get_global_size($dimension) + get_global_id($dimension))"
+            fast"(${outputIndex(dimension - 1)} * __global_size_$dimension + __global_id_$dimension)"
           }
         }
-        val index = outputIndex(numberOfDimensions - 1)
+        val index = outputIndex(totalDimensions - 1)
         fast"$outputId[$index] = $outputTermCode;\n"
       } else {
         fast"*$outputId = $outputTermCode;\n"
@@ -162,8 +162,58 @@ trait OpenCLKernelBuilder extends AllExpressions {
       (outputParameter, outputAssignment)
 
     }.unzip
+
+    val (dimensionSizeParamters, dimensionDefinitions) = if (totalDimensions <= clDimensions) {
+      val dimensionSizeParamters = Nil
+
+      val dimensionDefinitions = (0 until totalDimensions).map { d =>
+        fastraw"""
+          const int __global_size_$d = get_global_size($d);
+          const int __global_id_$d = get_global_id($d);
+        """
+      }.mkFastring
+
+      Tuple2(dimensionSizeParamters, dimensionDefinitions)
+    } else {
+      val parameterDimensions = totalDimensions - clDimensions
+      val dimensionSizeParamters = (1 to parameterDimensions).map { d =>
+        fast"const int __global_size_$d"
+      }
+
+      def strideDefinitions(d: Int, stride: Fastring = fast"1"): Fastring = {
+        if (d == 0) {
+          fast"const int __stride_0 = $stride;"
+        } else {
+          fastraw"""
+                const int __stride_$d = $stride;
+                ${strideDefinitions(d - 1, fast"__stride_$d * __global_size_$d")}
+              """
+        }
+      }
+      val dimensionDefinitions = {
+        fastraw"""
+        ${strideDefinitions(parameterDimensions)}
+        const int __global_size_0 = get_global_size(0) / __stride_0;
+        const int __global_id_0 = get_global_id(0) / __stride_0;
+
+        ${(for (d <- 1 to parameterDimensions) yield {
+          fast"const int __global_id_$d = get_global_id(0) / __stride_$d % __global_size_$d;"
+        }).mkFastring("\n")}
+        
+        ${(for (d <- 1 until clDimensions) yield {
+          fastraw"""
+            const int __global_size_${d + parameterDimensions} = get_global_size($d);
+            const int __global_id_${d + parameterDimensions} = get_global_id($d);
+          """
+        }).mkFastring("\n")}
+      """
+      }
+      Tuple2(dimensionSizeParamters, dimensionDefinitions)
+    }
+    val allParameters = dimensionSizeParamters.view ++ parameterDeclarations ++ outputParameters
     fastraw"""
-      kernel void $functionName(${(parameterDeclarations.view ++ outputParameters).mkFastring(", ")}) {
+      kernel void $functionName(${allParameters.mkFastring(", ")}) {
+        $dimensionDefinitions
         ${localDefinitions.mkFastring}
         ${outputAssignments.mkFastring}
       }
@@ -321,9 +371,9 @@ trait OpenCLKernelBuilder extends AllExpressions {
             if (x < numberOfColumns - 1) {
               scale match {
                 case 1.0 =>
-                  fast"get_global_id($x)"
+                  fast"__global_id_$x"
                 case scale =>
-                  fast"get_global_id($x) * ${toLiteral(scale)}"
+                  fast"__global_id_$x * ${toLiteral(scale)}"
               }
             } else {
               fast"${toLiteral(scale)}"
@@ -385,11 +435,11 @@ trait OpenCLKernelBuilder extends AllExpressions {
     def extract: Element = {
       val globalIndices = for {
         i <- shape.indices
-      } yield fast"[get_global_id($i)]"
+      } yield fast"[__global_id_$i]"
 
       val bounds = for {
         (max, i) <- shape.view.zipWithIndex
-      } yield fast"get_global_id($i) < $max"
+      } yield fast"__global_id_$i < $max"
 
       val valueTermName = freshName("")
       val dereferenceCode = fast"(*${thisArrayParameter.termCode})${globalIndices.mkFastring}"
