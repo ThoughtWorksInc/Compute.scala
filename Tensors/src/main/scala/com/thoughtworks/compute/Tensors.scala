@@ -1305,7 +1305,7 @@ trait Tensors extends OpenCL {
 
     /** A matrix that describes the transformation of coordinate.
       *
-      * The matrix size is __number of dimensions of original tensor × number of dimensions of new tensor__.
+      * The matrix size is __number of dimensions of original tensor × (number of dimensions of new tensor + 1)__.
       */
     def matrix: MatrixData
 
