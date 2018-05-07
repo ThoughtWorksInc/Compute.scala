@@ -1048,6 +1048,11 @@ trait Tensors extends OpenCL {
     /**
       * @group delayed
       */
+    def transpose: TransformedTensor = { permute(shape.indices.reverse.toArray)}
+
+    /**
+      * @group delayed
+      */
     def split(dimension: Int): IndexedSeq[TransformedTensor] = {
       // TODO: override map/reduce to produce less OpenCL C code
       val newShape = shape.patch(dimension, Nil, 1)
