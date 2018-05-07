@@ -297,20 +297,25 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
     }
     .run
     .toScalaFuture
+
+  "scalar transpose" in doTensors
+    .map { tensors =>
+      tensors.Tensor(42.0f).transpose.toString should be("42.0")
+    }
+    .run
+    .toScalaFuture
+
   
   "1d transpose" in doTensors
     .map { tensors =>
-      import tensors._
-      val v = Tensor(Array(1.0f, 2.0f, 3.0f))
-      v.transpose.toString should be("[1.0,2.0,3.0]")
+      tensors.Tensor(Array(1.0f, 2.0f, 3.0f)).transpose.toString should be("[1.0,2.0,3.0]")
     }
     .run
     .toScalaFuture
   
   "2d transpose" in doTensors
     .map { tensors =>
-      import tensors._
-      val matrix = Tensor(Array(Array(1.0f, 2.0f), Array(3.0f, 4.0f)))
+      val matrix = tensors.Tensor(Array(Array(1.0f, 2.0f), Array(3.0f, 4.0f)))
       matrix.transpose.toString should be("[[1.0,3.0],[2.0,4.0]]")
     }
     .run
@@ -318,8 +323,7 @@ class TensorsSpec extends AsyncFreeSpec with Matchers {
 
   "3d transpose" in doTensors
     .map { tensors =>
-      import tensors._
-      val t = Tensor(Array(Array(Array(1.0f, 2.0f, 3.0f), Array(4.0f, 5.0f, 6.0f)), 
+      val t = tensors.Tensor(Array(Array(Array(1.0f, 2.0f, 3.0f), Array(4.0f, 5.0f, 6.0f)), 
                                 Array(Array(7.0f, 8.0f, 9.0f), Array(10.0f, 11.0f, 12.0f))))
       t.transpose.toString should be("[[[1.0,7.0],[4.0,10.0]],[[2.0,8.0],[5.0,11.0]],[[3.0,9.0],[6.0,12.0]]]")
     }
