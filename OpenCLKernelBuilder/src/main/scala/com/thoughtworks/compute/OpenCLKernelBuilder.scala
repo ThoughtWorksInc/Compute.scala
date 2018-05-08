@@ -444,7 +444,11 @@ trait OpenCLKernelBuilder extends AllExpressions {
       val valueTermName = freshName("")
       val dereferenceCode = fast"(*${thisArrayParameter.termCode})${globalIndices.mkFastring}"
       localDefinitions += fastraw"""
-        const ${elementType.typeSymbol.typeCode} $valueTermName = (${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode;
+      const ${elementType.typeSymbol.typeCode} $valueTermName = ${if (bounds.isEmpty) {
+        dereferenceCode
+      } else {
+        fast"(${bounds.mkFastring(" && ")}) ? $dereferenceCode : $paddingCode"
+      }};
       """
 
       elementType.term(valueTermName).asInstanceOf[Element]
