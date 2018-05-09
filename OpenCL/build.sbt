@@ -1,4 +1,4 @@
-libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6" % Test).jar().classifier {
+libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6" % Optional).jar().classifier {
   import scala.util.Properties._
   if (isMac) {
     "natives-macos"
@@ -10,6 +10,8 @@ libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6" % Test).jar().classifier
     throw new MessageOnlyException(s"lwjgl does not support $osName")
   }
 }
+
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.6"
 
 libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.6"
 
