@@ -110,7 +110,7 @@ So `my2DArray` is a 2D array of 2x3 size.
 Note that a `Tensor` can be a zero dimensional array, which is simply a scalar value.
 
 ```
-val scalar = Tensor(42.f)
+val scalar = Tensor(42.0f)
 println(scalar.shape.length) // 0
 ```
 
