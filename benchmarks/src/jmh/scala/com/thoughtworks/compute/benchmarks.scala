@@ -33,8 +33,8 @@ object benchmarks {
 
     trait BenchmarkTensors
         extends StrictLogging
-        with Tensors.UnsafeMathOptimizations
-        with Tensors.SuppressWarnings
+        with OpenCL.UnsafeMathOptimizations
+        with OpenCL.SuppressWarnings
         with OpenCL.LogContextNotification
         with OpenCL.UseAllDevicesByType
         with OpenCL.GlobalExecutionContext
