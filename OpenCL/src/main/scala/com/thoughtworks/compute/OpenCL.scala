@@ -929,7 +929,7 @@ object OpenCL {
       checkBuildErrorCode(None, clBuildProgram(handle, null, options, null, NULL))
     }
 
-    def build(): Unit = build("")
+    def build()(implicit witness: Witness.Aux[Owner]): Unit = build(witness.value.defaultProgramOptions)
 
     def monadicClose = UnitContinuation.delay {
       OpenCL.checkErrorCode(clReleaseProgram(handle))
@@ -1113,10 +1113,33 @@ object OpenCL {
     }
   }
 
+  /** A plug-in of Tensors to suppress warnings during compiling a OpenCL kernel for non-AMD platforms. */
+  trait SuppressWarnings extends OpenCL {
+    @transient
+    private lazy val _defaultProgramOptions = {
+      if (platformCapabilities.cl_amd_compile_options) {
+        // AMD SDK does not support -w flag in OpenCL specification.
+        super.defaultProgramOptions
+      } else {
+        super.defaultProgramOptions + " -w"
+      }
+    }
+
+    override protected def defaultProgramOptions: CharSequence = _defaultProgramOptions
+  }
+
+  trait UnsafeMathOptimizations extends OpenCL {
+    private lazy val _defaultProgramOptions = super.defaultProgramOptions + " -cl-unsafe-math-optimizations"
+
+    abstract override protected def defaultProgramOptions: CharSequence = _defaultProgramOptions
+  }
+
 }
 
 trait OpenCL extends MonadicCloseable[UnitContinuation] with DefaultCloseable {
   import OpenCL._
+
+  protected def defaultProgramOptions: CharSequence = ""
 
   protected def createKernels(program: Program): Seq[Kernel] = {
     val stack = stackPush()
