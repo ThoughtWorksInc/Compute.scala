@@ -11,8 +11,6 @@ libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.1.6" % Optional).jar().classi
   }
 }
 
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.6"
-
 libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "3.1.6"
 
 libraryDependencies += "com.thoughtworks.raii" %% "asynchronous" % "3.0.0-M11"
