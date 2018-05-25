@@ -1092,7 +1092,7 @@ trait Tensors extends OpenCL {
     private[compute] def doBuffer: Do[PendingBuffer[closure.JvmValue]]
 
     /** Returns a RAII managed asynchronous task to read this [[Tensor]] into an off-heap memory,
-      * which is linearized in row-majoy order.
+      * which is linearized in row-major order.
       *
       * @group slow
       */
@@ -1109,12 +1109,140 @@ trait Tensors extends OpenCL {
     }
 
     /** Returns an asynchronous task to read this [[Tensor]] into a [[scala.Array]],
-      * which is linearized in row-majoy order.
+      * which is linearized in row-major order.
       *
       * @group slow
       */
     def flatArray: Future[Array[closure.JvmValue]] = {
       flatBuffer.intransitiveMap(closure.valueType.memory.toArray).run
+    }
+
+    // Convert flat arrays into multidimensional ones
+    private[Tensors] def make2DArray[A:ClassTag](flat:Array[A], shape:Array[Int]): Array[Array[A]] = {
+      Array.tabulate(shape(0), shape(1))((i,j) => flat(j + i*shape(1)))
+    }
+
+    private[Tensors] def make3DArray[A:ClassTag](flat:Array[A], shape:Array[Int]): Array[Array[Array[A]]] = {
+      Array.tabulate(shape(0), shape(1), shape(2))((i,j,k) => flat(k + j*shape(2) + i*shape(1)*shape(2)))
+    }
+
+    private[Tensors] def make4DArray[A:ClassTag](flat:Array[A], shape:Array[Int]): Array[Array[Array[Array[A]]]] = {
+      Array.tabulate(shape(0), shape(1), shape(2), shape(3))(
+        (i,j,k,l) => flat(l + k*shape(3) + j*shape(2)*shape(3) + i*shape(1)*shape(2)*shape(3)))
+    }
+
+    private[Tensors] def make5DArray[A:ClassTag](flat:Array[A], shape:Array[Int]): Array[Array[Array[Array[Array[A]]]]] = {
+      Array.tabulate(shape(0), shape(1), shape(2), shape(3), shape(4))(
+        (i,j,k,l,m) => flat(m + l*shape(4) + k*shape(3)*shape(4) + j*shape(2)*shape(3)*shape(4) + i*shape(1)*shape(2)*shape(3)*shape(4)))
+    }
+
+    private[Tensors] def make2DSeq[A:ClassTag](flat:Seq[A], shape:Seq[Int]): Seq[Seq[A]] = {
+      Seq.tabulate(shape(0), shape(1))((i,j) => flat(j + i*shape(1)))
+    }
+
+    private[Tensors] def make3DSeq[A:ClassTag](flat:Seq[A], shape:Seq[Int]): Seq[Seq[Seq[A]]] = {
+      Seq.tabulate(shape(0), shape(1), shape(2))((i,j,k) => flat(k + j*shape(2) + i*shape(1)*shape(2)))
+    }
+
+    private[Tensors] def make4DSeq[A:ClassTag](flat:Seq[A], shape:Seq[Int]): Seq[Seq[Seq[Seq[A]]]] = {
+      Seq.tabulate(shape(0), shape(1), shape(2), shape(3))(
+        (i,j,k,l) => flat(l + k*shape(3) + j*shape(2)*shape(3) + i*shape(1)*shape(2)*shape(3)))
+    }
+
+    private[Tensors] def make5DSeq[A:ClassTag](flat:Seq[A], shape:Seq[Int]): Seq[Seq[Seq[Seq[Seq[A]]]]] = {
+      Seq.tabulate(shape(0), shape(1), shape(2), shape(3), shape(4))(
+        (i,j,k,l,m) => flat(m + l*shape(4) + k*shape(3)*shape(4) + j*shape(2)*shape(3)*shape(4) + i*shape(1)*shape(2)*shape(3)*shape(4)))
+    }
+    
+    /**  Returns an asynchronous task to read this [[Tensor]] into a
+      * [[scala.Float]]
+      *
+      * @group slow
+      */
+    def readScalar : Future[Float] = {
+      flatArray.map(z => z(0))
+    }
+
+    /**  Returns an asynchronous task to read this [[Tensor]] into a
+      * [[scala.Array]]
+      *
+      * @group slow
+      */
+    def read1DArray : Future[Array[Float]] = {
+      flatArray.map(z => z)
+    }
+
+    /**  Returns an asynchronous task to read this [[Tensor]] into a 2D [[scala.Array]]
+      *
+      * @group slow
+      */
+    def read2DArray : Future[Array[Array[Float]]] = {
+      flatArray.map(z => make2DArray(z,shape))
+    }
+    
+    /**  Returns an asynchronous task to read this [[Tensor]] into a 3D [[scala.Array]]
+      *
+      * @group slow
+      */
+    def read3DArray : Future[Array[Array[Array[Float]]]] = {
+      flatArray.map(z => make3DArray(z,shape))
+    }
+
+    /**  Returns an asynchronous task to read this [[Tensor]] into a 4D [[scala.Array]]
+      *
+      * @group slow
+      */
+    def read4DArray : Future[Array[Array[Array[Array[Float]]]]] = {
+      flatArray.map(z => make4DArray(z,shape))
+    }
+
+    /**  Returns an asynchronous task to read this [[Tensor]] into a 5D [[scala.Array]]
+      *
+      * @group slow
+      */
+    def read5DArray : Future[Array[Array[Array[Array[Array[Float]]]]]] = {
+      flatArray.map(z => make5DArray(z,shape))
+    }
+
+    /**  Returns an asynchronous task to read this [[Tensor]] into a
+      * [[scala.Seq]]
+      *
+      * @group slow
+      */
+    def read1DSeq : Future[Seq[Float]] = {
+      flatArray.map(z => z)
+    }
+
+    /**  Returns an asynchronous task to read this [[Tensor]] into a 2D [[scala.Seq]]
+      *
+      * @group slow
+      */
+    def read2DSeq : Future[Seq[Seq[Float]]] = {
+      flatArray.map(z => make2DSeq(z,shape))
+    }
+    
+    /**  Returns an asynchronous task to read this [[Tensor]] into a 3D [[scala.Seq]]
+      *
+      * @group slow
+      */
+    def read3DSeq : Future[Seq[Seq[Seq[Float]]]] = {
+      flatArray.map(z => make3DSeq(z,shape))
+    }
+
+    /**  Returns an asynchronous task to read this [[Tensor]] into a 4D [[scala.Seq]]
+      *
+      * @group slow
+      */
+    def read4DSeq : Future[Seq[Seq[Seq[Seq[Float]]]]] = {
+      flatArray.map(z => make4DSeq(z,shape))
+    }
+
+    /**  Returns an asynchronous task to read this [[Tensor]] into a 5D [[scala.Seq]]
+      *
+      * @group slow
+      */
+    def read5DSeq : Future[Seq[Seq[Seq[Seq[Seq[Float]]]]]] = {
+      flatArray.map(z => make5DSeq(z,shape))
     }
 
     /**
