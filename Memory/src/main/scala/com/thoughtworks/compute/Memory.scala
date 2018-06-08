@@ -36,6 +36,8 @@ trait Memory[Element] {
 
 object Memory extends LowPriorityMemory {
 
+  final val CHAR_ALLOC_DEFAULT_BYTE_SIZE = 2
+
   def apply[Element](implicit memory: Memory[Element]): memory.type = memory
 
   type Aux[Element, HostBuffer0] = Memory[Element] {
@@ -275,7 +277,7 @@ object Memory extends LowPriorityMemory {
 
     override def put(buffer: CharBuffer, index: Int, value: Char): Unit = buffer.put(index, value)
 
-    override def allocate(numberOfElement: Int): CharBuffer = MemoryUtil.memAlloc(2 * numberOfElement).asCharBuffer()
+    override def allocate(numberOfElement: Int): CharBuffer = MemoryUtil.memAlloc(CHAR_ALLOC_DEFAULT_BYTE_SIZE * numberOfElement).asCharBuffer()
 
     override def free(buffer: CharBuffer): Unit = MemoryUtil.memFree(buffer)
 
