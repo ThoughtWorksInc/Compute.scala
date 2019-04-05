@@ -1,1 +1,1 @@
-libraryDependencies += "org.lwjgl" % "lwjgl" % "3.1.6"
+libraryDependencies += "org.lwjgl" % "lwjgl" % "3.2.1"
