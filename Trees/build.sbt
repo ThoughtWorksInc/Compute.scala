@@ -4,6 +4,6 @@ scalacOptions += "-Xexperimental"
 
 scalacOptions += "-Ypartial-unification"
 
-addCompilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.3.2")
+addCompilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.3.3")
 
-libraryDependencies += "com.github.ghik" %% "silencer-lib" % "1.3.2"
+libraryDependencies += "com.github.ghik" %% "silencer-lib" % "1.3.3"
