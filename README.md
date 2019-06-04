@@ -39,6 +39,7 @@ The artifacts of Compute.scala is published on Maven central repository for Scal
 
 ``` sbt
 libraryDependencies += "com.thoughtworks.compute" %% "cpu" % "latest.release"
+
 libraryDependencies += "com.thoughtworks.compute" %% "gpu" % "latest.release"
 
 // Platform dependent runtime of LWJGL core library
