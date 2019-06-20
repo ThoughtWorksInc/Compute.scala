@@ -2,7 +2,7 @@ scalacOptions += "-Ypartial-unification"
 
 libraryDependencies += "com.google.guava" % "guava" % "28.0-jre"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % Test
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % Test
 
 libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.2.2" % Optional).jar().classifier {
   import scala.util.Properties._

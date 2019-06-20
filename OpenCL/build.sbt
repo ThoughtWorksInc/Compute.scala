@@ -29,7 +29,7 @@ libraryDependencies += "com.chuusai" %%% "shapeless" % "2.3.3"
 
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % Test
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % Test
 
 fork := true
 
