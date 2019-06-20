@@ -25,4 +25,4 @@ libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.2.2").jar().classifier {
 
 scalacOptions += "-Ypartial-unification"
 
-addCompilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.3.3")
+addCompilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.3.4")
