@@ -42,6 +42,9 @@ libraryDependencies += "com.thoughtworks.compute" %% "cpu" % "latest.release"
 
 libraryDependencies += "com.thoughtworks.compute" %% "gpu" % "latest.release"
 
+// LWJGL OpenCL library
+libraryDependencies += "org.lwjgl" % "lwjgl-opencl" % "latest.release"
+
 // Platform dependent runtime of LWJGL core library
 libraryDependencies += ("org.lwjgl" % "lwjgl" % "latest.release").jar().classifier {
   import scala.util.Properties._
