@@ -199,7 +199,7 @@ try {
 println(releaseCache.toString)
 ```
 
-The data buffer allocated for `releaseCache` is kept until `releaseCache` is performed.
+The data buffer allocated for `cachedTensor` is kept until `releaseCache` is performed.
 
 You can think of a `CachedTensor` as a `lazy val` on device side.
 
