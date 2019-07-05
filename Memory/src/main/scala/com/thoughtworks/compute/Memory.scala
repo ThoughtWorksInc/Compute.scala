@@ -310,7 +310,6 @@ object Memory extends LowPriorityMemory {
     override def free(buffer: HostBuffer0): Unit = rawMemory.free(buffer)
 
     override def toArray(buffer: HostBuffer0): Array[Boxed] = {
-//      ???
       val rawArray: Array[Raw] = rawMemory.toArray(buffer)
       val boxedArray = new Array[Boxed](rawArray.length)
       var i = 0
