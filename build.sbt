@@ -41,3 +41,5 @@ scalacOptions in ThisBuild ++= {
     None
   }
 }
+
+ThisBuild / useCoursier := false
