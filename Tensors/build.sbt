@@ -17,9 +17,9 @@ libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.2.2" % Optional).jar().classi
   }
 }
 
-addCompilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.4.1")
+addCompilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.4.2")
 
-libraryDependencies += "com.github.ghik" %% "silencer-lib" % "1.4.1"
+libraryDependencies += "com.github.ghik" %% "silencer-lib" % "1.4.2"
 
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3" % Test
 
