@@ -1,6 +1,6 @@
 scalacOptions += "-Ypartial-unification"
 
-libraryDependencies += "com.google.guava" % "guava" % "28.2-jre"
+libraryDependencies += "com.google.guava" % "guava" % "29.0-jre"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % Test
 
