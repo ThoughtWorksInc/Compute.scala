@@ -12,6 +12,8 @@ import scalaz.syntax.all._
 
 import scala.language.existentials
 import org.scalatest._
+import org.scalatest.freespec.AsyncFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * @author 杨博 (Yang Bo)
