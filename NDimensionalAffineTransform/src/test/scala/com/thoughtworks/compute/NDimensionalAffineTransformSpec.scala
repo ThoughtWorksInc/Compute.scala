@@ -5,11 +5,13 @@ import java.awt.geom.AffineTransform
 import org.scalatest._
 
 import scala.util.Random
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * @author 杨博 (Yang Bo)
   */
-final class NDimensionalAffineTransformSpec extends FreeSpec with Matchers {
+final class NDimensionalAffineTransformSpec extends AnyFreeSpec with Matchers {
 
   def arrayToAffineTransform(matrix: Array[Double]): AffineTransform = {
     matrix match {
