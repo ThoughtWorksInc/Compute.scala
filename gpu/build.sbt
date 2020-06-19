@@ -21,6 +21,6 @@ libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.2.3" % Optional).jar().classi
   }
 }
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % Test
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.0" % Test
 
 fork := true
