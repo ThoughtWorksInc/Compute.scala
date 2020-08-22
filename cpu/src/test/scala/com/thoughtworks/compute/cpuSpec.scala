@@ -1,11 +1,12 @@
 package com.thoughtworks.compute
 
-import org.scalatest.{AsyncFreeSpec, FreeSpec, Matchers}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * @author 杨博 (Yang Bo)
   */
-class cpuSpec extends FreeSpec with Matchers {
+class cpuSpec extends AnyFreeSpec with Matchers {
   "computational graph" in {
     import cpu._
     val a = Tensor.fill(2.0f, Array(2, 3)).nonInline

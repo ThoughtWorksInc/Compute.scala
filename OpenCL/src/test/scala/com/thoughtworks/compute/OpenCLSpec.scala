@@ -2,7 +2,6 @@ package com.thoughtworks.compute
 
 import java.nio.ByteBuffer
 
-import org.scalatest.{AsyncFreeSpec, Matchers}
 import org.lwjgl.opencl._
 import CL10._
 import CL12._
@@ -10,6 +9,8 @@ import com.thoughtworks.raii.asynchronous._
 import com.thoughtworks.each.Monadic._
 import com.thoughtworks.feature.Factory
 import com.thoughtworks.future._
+import org.scalatest.freespec.AsyncFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * @author 杨博 (Yang Bo)
