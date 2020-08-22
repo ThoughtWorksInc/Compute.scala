@@ -2,12 +2,14 @@ package com.thoughtworks.compute
 
 import com.thoughtworks.compute.Trees.AllTrees
 import com.thoughtworks.feature.Factory
-import org.scalatest.{Assertion, FreeSpec, Matchers}
+import org.scalatest.Assertion
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * @author 杨博 (Yang Bo)
   */
-final class TreesSpec extends FreeSpec with Matchers {
+final class TreesSpec extends AnyFreeSpec with Matchers {
   private val trees: AllTrees = Factory[AllTrees with Trees.StructuralTrees].newInstance()
 
   private def reflexive(term: => trees.Term): Assertion = {
