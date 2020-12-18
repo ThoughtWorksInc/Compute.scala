@@ -36,6 +36,8 @@ trait Memory[Element] {
 
 object Memory extends LowPriorityMemory {
 
+  final val CHAR_ALLOC_DEFAULT_BYTE_SIZE = 2
+
   def apply[Element](implicit memory: Memory[Element]): memory.type = memory
 
   type Aux[Element, HostBuffer0] = Memory[Element] {
@@ -260,6 +262,33 @@ object Memory extends LowPriorityMemory {
   }
 
   // TODO: short, bool, char
+
+  implicit object CharMemory extends NioMemory[Char] {
+
+    override type HostBuffer = CharBuffer
+
+    override def fromByteBuffer(byteBuffer: ByteBuffer): CharBuffer = byteBuffer.asCharBuffer()
+
+    override def numberOfBytesPerElement: Int = java.lang.Character.BYTES
+
+    override def address(buffer: CharBuffer): Long = MemoryUtil.memAddress(buffer)
+
+    override def get(buffer: CharBuffer, index: Int): Char = buffer.get(index)
+
+    override def put(buffer: CharBuffer, index: Int, value: Char): Unit = buffer.put(index, value)
+
+    override def allocate(numberOfElement: Int): CharBuffer = MemoryUtil.memAlloc(CHAR_ALLOC_DEFAULT_BYTE_SIZE * numberOfElement).asCharBuffer()
+
+    override def free(buffer: CharBuffer): Unit = MemoryUtil.memFree(buffer)
+
+    override def toArray(buffer: CharBuffer): Array[Char] = {
+      val oldPosition = buffer.position()
+      val bufferToArray = Array.ofDim[Char](buffer.remaining())
+      buffer.get(bufferToArray, 0, bufferToArray.length)
+      buffer.position(oldPosition)
+      bufferToArray
+    }
+  }
 
   trait Box[Boxed] {
     type Raw
