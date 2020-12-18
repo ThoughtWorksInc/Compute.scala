@@ -5,12 +5,13 @@ import com.thoughtworks.compute.Expressions.{Arrays, Floats, Tuples}
 import com.thoughtworks.compute.OpenCLKernelBuilder.GlobalContext
 import com.thoughtworks.compute.Trees.AllTrees
 import com.thoughtworks.feature.Factory
-import org.scalatest.{FreeSpec, Matchers}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * @author 杨博 (Yang Bo)
   */
-class OpenCLKernelBuilderSpec extends FreeSpec with Matchers {
+class OpenCLKernelBuilderSpec extends AnyFreeSpec with Matchers {
 
   "id" in {
     val category1 = {
