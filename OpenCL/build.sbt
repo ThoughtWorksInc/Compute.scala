@@ -25,7 +25,7 @@ libraryDependencies += "com.thoughtworks.feature" %% "mixins-implicitssingleton"
 
 libraryDependencies += "com.thoughtworks.feature" %% "factory" % "2.3.0"
 
-libraryDependencies += "com.chuusai" %%% "shapeless" % "2.3.3"
+libraryDependencies += "com.chuusai" %%% "shapeless" % "2.3.7"
 
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 
