@@ -10,4 +10,4 @@ addSbtPlugin("org.lyranthe.sbt" % "partial-unification" % "1.1.2")
 
 addSbtPlugin("com.thoughtworks.example" % "sbt-example" % "6.0.1")
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.7")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.3")
