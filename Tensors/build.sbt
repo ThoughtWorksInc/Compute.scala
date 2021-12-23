@@ -21,7 +21,7 @@ addCompilerPlugin("com.github.ghik" %% "silencer-plugin" % "1.4.2")
 
 libraryDependencies += "com.github.ghik" %% "silencer-lib" % "1.4.2"
 
-libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3" % Test
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.10" % Test
 
 fork in Test := true
 
