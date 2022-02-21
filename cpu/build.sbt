@@ -10,7 +10,7 @@ exampleSuperTypes := exampleSuperTypes.value.map {
 
 exampleSuperTypes += ctor"_root_.org.scalatest.Inside"
 
-libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.2.3" % Optional).jar().classifier {
+libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.3.1" % Optional).jar().classifier {
   import scala.util.Properties._
   if (isMac) {
     "natives-macos"
