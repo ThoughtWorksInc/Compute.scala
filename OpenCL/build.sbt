@@ -35,6 +35,6 @@ fork := true
 
 scalacOptions += "-Ypartial-unification"
 
-libraryDependencies += "com.thoughtworks.each" %% "each" % "3.3.1"
+libraryDependencies += "com.thoughtworks.each" %% "each" % "3.3.2"
 
 enablePlugins(Example)
