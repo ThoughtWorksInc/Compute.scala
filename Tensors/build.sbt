@@ -4,7 +4,7 @@ libraryDependencies += "com.google.guava" % "guava" % "28.2-jre"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % Test
 
-libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.2.3" % Optional).jar().classifier {
+libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.3.2" % Optional).jar().classifier {
   import scala.util.Properties._
   if (isMac) {
     "natives-macos"

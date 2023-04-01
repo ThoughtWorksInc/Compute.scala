@@ -10,7 +10,7 @@ libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 
 libraryDependencies += "org.nd4j" % s"nd4j-${nd4jRuntime.value}-platform" % "0.9.1"
 
-libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.2.3").jar().classifier {
+libraryDependencies += ("org.lwjgl" % "lwjgl" % "3.3.2").jar().classifier {
   import scala.util.Properties._
   if (isMac) {
     "natives-macos"
